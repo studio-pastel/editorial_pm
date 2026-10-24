@@ -270,12 +270,13 @@ body.editor .viewonly { display: none !important; }
         <input id="designFile" type="file" accept="application/pdf" multiple hidden>
       </div>
       <div class="row" style="margin-top:8px">
-        <label class="field" style="flex:0 1 220px"><span>割当開始（1／表1／表2／表3／表4／背）</span><input id="upStart" type="text" value="1" autocomplete="off"></label>
+        <label class="field" style="flex:0 1 260px"><span>これからアップロードするPDFを貼り始めるページ（1／表1／表2／表3／表4／背）</span><input id="upStart" type="text" value="1" autocomplete="off"></label>
         <p class="hint" style="flex:1 1 300px;margin:0">ドライブのデザインフォルダに保存し、「デザイン」タブに記録します。台割のページ枠に直接ドロップすると、そのページから貼ります。複数のPDFは選んだ順に続けて貼ります。</p>
       </div>
       <div class="progress" id="upProg" hidden><i id="upBar"></i></div>
     </div>
     <p class="hint viewonly">アップロードと割り当ての変更は、編集者ログイン後に行えます。</p>
+    <h3>登録済みのデザイン <small>（貼る位置は各行の入力欄で変更。入力して Enter で保存）</small></h3>
     <ul class="dlist" id="designList"></ul>
     <div class="row" style="margin-top:8px">
       <button class="btn sm" id="btnDiag">表示の診断</button>
@@ -1866,7 +1867,9 @@ function applyEditorMode() {
 let listTimer = 0;
 function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
 function renderDesignList() {
-  const ul = $('designList'); ul.textContent = '';
+  const ul = $('designList');
+  if (ul.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') { renderDesignListSoon(); return; }
+  ul.textContent = '';
   const ed = signedIn();
   if (S.folderErr) { const li = document.createElement('li'); li.innerHTML = '<span class="err"></span>'; li.firstChild.textContent = S.folderErr; ul.appendChild(li); }
   else if (!extractDriveId(S.set.folder)) { const li = document.createElement('li'); li.innerHTML = '<span class="nm" style="color:var(--mute)"></span>'; li.firstChild.textContent = 'デザインフォルダが未設定です（「判型・製本」で設定するか、初回アップロード時に自動で作成されます）。'; ul.appendChild(li); }
@@ -1879,20 +1882,24 @@ function renderDesignList() {
     const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = d.name || src.name || d.id; nm.title = nm.textContent;
     li.appendChild(nm);
     if (ed) {
-      const mk = (val, title) => { const i = document.createElement('input'); i.type = 'text'; i.value = val; i.title = title; i.setAttribute('aria-label', title); return i; };
-      const f = mk(String(d.from), 'PDFページ開始'), t = mk(d.to ? String(d.to) : '', 'PDFページ終了（空欄＝最後まで）'), s = mk(d.startText || startFieldText(d.start), '割当開始');
+      const mk = (val, title, w) => { const i = document.createElement('input'); i.type = 'text'; i.value = val; i.title = title; i.setAttribute('aria-label', title); i.style.width = w; return i; };
+      const f = mk(String(d.from), 'PDFのページ（開始）', '3.5em'), t = mk(d.to ? String(d.to) : '', 'PDFのページ（終了・空欄＝最後まで）', '3.5em'), s = mk(d.startText || startFieldText(d.start), '台割のどのページから貼るか', '4.5em');
       const lab = (txt) => { const e = document.createElement('span'); e.className = 'meta'; e.textContent = txt; return e; };
-      li.append(lab('PDF'), f, lab('〜'), t, lab('→'), s);
-      const save = document.createElement('button'); save.className = 'btn sm'; save.textContent = '保存';
-      save.addEventListener('click', () => editDesignRow(d, f.value, t.value, s.value));
+      li.append(lab('PDFの'), f, lab('〜'), t, lab('ページを、台割の'), s, lab('から'));
+      // saves as soon as a field is changed (Enter or leaving the field)
+      const save = () => {
+        if (f.value === String(d.from) && t.value === (d.to ? String(d.to) : '') && s.value === (d.startText || startFieldText(d.start))) return;
+        editDesignRow(d, f.value, t.value, s.value);
+      };
+      [f, t, s].forEach((i) => { i.addEventListener('change', save); i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }); });
       const del = document.createElement('button'); del.className = 'btn sm'; del.textContent = '外す';
-      del.title = '「デザイン」タブからこの行を削除します（ドライブのファイルは残ります）';
+      del.title = '「デザイン」タブからこの行を消します。PDFがデザインフォルダにあれば、名前順の自動配置に戻ります';
       let armed = 0;
       del.addEventListener('click', () => {
         if (!armed) { del.textContent = 'もう一度押すと外します'; armed = setTimeout(() => { armed = 0; del.textContent = '外す'; }, 3000); return; }
         clearTimeout(armed); deleteDesignRow(d);
       });
-      li.append(save, del);
+      li.append(del);
     } else {
       const m = document.createElement('span'); m.className = 'meta';
       m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
@@ -1931,7 +1938,7 @@ async function editDesignRow(d, fromTxt, toTxt, startTxt) {
   try {
     await sheetUpdate(S.sheetId, a1(TAB_DESIGN, 'C' + d.row + ':E' + d.row), [[from, to, startFieldText(start)]]);
     await reloadDesigns();
-    setMsg('designMsg', '保存しました。', 'ok'); goToKey(start);
+    setMsg('designMsg', (d.name || 'PDF') + 'を' + keyLabel(start) + 'から貼るように保存しました。', 'ok'); goToKey(start);
   } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
 }
 async function deleteDesignRow(d) {
@@ -1941,7 +1948,7 @@ async function deleteDesignRow(d) {
     if (!tab || tab.id === undefined) { const meta = await sheetMeta(S.sheetId); S.tabs = meta.tabs; }
     await sheetDeleteRow(S.sheetId, S.tabs.find((t) => t.title === TAB_DESIGN).id, d.row);
     await reloadDesigns();
-    setMsg('designMsg', '外しました（ドライブのファイルは残っています）。', 'ok');
+    setMsg('designMsg', '指定を外しました。PDFがデザインフォルダにある場合は、名前順の自動配置に戻ります（台割から消すには、PDFをフォルダの外へ移してください）。', 'ok');
   } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
 }
 
