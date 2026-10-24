@@ -612,7 +612,7 @@ function parseDesignRows(rows) {
   return list;
 }
 /** later rows win on overlap. pageCount(id) -> number|null used when 終了 is blank */
-function computeAssignments(designs, N, pageCount) {
+function computeAssignments(designs, N, pageCount, autos) {
   const assign = new Map(), order = orderKeys(Math.max(N, 2));
   designs.forEach((d) => {
     let to = d.to;
@@ -621,13 +621,26 @@ function computeAssignments(designs, N, pageCount) {
     if (d.start === 'S') { assign.set('S', { src: d.id, page: d.from, half: null }); return; }
     let i = order.findIndex((k) => String(k) === String(d.start));
     if (i < 0) return;
-    for (let p = d.from; p <= to && i < order.length; p++, i++) assign.set(String(order[i]), { src: d.id, page: p, half: null });
+    for (let p = d.from; p <= to && i < order.length; p++, i++) assign.set(String(order[i]), { src: d.id, page: p, half: null, row: d.row });
+  });
+  // PDFs that sit in the design folder but have no row: name order, into the free body pages from P1
+  let cur = 1;
+  (autos || []).forEach((f) => {
+    const n = pageCount(f.id);
+    if (!n) return;
+    for (let p = 1; p <= n; p++) {
+      while (cur <= N && assign.has(String(cur))) cur++;
+      if (cur > N) return;
+      assign.set(String(cur), { src: f.id, page: p, half: null, auto: true });
+      cur++;
+    }
   });
   return assign;
 }
+function naturalSort(list) { return list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja', { numeric: true, sensitivity: 'base' })); }
 
 if (false) {
-  module.exports = { DESIGN_HEADER, parseKeyText, parsePageSpec, detectColumns, buildModel, spreadKeys, spreadOfKey, orderKeys, leafCount, spreadCount, spineWidthMM, signatureNote, paddedN, colName, colIndex, extractSheetId, extractDriveId, parseSettingsRows, settingsToRows, parseDesignRows, computeAssignments };
+  module.exports = { DESIGN_HEADER, parseKeyText, parsePageSpec, detectColumns, buildModel, spreadKeys, spreadOfKey, orderKeys, leafCount, spreadCount, spineWidthMM, signatureNote, paddedN, colName, colIndex, extractSheetId, extractDriveId, parseSettingsRows, settingsToRows, parseDesignRows, computeAssignments, naturalSort };
 }
 
 /* ===== Google: read with the API key (no sign-in), write with the editor's token ===== */
@@ -706,6 +719,18 @@ async function sheetBatch(id, ranges) {
 async function driveMeta(id) {
   const r = await gfetch(DRIVE + 'files/' + id + '?fields=id,name,size,md5Checksum,modifiedTime,mimeType&supportsAllDrives=true', null, true);
   return r.json();
+}
+/** PDFs directly inside a (link-shared) folder */
+async function driveListPdfs(folderId) {
+  const out = []; let page = '';
+  do {
+    const q = encodeURIComponent("'" + folderId + "' in parents and trashed=false and mimeType='application/pdf'");
+    const r = await gfetch(DRIVE + 'files?q=' + q + '&fields=' + encodeURIComponent('nextPageToken,files(id,name,modifiedTime,size)') + '&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true' + (page ? '&pageToken=' + encodeURIComponent(page) : ''), null, true);
+    const j = await r.json();
+    (j.files || []).forEach((f) => out.push(f));
+    page = j.nextPageToken || '';
+  } while (page && out.length < 1000);
+  return out;
 }
 async function driveBytes(id) {
   const r = await gfetch(DRIVE + 'files/' + id + '?alt=media&supportsAllDrives=true', null, true);
@@ -822,6 +847,7 @@ const S = {
   rows: null, headerRow: -1, map: null,
   model: { pages: new Map(), sections: [], n: 0, missing: [] },
   designs: [],                  // rows of 「デザイン」
+  folderFiles: [], folderErr: '', // PDFs in the design folder
   sources: new Map(),           // drive file id -> {id,name,kind:'pdf',blob,numPages,pdf,err}
   assign: new Map(),            // kstr -> {src, page, half}
   thumbs: new Map(),            // kstr -> data url
@@ -1629,6 +1655,7 @@ async function loadProject(opts) {
     S.colOverride = ps.cols; S.tabName = tab; S.rows = rows || [];
     rebuildRows();
     S.designs = parseDesignRows(des);
+    await listFolder();
   } catch (e) {
     S.loading = false; renderBoard();
     setTop(e instanceof GError ? explainError(e, 'sheet') : ('読み込めませんでした：' + e.message), 'err');
@@ -1654,15 +1681,54 @@ function rebuildRows() {
 async function reloadDesigns() {
   if (!hasTab(TAB_DESIGN)) { S.designs = []; }
   else S.designs = parseDesignRows((await sheetBatch(S.sheetId, [a1(TAB_DESIGN, 'A1:F400')]))[0]);
+  await listFolder();
   await refreshAssignments();
+}
+async function listFolder() {
+  const id = extractDriveId(S.set.folder);
+  S.folderErr = '';
+  if (!id) { S.folderFiles = []; return; }
+  try { S.folderFiles = naturalSort(await driveListPdfs(id)); }
+  catch (e) { S.folderFiles = []; S.folderErr = 'デザインフォルダを読めませんでした：' + (e instanceof GError ? explainError(e, 'pdf').replace('PDF', 'フォルダ') : e.message); }
+}
+const autoFiles = () => S.folderFiles.filter((f) => !S.designs.some((d) => d.id === f.id));
+function recompute() {
+  const next = computeAssignments(S.designs, NS(), (id) => { const s = S.sources.get(id); return (s && s.numPages) || null; }, autoFiles());
+  applyAssignments(next);
+  renderStats(); renderDesignListSoon();
+  if (V.ok) invalidate();
 }
 async function refreshAssignments() {
   S.designs.forEach((d) => srcFor(d.id, d.name));
-  for (const d of S.designs.filter((x) => !x.to)) { try { await getPdf(S.sources.get(d.id)); } catch (e) { /* shown in the list */ } }
-  const next = computeAssignments(S.designs, NS(), (id) => { const s = S.sources.get(id); return (s && s.numPages) || null; });
-  applyAssignments(next);
-  renderStats(); renderDesignList();
-  if (V.ok) invalidate();
+  autoFiles().forEach((f) => srcFor(f.id, f.name));
+  recompute();
+  // page counts are needed before folder PDFs (and rows with no end page) can be placed
+  const need = S.designs.filter((x) => !x.to).map((d) => d.id).concat(autoFiles().map((f) => f.id));
+  for (const id of need) {
+    const s = S.sources.get(id);
+    if (s.pdf) continue;
+    try { await getPdf(s); } catch (e) { /* shown in the list */ }
+    recompute();
+  }
+  renderDesignList();
+}
+/** key range a source currently occupies, for the list */
+function placedRange(id) {
+  const ks = orderKeys(Math.max(NS(), 2)).filter((k) => { const a = S.assign.get(kstr(k)); return a && a.src === id; });
+  if (!ks.length) return '';
+  return ks.length === 1 ? keyLabel(ks[0]) : keyLabel(ks[0]) + '〜' + keyLabel(ks[ks.length - 1]);
+}
+async function pinAutoFile(f) {
+  const s = S.sources.get(f.id) || {};
+  const ks = orderKeys(Math.max(NS(), 2)).filter((k) => { const a = S.assign.get(kstr(k)); return a && a.src === f.id; });
+  if (!ks.length || !s.numPages) { setMsg('designMsg', 'このPDFはまだ読み込めていません。', 'err'); return; }
+  setMsg('designMsg', '記録中…');
+  try {
+    await ensureDesignTab();
+    await sheetAppend(S.sheetId, a1(TAB_DESIGN, 'A:F'), [[fileUrl(f.id), f.name, 1, s.numPages, startFieldText(ks[0]), new Date().toLocaleString('ja-JP')]]);
+    await reloadDesigns();
+    setMsg('designMsg', '「デザイン」タブに記録しました。割当開始を変えて「保存」で位置を動かせます。', 'ok');
+  } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
 }
 
 /* ---- recent projects (this browser only) ---- */
@@ -1801,11 +1867,12 @@ let listTimer = 0;
 function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
 function renderDesignList() {
   const ul = $('designList'); ul.textContent = '';
-  if (!S.designs.length) {
-    ul.innerHTML = '<li><span class="nm" style="color:var(--mute)">まだデザインが登録されていません</span></li>';
-    return;
-  }
   const ed = signedIn();
+  if (S.folderErr) { const li = document.createElement('li'); li.innerHTML = '<span class="err"></span>'; li.firstChild.textContent = S.folderErr; ul.appendChild(li); }
+  else if (!extractDriveId(S.set.folder)) { const li = document.createElement('li'); li.innerHTML = '<span class="nm" style="color:var(--mute)"></span>'; li.firstChild.textContent = 'デザインフォルダが未設定です（「判型・製本」で設定するか、初回アップロード時に自動で作成されます）。'; ul.appendChild(li); }
+  if (!S.designs.length && !autoFiles().length) {
+    if (!S.folderErr && extractDriveId(S.set.folder)) ul.insertAdjacentHTML('beforeend', '<li><span class="nm" style="color:var(--mute)">デザインフォルダにPDFがありません</span></li>');
+  }
   S.designs.forEach((d) => {
     const src = S.sources.get(d.id) || {};
     const li = document.createElement('li');
@@ -1832,6 +1899,25 @@ function renderDesignList() {
       li.appendChild(m);
     }
     const a = document.createElement('a'); a.href = fileUrl(d.id); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ドライブで開く';
+    li.appendChild(a);
+    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    ul.appendChild(li);
+  });
+  autoFiles().forEach((f) => {
+    const src = S.sources.get(f.id) || {};
+    const li = document.createElement('li');
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = f.name; nm.title = f.name;
+    const m = document.createElement('span'); m.className = 'meta';
+    const r = placedRange(f.id);
+    m.textContent = 'フォルダから自動' + (src.numPages ? '・' + src.numPages + 'P' : '') + (r ? ' → ' + r : (src.pdf ? ' → 空きページなし' : ' → 読み込み中'));
+    li.append(nm, m);
+    if (ed) {
+      const pin = document.createElement('button'); pin.className = 'btn sm'; pin.textContent = '位置を指定';
+      pin.title = '今の位置で「デザイン」タブに記録し、割当開始を変えられるようにします';
+      pin.addEventListener('click', () => pinAutoFile(f));
+      li.appendChild(pin);
+    }
+    const a = document.createElement('a'); a.href = fileUrl(f.id); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ドライブで開く';
     li.appendChild(a);
     if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
     ul.appendChild(li);
