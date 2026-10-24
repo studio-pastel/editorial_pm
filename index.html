@@ -99,7 +99,12 @@ button { cursor: pointer; }
 .diag pre { margin: 0; font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
 
 /* main two-pane */
-.main { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 0.9fr); gap: 16px; margin-top: 14px; align-items: start; }
+.main { display: grid; grid-template-columns: fit-content(46%) minmax(0, 1fr); gap: 20px; margin-top: 14px; align-items: start; }
+.main > section { min-width: 0; }
+/* labels wrap inside the board's width instead of widening the column */
+.boardbar, .legend { width: 0; min-width: 100%; }
+body.wide .main { grid-template-columns: minmax(0, 1fr); }
+body.wide .main > section { display: none; }
 .boardbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--mute); }
 .boardbar input[type="range"] { width: 120px; accent-color: var(--accent); }
 .legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 10px; }
@@ -128,18 +133,20 @@ button { cursor: pointer; }
 
 /* stage */
 .stage { position: sticky; top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
-.view3d { position: relative; background: var(--stage); height: min(66vh, 640px); min-height: 360px; touch-action: none; }
+.view3d { position: relative; background: var(--stage); height: calc(100vh - 190px); min-height: 380px; touch-action: none; }
 .view3d canvas { display: block; width: 100%; height: 100%; }
 .view3d .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); text-align: center; padding: 20px; pointer-events: none; }
 .ctrl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
 .ctrl input[type="range"] { flex: 1 1 140px; min-width: 100px; accent-color: var(--accent); }
 .ctrl .lab { font-family: var(--font-mono); font-size: 12px; color: var(--mute); min-width: 7.5em; text-align: center; }
 .cams { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 12px; }
+.cams .spacer { flex: 1 1 auto; }
 
 @media (max-width: 1000px) {
   .main { grid-template-columns: minmax(0, 1fr); }
   .stage { position: static; order: -1; }
   .view3d { height: 56vh; min-height: 300px; }
+  body.wide .view3d { height: calc(100vh - 190px); }
 }
 @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
 
@@ -309,6 +316,8 @@ body.editor .viewonly { display: none !important; }
         <button class="btn sm" data-cam="fore">小口側</button>
         <button class="btn sm" data-cam="spine">背</button>
         <button class="btn sm" data-cam="back">裏表紙</button>
+        <span class="spacer"></span>
+        <button class="btn sm" id="btnWide" aria-pressed="false">3Dだけを表示</button>
       </div>
     </aside>
   </div>
@@ -2152,6 +2161,14 @@ function wire() {
   window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
   window.addEventListener('drop', (e) => { if (hasFiles(e)) e.preventDefault(); });
   $('btnDiag').addEventListener('click', runDiagnosis);
+  const setWide = (on) => {
+    document.body.classList.toggle('wide', on);
+    $('btnWide').textContent = on ? '台割と並べて表示' : '3Dだけを表示'; $('btnWide').setAttribute('aria-pressed', String(on));
+    try { localStorage.setItem('dandori.wide', on ? '1' : ''); } catch (e) { /* ignore */ }
+    if (V.ok) { resize(); fitCamera(true); }
+  };
+  $('btnWide').addEventListener('click', () => setWide(!document.body.classList.contains('wide')));
+  try { if (localStorage.getItem('dandori.wide')) setWide(true); } catch (e) { /* ignore */ }
   $('btnSetPw').addEventListener('click', () => setViewPassword(false));
   let clearArmed = 0;
   $('btnClearPw').addEventListener('click', () => {
