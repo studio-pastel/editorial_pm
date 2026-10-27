@@ -23,6 +23,7 @@
   --bad: #b3261e;
   --ok: #2a7a3b;
   --stage: #d9e0e3;
+  --violet: #6a4fb3;
   --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
   --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
   --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
@@ -32,14 +33,14 @@
     --bg: #111719; --panel: #182024; --panel-2: #1f2a2f; --line: #2e3c42;
     --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; --accent-fg: #06262b;
     --accent-soft: #17383e; --warn: #e2a64a; --warn-soft: #3a2d14; --bad: #ff8a80; --ok: #7bd58a;
-    --stage: #0c1214; color-scheme: dark;
+    --stage: #0c1214; --violet: #b49cf2; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --bg: #111719; --panel: #182024; --panel-2: #1f2a2f; --line: #2e3c42;
   --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; --accent-fg: #06262b;
   --accent-soft: #17383e; --warn: #e2a64a; --warn-soft: #3a2d14; --bad: #ff8a80; --ok: #7bd58a;
-  --stage: #0c1214; color-scheme: dark;
+  --stage: #0c1214; --violet: #b49cf2; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
@@ -53,7 +54,7 @@ body {
 button, input, select, textarea { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.wrap { max-width: 1680px; margin: 0 auto; padding-block: 14px 40px; }
+.wrap { max-width: 2200px; margin: 0 auto; padding-block: 14px 40px; }
 
 /* header */
 .top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
@@ -114,15 +115,15 @@ body.wide .main > section { display: none; }
 .spread { display: flex; align-items: stretch; gap: 0; width: max-content; max-width: 100%; }
 .spread-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
 .spread-wrap.cur .spread { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
-.spread-label { font-family: var(--font-mono); font-size: 11px; color: var(--mute); }
+.spread-label { font-family: var(--font-mono); font-size: 10px; color: var(--mute); }
 .spread-scroll { overflow-x: auto; padding: 4px; margin: -4px; }
 .tile { position: relative; flex: none; width: var(--tw, 118px); aspect-ratio: var(--ar, 0.707); background: var(--panel); border: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; }
 .tile.empty { background: var(--panel-2); border-style: dashed; cursor: default; }
 .tile.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
 .tile .bar { height: 5px; background: var(--sec, var(--line)); flex: none; }
-.tile .no { font-family: var(--font-mono); font-size: 11px; padding: 3px 6px 0; display: flex; justify-content: space-between; color: var(--mute); }
-.tile .tt { font-size: 12px; line-height: 1.35; padding: 2px 6px 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; flex: 1 1 auto; }
-.tile .note { font-size: 10.5px; color: var(--mute); padding: 0 6px 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile .no { font-family: var(--font-mono); font-size: 10px; padding: 3px 6px 0; display: flex; justify-content: space-between; color: var(--mute); }
+.tile .tt { font-size: 11px; line-height: 1.35; padding: 2px 6px 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; flex: 1 1 auto; }
+.tile .note { font-size: 9.5px; color: var(--mute); padding: 0 6px 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .tile img { position: absolute; inset: 5px 0 0 0; width: 100%; height: calc(100% - 5px); object-fit: cover; }
 .tile.hasimg .no { position: relative; z-index: 1; background: color-mix(in srgb, var(--panel) 78%, transparent); }
 .tile.hasimg .tt, .tile.hasimg .note { display: none; }
@@ -174,10 +175,106 @@ body.wide .main > section { display: none; }
 .dlist a { font-size: 12px; color: var(--accent); }
 .progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
 .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
-#gate { max-width: 420px; margin: 12vh auto 0; }
-#gate h2 { font-family: var(--font-display); font-size: 20px; letter-spacing: .04em; color: var(--fg); margin: 0 0 4px; }
-#gate p { margin: 0 0 12px; color: var(--mute); }
-body.locked .top > :not(.brand):not(.proj), body.locked #mainArea, body.locked .panel:not(#gate), body.locked #topMsg { display: none !important; }
+#login, #landing { max-width: 520px; margin: 9vh auto 0; }
+#login h2 { font-family: var(--font-display); font-size: 22px; letter-spacing: .04em; color: var(--fg); margin: 0 0 6px; }
+#login p { margin: 0 0 12px; }
+#login .lead { font-weight: 700; font-size: 16px; }
+.gsi { min-height: 44px; margin: 14px 0 8px; }
+body.locked .top > :not(.brand):not(.proj), body.locked .vtabs, body.locked .view, body.locked #detail { display: none !important; }
+.muted { color: var(--mute); }
+
+/* view tabs: the project's main navigation */
+.vtabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; border-bottom: 2px solid var(--line); }
+.vtab { position: relative; border: 0; background: transparent; padding: 10px 18px 9px; font-size: 15px; font-weight: 700; color: var(--mute); border-bottom: 3px solid transparent; margin-bottom: -2px; border-radius: 6px 6px 0 0; }
+.vtab:hover { color: var(--fg); background: var(--panel); }
+.vtab.on { color: var(--fg); border-bottom-color: var(--accent); background: var(--panel); }
+.badge { display: inline-block; min-width: 1.5em; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--warn); color: #1d1300; font-size: 12px; line-height: 1.6; text-align: center; font-family: var(--font-mono); }
+.btn.user { border-color: var(--accent); color: var(--fg); max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subbar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.btn.xs { padding: 1px 8px; min-height: 24px; font-size: 12px; }
+.btn.sm.on, .seg .btn.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.vhead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-bottom: 8px; }
+.vhead h2 { margin: 0 auto 0 0; }
+.field.inline { flex-direction: row; align-items: center; gap: 6px; }
+.field.inline > span { white-space: nowrap; }
+.field.grow { flex: 1 1 220px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.seg { display: inline-flex; gap: 4px; }
+
+/* states */
+.chip { display: inline-block; font-size: 11.5px; line-height: 1.5; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); white-space: nowrap; }
+.st-done { --c: var(--ok); } .st-doing { --c: var(--warn); } .st-ready { --c: var(--accent); } .st-todo { --c: var(--mute); } .st-other { --c: var(--violet); } .st-none { --c: var(--line); }
+.chip[class*="st-"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--panel)); }
+.stsel { border: 1px solid var(--c, var(--line)); background: color-mix(in srgb, var(--c, var(--line)) 12%, var(--panel)); border-radius: 5px; padding: 3px 6px; max-width: 11em; }
+.tile .tchip { position: absolute; left: 4px; bottom: 4px; right: 18px; z-index: 2; font-size: 9.5px; line-height: 1.45; padding: 0 4px; border-radius: 4px; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 22%, var(--panel)); color: var(--fg); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile .cbadge { background: var(--warn); color: #1d1300; border-radius: 999px; padding: 0 5px; font-size: 9.5px; font-family: var(--font-mono); position: relative; z-index: 1; }
+.tile .note { margin-bottom: 16px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; margin-top: 6px; }
+table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.grid th { text-align: left; font-size: 12px; color: var(--mute); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); white-space: nowrap; }
+table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.grid td.wrap { min-width: 14em; max-width: 30em; }
+table.grid tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.pagelink { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+
+/* progress summary */
+.srow { display: grid; grid-template-columns: 6em minmax(0, 1fr); gap: 4px 12px; align-items: center; margin: 8px 0; }
+.srow .muted { grid-column: 2; font-size: 12px; }
+.sbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--panel-2); }
+.sbar i { display: block; background: var(--c); min-width: 2px; }
+.legend2 { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--mute); margin-top: 6px; }
+.legend2 i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c); margin-right: 5px; vertical-align: -1px; }
+
+/* comments, figures */
+.clist { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.citem { border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 10px; background: var(--panel); }
+.citem.done { border-left-color: var(--ok); opacity: .85; }
+.cmeta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12.5px; }
+.ctext { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply { margin: 8px 0 0 14px; padding-left: 10px; border-left: 2px solid var(--line); }
+.cacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.replybox, .cform { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.replybox textarea, .cform textarea, .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 6px 8px; font: inherit; resize: vertical; }
+.replybox .btn, .cform .btn { align-self: flex-end; }
+.fcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; background: var(--panel); }
+.fcard p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 12px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0 12px; background: var(--bg); }
+.form .field.wide { grid-column: 1 / -1; }
+.form .field input, .form .field select { width: 100%; }
+.formacts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.memadd { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; margin-bottom: 10px; }
+.memadd .field input, .memadd .field select { width: 100%; }
+table.grid td input, table.grid td select { border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 3px 6px; max-width: 16em; }
+
+/* expenses */
+.kpis { display: flex; flex-wrap: wrap; gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; min-width: 9em; background: var(--bg); }
+.kpi span { display: block; font-size: 12px; color: var(--mute); }
+.kpi b { font-family: var(--font-mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.bars { display: grid; gap: 6px; margin-top: 14px; max-width: 640px; }
+.brow { display: grid; grid-template-columns: 7em minmax(0, 1fr) 8em; gap: 10px; align-items: center; font-size: 13px; }
+.brow b { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.btrack { height: 12px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.btrack i { display: block; height: 100%; background: var(--accent); }
+
+/* page detail */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100vw); z-index: 30; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px color-mix(in srgb, var(--fg) 12%, transparent); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.dhead { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.dhead h2 { flex: 1 1 auto; margin: 0; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbody { overflow-y: auto; padding: 4px 14px 24px; flex: 1 1 auto; }
+.dsec { border-bottom: 1px solid var(--line); padding: 10px 0 12px; }
+.dsec h3 { margin: 0 0 8px; font-size: 13px; color: var(--mute); letter-spacing: .06em; }
+.kvlist { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 3px 10px; margin: 0; font-size: 13px; }
+.kvlist dt { color: var(--mute); }
+.kvlist dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.stages { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.stage { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--mute); }
+@media (min-width: 1200px) { body.has-detail .wrap { padding-right: 396px; } }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40; background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 13px; max-width: min(92vw, 640px); box-shadow: 0 6px 20px color-mix(in srgb, var(--fg) 25%, transparent); }
+.toast.err { background: var(--bad); color: #fff; }
 .pwrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 10px; }
 .pwrow .field { flex: 1 1 200px; }
 body:not(.editor) .edonly { display: none !important; }
@@ -191,137 +288,221 @@ body.editor .viewonly { display: none !important; }
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
-    <button class="btn" id="tabProject" data-panel="panelProject">案件</button>
-    <button class="btn" id="tabBook" data-panel="panelBook">判型・製本</button>
-    <button class="btn" id="tabDesign" data-panel="panelDesign">デザイン</button>
-    <button class="btn" id="btnReload" title="スプレッドシートとPDFを読み直します">再読み込み</button>
-    <button class="btn login" id="btnLogin">編集者ログイン</button>
+    <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
+    <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
   </header>
+  <nav class="vtabs" id="viewTabs" aria-label="画面の切り替え">
+    <button class="vtab on" id="vt-board" data-view="board">台割・3D</button>
+    <button class="vtab" id="vt-progress" data-view="progress">進捗</button>
+    <button class="vtab" id="vt-comments" data-view="comments">コメント<b class="badge" id="badgeComments" hidden></b></button>
+    <button class="vtab" id="vt-figures" data-view="figures">図版</button>
+    <button class="vtab" id="vt-expenses" data-view="expenses" hidden>経費</button>
+    <button class="vtab" id="vt-members" data-view="members" hidden>メンバー</button>
+  </nav>
   <p class="msg banner" id="topMsg" hidden></p>
 
-  <section class="panel" id="gate" hidden>
-    <h2>閲覧パスワード</h2>
-    <p id="gateTitle"></p>
-    <form id="gateForm" class="row" autocomplete="off">
-      <label class="field" style="flex:1 1 220px"><span>パスワード</span><input id="gatePw" type="password" autocomplete="current-password"></label>
-      <button class="btn primary" type="submit" id="btnGate">表示する</button>
-    </form>
-    <p class="msg" id="gateMsg"></p>
+  <section class="panel" id="login" hidden>
+    <h2>ログイン</h2>
+    <p class="lead" id="loginTitle"></p>
+    <p>この台割ボードは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
+    <div id="gsiBtn" class="gsi"></div>
+    <p class="msg" id="loginMsg"></p>
+    <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
+    <p class="hint">Googleアカウントは、Gmail以外のメールアドレス（大学や会社のアドレス）でも作成できます。ログインに使うアドレスを、この案件の社内担当者に伝えてください。</p>
   </section>
 
   <section class="panel" id="landing" hidden>
     <h2>案件を開く</h2>
     <div class="row">
-      <label class="field" style="flex:3 1 320px"><span>公開用スプレッドシートのURL</span><input id="openUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+      <label class="field" style="flex:3 1 320px"><span>台割のスプレッドシートのURL</span><input id="openUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
       <button class="btn primary" id="btnOpen">開く</button>
     </div>
     <p class="msg" id="landingMsg"></p>
     <ul class="recent" id="recentList"></ul>
-    <ol class="howto">
-      <li>公開用スプレッドシートに「台割」タブを作り、作業用シートから必要な列だけを IMPORTRANGE で写します。</li>
-      <li>シートとデザイン用フォルダを「リンクを知っている全員・閲覧者」で共有します。</li>
-      <li>シートのURLを上に貼って開き、表示されたページのURLを共有します。見る人はログイン不要です。</li>
-    </ol>
   </section>
 
-  <section class="panel" id="panelProject" hidden>
-    <h2>案件</h2>
-    <p class="kv"><span>スプレッドシート</span><a id="sheetLink" target="_blank" rel="noopener"></a></p>
-    <p class="kv"><span>共有用URL</span><code id="shareUrl"></code><button class="btn sm" id="btnCopyUrl">コピー</button></p>
-    <div class="row" style="margin-top:8px">
-      <label class="field"><span>台割のタブ</span><select id="tabSelect" disabled></select></label>
-      <label class="field" style="flex:3 1 320px"><span>別の案件を開く（公開用シートのURL）</span><input id="openUrl2" type="text" autocomplete="off"></label>
-      <button class="btn" id="btnOpen2">開く</button>
+  <!-- ============ 台割・3D ============ -->
+  <div class="view" id="view-board">
+    <div class="subbar">
+      <button class="btn sm" data-panel="panelProject">案件・列</button>
+      <button class="btn sm" data-panel="panelBook">判型・製本</button>
+      <button class="btn sm" data-panel="panelDesign">デザインPDF</button>
     </div>
-    <div class="edonly">
-      <h3>閲覧パスワード <small id="pwState"></small></h3>
-      <div class="pwrow">
-        <label class="field"><span>新しいパスワード（見る人に伝えるもの）</span><input id="pwNew" type="text" autocomplete="off"></label>
-        <button class="btn" id="btnSetPw">設定する</button>
-        <button class="btn" id="btnClearPw">解除する</button>
-      </div>
-    </div>
-    <h3>列の割り当て <small id="colHint">（自動判別。変更は編集者ログイン後に「設定を保存」）</small></h3>
-    <div class="cols" id="colMap"></div>
-    <p class="msg" id="projMsg"></p>
-  </section>
 
-  <section class="panel" id="panelBook" hidden>
-    <h2>判型・製本</h2>
-    <div class="grid-form">
-      <label class="field"><span>判型</span><select id="trimPreset" class="ed"></select></label>
-      <label class="field"><span>仕上がり 幅 (mm)</span><input id="trimW" class="ed" type="number" min="40" max="600" step="0.5"></label>
-      <label class="field"><span>仕上がり 高さ (mm)</span><input id="trimH" class="ed" type="number" min="40" max="800" step="0.5"></label>
-      <label class="field"><span>綴じ</span><select id="binding" class="ed"><option value="L">左綴じ（横組み）</option><option value="R">右綴じ（縦組み）</option></select></label>
-      <label class="field"><span>製本</span><select id="bindType" class="ed"><option value="perfect">無線綴じ</option><option value="saddle">中綴じ</option></select></label>
-      <label class="field"><span>本文紙</span><select id="paperPreset" class="ed"></select></label>
-      <label class="field"><span>紙厚 (mm／1枚)</span><input id="paperT" class="ed" type="number" min="0.02" max="0.5" step="0.005"></label>
-      <label class="field"><span>表紙厚 (mm)</span><input id="coverT" class="ed" type="number" min="0.1" max="8" step="0.1"></label>
-      <label class="field"><span>塗り足し (mm)</span><input id="bleed" class="ed" type="number" min="0" max="10" step="0.5"></label>
-      <label class="field"><span>書名（背に表示）</span><input id="bookTitle" class="ed" type="text" autocomplete="off"></label>
-      <label class="field"><span>背と表紙の色</span><input id="coverColor" class="ed" type="color"></label>
-    </div>
-    <label class="field" style="margin-top:10px"><span>デザインフォルダ（空欄なら初回アップロード時に自動で作成）</span><input id="folderUrl" class="ed" type="text" autocomplete="off" placeholder="https://drive.google.com/drive/folders/…"></label>
-    <div class="row" style="margin-top:10px">
-      <button class="btn primary edonly" id="btnSaveSet">設定をシートに保存</button>
-      <span class="msg" id="bookMsg" style="margin:0"></span>
-    </div>
-    <p class="msg" id="spineInfo"></p>
-    <p class="hint">PDFのページが仕上がりより大きい場合（塗り足し・トンボ付き）は、サイズから判別して仕上がり範囲だけを貼ります。判別できないときに「塗り足し」の値を使います。</p>
-  </section>
-
-  <section class="panel" id="panelDesign" hidden>
-    <h2>デザイン</h2>
-    <div class="edonly">
-      <div class="drop" id="dropZone">片ページのPDFをここへドラッグ、または<button class="btn sm" id="btnPick" style="margin-left:6px">ファイルを選ぶ</button>
-        <input id="designFile" type="file" accept="application/pdf" multiple hidden>
-      </div>
+    <section class="panel" id="panelProject" hidden>
+      <h2>案件</h2>
+      <p class="kv"><span>スプレッドシート</span><a id="sheetLink" target="_blank" rel="noopener"></a></p>
+      <p class="kv"><span>共有用URL</span><code id="shareUrl"></code><button class="btn sm" id="btnCopyUrl">コピー</button></p>
       <div class="row" style="margin-top:8px">
-        <label class="field" style="flex:0 1 260px"><span>これからアップロードするPDFを貼り始めるページ（1／表1／表2／表3／表4／背）</span><input id="upStart" type="text" value="1" autocomplete="off"></label>
-        <p class="hint" style="flex:1 1 300px;margin:0">ドライブのデザインフォルダに保存し、「デザイン」タブに記録します。台割のページ枠に直接ドロップすると、そのページから貼ります。複数のPDFは選んだ順に続けて貼ります。</p>
+        <label class="field"><span>台割のタブ</span><select id="tabSelect" disabled></select></label>
+        <label class="field" style="flex:3 1 320px"><span>別の案件を開く（スプレッドシートのURL）</span><input id="openUrl2" type="text" autocomplete="off"></label>
+        <button class="btn" id="btnOpen2">開く</button>
       </div>
-      <div class="progress" id="upProg" hidden><i id="upBar"></i></div>
-    </div>
-    <p class="hint viewonly">アップロードと割り当ての変更は、編集者ログイン後に行えます。</p>
-    <h3>登録済みのデザイン <small>（貼る位置は各行の入力欄で変更。入力して Enter で保存）</small></h3>
-    <ul class="dlist" id="designList"></ul>
-    <div class="row" style="margin-top:8px">
-      <button class="btn sm" id="btnDiag">表示の診断</button>
-      <span class="msg" id="designMsg" style="margin:0"></span>
-    </div>
-    <div class="diag" id="diagBox" hidden><canvas id="diagCanvas" width="84" height="119"></canvas><pre id="diagOut"></pre></div>
-  </section>
-
-  <div class="main" id="mainArea">
-    <section>
-      <div class="boardbar">
-        <span id="boardInfo"></span>
-        <label>枠の大きさ <input id="tileSize" type="range" min="70" max="200" value="118"></label>
-      </div>
-      <div class="legend" id="legend"></div>
-      <div class="board" id="board"></div>
+      <h3>列の割り当て <small id="colHint">（自動判別）</small></h3>
+      <div class="cols" id="colMap"></div>
+      <p class="msg" id="projMsg"></p>
     </section>
-    <aside class="stage">
-      <div class="view3d" id="view3d"><div class="ph" id="stagePh">台割を読み込むと、ここに立体の書籍が表示されます。</div></div>
-      <div class="ctrl">
-        <button class="btn sm" id="btnPrev" aria-label="前の見開き">◀</button>
-        <input type="range" id="spreadSlider" min="0" max="1" value="0" aria-label="見開き位置">
-        <button class="btn sm" id="btnNext" aria-label="次の見開き">▶</button>
-        <span class="lab" id="spreadLabel">—</span>
+
+    <section class="panel" id="panelBook" hidden>
+      <h2>判型・製本</h2>
+      <div class="grid-form">
+        <label class="field"><span>判型</span><select id="trimPreset" class="ed"></select></label>
+        <label class="field"><span>仕上がり 幅 (mm)</span><input id="trimW" class="ed" type="number" min="40" max="600" step="0.5"></label>
+        <label class="field"><span>仕上がり 高さ (mm)</span><input id="trimH" class="ed" type="number" min="40" max="800" step="0.5"></label>
+        <label class="field"><span>綴じ</span><select id="binding" class="ed"><option value="L">左綴じ（横組み）</option><option value="R">右綴じ（縦組み）</option></select></label>
+        <label class="field"><span>製本</span><select id="bindType" class="ed"><option value="perfect">無線綴じ</option><option value="saddle">中綴じ</option></select></label>
+        <label class="field"><span>本文紙</span><select id="paperPreset" class="ed"></select></label>
+        <label class="field"><span>紙厚 (mm／1枚)</span><input id="paperT" class="ed" type="number" min="0.02" max="0.5" step="0.005"></label>
+        <label class="field"><span>表紙厚 (mm)</span><input id="coverT" class="ed" type="number" min="0.1" max="8" step="0.1"></label>
+        <label class="field"><span>塗り足し (mm)</span><input id="bleed" class="ed" type="number" min="0" max="10" step="0.5"></label>
+        <label class="field"><span>書名（背に表示）</span><input id="bookTitle" class="ed" type="text" autocomplete="off"></label>
+        <label class="field"><span>背と表紙の色</span><input id="coverColor" class="ed" type="color"></label>
       </div>
-      <div class="cams">
-        <button class="btn sm" data-cam="closed">表紙</button>
-        <button class="btn sm" data-cam="oblique">斜め</button>
-        <button class="btn sm" data-cam="top">真上</button>
-        <button class="btn sm" data-cam="fore">小口側</button>
-        <button class="btn sm" data-cam="spine">背</button>
-        <button class="btn sm" data-cam="back">裏表紙</button>
-        <span class="spacer"></span>
-        <button class="btn sm" id="btnWide" aria-pressed="false">3Dだけを表示</button>
+      <label class="field" style="margin-top:10px"><span>デザインフォルダ（空欄なら初回アップロード時に自動で作成）</span><input id="folderUrl" class="ed" type="text" autocomplete="off" placeholder="https://drive.google.com/drive/folders/…"></label>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary edonly" id="btnSaveSet">設定をシートに保存</button>
+        <span class="msg" id="bookMsg" style="margin:0"></span>
       </div>
-    </aside>
+      <p class="msg" id="spineInfo"></p>
+      <p class="hint">PDFのページが仕上がりより大きい場合（塗り足し・トンボ付き）は、サイズから判別して仕上がり範囲だけを貼ります。判別できないときに「塗り足し」の値を使います。</p>
+    </section>
+
+    <section class="panel" id="panelDesign" hidden>
+      <h2>デザインPDF</h2>
+      <div class="edonly">
+        <div class="drop" id="dropZone">片ページのPDFをここへドラッグ、または<button class="btn sm" id="btnPick" style="margin-left:6px">ファイルを選ぶ</button>
+          <input id="designFile" type="file" accept="application/pdf" multiple hidden>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="field" style="flex:0 1 260px"><span>これからアップロードするPDFを貼り始めるページ（1／表1／表2／表3／表4／背）</span><input id="upStart" type="text" value="1" autocomplete="off"></label>
+          <p class="hint" style="flex:1 1 300px;margin:0">ドライブのデザインフォルダに保存し、「デザイン」タブに記録します。台割のページ枠に直接ドロップすると、そのページから貼ります。複数のPDFは選んだ順に続けて貼ります。</p>
+        </div>
+        <div class="progress" id="upProg" hidden><i id="upBar"></i></div>
+      </div>
+      <p class="hint viewonly">PDFの登録と貼る位置の変更は、社内メンバーが行えます。</p>
+      <h3>登録済みのデザイン <small class="edonly">（貼る位置は各行の入力欄で変更。入力して Enter で保存）</small></h3>
+      <ul class="dlist" id="designList"></ul>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="btnDiag">表示の診断</button>
+        <span class="msg" id="designMsg" style="margin:0"></span>
+      </div>
+      <div class="diag" id="diagBox" hidden><canvas id="diagCanvas" width="84" height="119"></canvas><pre id="diagOut"></pre></div>
+    </section>
+
+    <div class="main" id="mainArea">
+      <section>
+        <div class="boardbar">
+          <span id="boardInfo"></span>
+          <label>枠の大きさ <input id="tileSize" type="range" min="70" max="200" value="118"></label>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="board" id="board"></div>
+      </section>
+      <aside class="stage">
+        <div class="view3d" id="view3d"><div class="ph" id="stagePh">台割を読み込むと、ここに立体の書籍が表示されます。</div></div>
+        <div class="ctrl">
+          <button class="btn sm" id="btnPrev" aria-label="前の見開き">◀</button>
+          <input type="range" id="spreadSlider" min="0" max="1" value="0" aria-label="見開き位置">
+          <button class="btn sm" id="btnNext" aria-label="次の見開き">▶</button>
+          <span class="lab" id="spreadLabel">—</span>
+        </div>
+        <div class="cams">
+          <button class="btn sm" data-cam="closed">表紙</button>
+          <button class="btn sm" data-cam="oblique">斜め</button>
+          <button class="btn sm" data-cam="top">真上</button>
+          <button class="btn sm" data-cam="fore">小口側</button>
+          <button class="btn sm" data-cam="spine">背</button>
+          <button class="btn sm" data-cam="back">裏表紙</button>
+          <span class="spacer"></span>
+          <button class="btn sm" id="btnWide" aria-pressed="false">3Dだけを表示</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ============ 進捗 ============ -->
+  <div class="view" id="view-progress" hidden>
+    <section class="panel"><h2>工程ごとの進み具合</h2><div id="progSummary"></div></section>
+    <section class="panel">
+      <div class="vhead">
+        <h2>ページごとの進捗</h2>
+        <label class="field inline"><span>セクション</span><select id="progSection"></select></label>
+        <label class="check"><input type="checkbox" id="progOpen"> 未確定のページだけ</label>
+      </div>
+      <p class="hint" id="progHint"></p>
+      <div class="tablewrap"><table class="grid" id="progTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ コメント ============ -->
+  <div class="view" id="view-comments" hidden>
+    <section class="panel">
+      <div class="vhead">
+        <h2>コメント</h2>
+        <div class="seg" role="group" aria-label="表示するコメント">
+          <button class="btn sm on" data-cfilter="open">未対応</button>
+          <button class="btn sm" data-cfilter="all">すべて</button>
+        </div>
+        <label class="field inline grow"><span>検索</span><input id="cSearch" type="search" autocomplete="off" placeholder="本文・ページ・名前"></label>
+      </div>
+      <p class="hint">ページへのコメントは、台割のページをクリックして開く「ページ詳細」から書き込めます。</p>
+      <ul class="clist" id="commentList"></ul>
+    </section>
+  </div>
+
+  <!-- ============ 図版 ============ -->
+  <div class="view" id="view-figures" hidden>
+    <section class="panel">
+      <div class="vhead">
+        <h2>図版</h2>
+        <label class="field inline"><span>手配状況</span><select id="figFilter"></select></label>
+        <button class="btn primary can-figure" id="btnFigAdd">図版を追加</button>
+      </div>
+      <div id="figFormBox"></div>
+      <div class="tablewrap"><table class="grid" id="figTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ 経費 ============ -->
+  <div class="view" id="view-expenses" hidden>
+    <section class="panel"><h2>経費の集計</h2><div id="expSummary"></div></section>
+    <section class="panel">
+      <div class="vhead">
+        <h2>経費の一覧</h2>
+        <button class="btn primary edonly" id="btnExpAdd">経費を追加</button>
+      </div>
+      <div id="expFormBox"></div>
+      <div class="tablewrap"><table class="grid" id="expTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ メンバー ============ -->
+  <div class="view" id="view-members" hidden>
+    <section class="panel">
+      <h2>メンバー</h2>
+      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／外部スタッフ：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
+      <div class="memadd">
+        <label class="field"><span>メールアドレス（Googleアカウント）</span><input id="mEmail" type="email" autocomplete="off"></label>
+        <label class="field"><span>名前</span><input id="mName" type="text" autocomplete="off"></label>
+        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>外部スタッフ</option></select></label>
+        <label class="field"><span>メモ</span><input id="mMemo" type="text" autocomplete="off"></label>
+        <button class="btn primary" id="btnMemAdd">追加</button>
+      </div>
+      <div class="tablewrap"><table class="grid" id="memTable"></table></div>
+    </section>
   </div>
 </div>
+
+<aside class="drawer" id="detail" hidden aria-label="ページ詳細">
+  <header class="dhead">
+    <button class="btn sm" id="dPrev" aria-label="前のページ">◀</button>
+    <h2 id="dTitle"></h2>
+    <button class="btn sm" id="dNext" aria-label="次のページ">▶</button>
+    <button class="btn sm" id="dClose" aria-label="閉じる">閉じる</button>
+  </header>
+  <div class="dbody" id="dBody"></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
@@ -573,7 +754,7 @@ function extractDriveId(s) {
 const SETTING_KEYS = [
   ['w', '判型幅（mm）'], ['h', '判型高さ（mm）'], ['binding', '綴じ'], ['bindType', '製本'],
   ['t', '本文紙の厚み（mm）'], ['c', '表紙の厚み（mm）'], ['bleed', '塗り足し（mm）'],
-  ['title', '書名'], ['color', '背と表紙の色'], ['folder', 'デザインフォルダ'], ['tab', '台割タブ'], ['pw', '閲覧パスワード（照合用）'],
+  ['title', '書名'], ['color', '背と表紙の色'], ['folder', 'デザインフォルダ'], ['tab', '台割タブ'], ['receiptFolder', '領収書フォルダ'],
   ['col_page', 'ページ列'], ['col_title', '内容列'], ['col_kind', '種別列'], ['col_section', '区分列'],
   ['col_note', '備考列'], ['col_status', '状態列'], ['col_count', 'ページ数列']
 ];
@@ -597,7 +778,7 @@ function parseSettingsRows(rows) {
 function settingsToRows(set, cols) {
   const val = {
     w: set.w, h: set.h, binding: set.binding === 'R' ? '右綴じ' : '左綴じ', bindType: set.bindType === 'saddle' ? '中綴じ' : '無線綴じ',
-    t: set.t, c: set.c, bleed: set.bleed, title: set.title || '', color: set.color || '', folder: set.folder || '', tab: set.tab || '', pw: set.pw || ''
+    t: set.t, c: set.c, bleed: set.bleed, title: set.title || '', color: set.color || '', folder: set.folder || '', tab: set.tab || '', receiptFolder: set.receiptFolder || ''
   };
   COL_KEYS.forEach((k) => { const c = cols ? cols[k] : undefined; val['col_' + k] = c === undefined ? '' : (c < 0 ? 'なし' : colName(c)); });
   return [['項目', '値']].concat(SETTING_KEYS.map(([k, label]) => [label, val[k] === undefined || val[k] === null ? '' : String(val[k])]));
@@ -653,199 +834,108 @@ if (false) {
   module.exports = { DESIGN_HEADER, parseKeyText, parsePageSpec, detectColumns, buildModel, spreadKeys, spreadOfKey, orderKeys, leafCount, spreadCount, spineWidthMM, signatureNote, paddedN, colName, colIndex, extractSheetId, extractDriveId, parseSettingsRows, settingsToRows, parseDesignRows, computeAssignments, naturalSort };
 }
 
-/* ===== Google: read with the API key (no sign-in), write with the editor's token ===== */
-const CONFIG = {
-  apiKey: 'REMOVED_API_KEY',
-  clientId: '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com',
-  scope: 'https://www.googleapis.com/auth/drive'
-};
-const SHEETS = 'https://sheets.googleapis.com/v4/spreadsheets/';
-const DRIVE = 'https://www.googleapis.com/drive/v3/';
-const UPLOAD = 'https://www.googleapis.com/upload/drive/v3/files';
+/* ===== relay: every read and write goes through the Apps Script relay; sign-in = Google ID token ===== */
+const CONFIG = { relayUrl: 'https://script.google.com/macros/s/AKfycbxMrLbqXxx3qNizdkk9G1S1xhQwpaSlSYqYr20-18z4K3tK1-O8Y2n0FwDRRafXOxE-Zw/exec', clientId: '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com' };
 
-class GError extends Error {
-  constructor(status, message, reason) { super(message); this.status = status; this.reason = reason || ''; }
-}
-const AUTH = { token: null, exp: 0, email: '', client: null, pending: null };
-const signedIn = () => !!AUTH.token && Date.now() < AUTH.exp;
+class RelayError extends Error { constructor(code, message) { super(message); this.code = code; } }
+const AUTH = { session: '', email: '', name: '' };
+function loadSession() { try { const j = JSON.parse(localStorage.getItem('dandori.session') || 'null'); if (j && j.session) Object.assign(AUTH, j); } catch (e) { /* none */ } }
+function saveSession() { try { localStorage.setItem('dandori.session', JSON.stringify(AUTH)); } catch (e) { /* this browser keeps no memory */ } }
+function clearSession() { AUTH.session = ''; AUTH.email = ''; AUTH.name = ''; try { localStorage.removeItem('dandori.session'); } catch (e) { /* ignore */ } }
+const signedIn = () => !!AUTH.session;
 
-async function gfetch(url, opts, useAuth) {
-  opts = Object.assign({}, opts || {});
-  const headers = Object.assign({}, opts.headers || {});
-  let u = url;
-  if (useAuth === 'force' || (useAuth && signedIn())) {
-    if (!signedIn()) await signIn(true);
-    headers.Authorization = 'Bearer ' + AUTH.token;
-  } else {
-    u += (u.includes('?') ? '&' : '?') + 'key=' + encodeURIComponent(CONFIG.apiKey);
-  }
-  opts.headers = headers;
+async function relay(action, params, opts) {
+  opts = opts || {};
+  const body = Object.assign({ action, sheet: S.sheetId, session: AUTH.session }, params || {});
   let res;
-  try { res = await fetch(u, opts); }
-  catch (e) { throw new GError(0, 'Googleに接続できませんでした（ネットワークを確認してください）'); }
-  if (res.status === 401 && headers.Authorization) {   // token expired mid-session
-    AUTH.token = null;
-    await signIn(true);
-    headers.Authorization = 'Bearer ' + AUTH.token;
-    res = await fetch(u, opts);
+  try { res = await fetch(CONFIG.relayUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' }); }
+  catch (e) { throw new RelayError('network', '中継スクリプトに接続できませんでした（ネットワークを確認してください）'); }
+  let j;
+  try { j = await res.json(); }
+  catch (e) { throw new RelayError('server', '中継スクリプトの応答を読めませんでした（' + res.status + '）。デプロイの設定「アクセスできるユーザー：全員」を確認してください'); }
+  if (!j || !j.ok) {
+    const err = new RelayError((j && j.code) || 'server', (j && j.message) || '中継スクリプトでエラーが起きました');
+    if (err.code === 'auth' && !opts.quiet) { clearSession(); showLogin(err.message); }
+    throw err;
   }
-  if (!res.ok) {
-    let msg = '', reason = '';
-    try { const j = await res.json(); msg = (j.error && j.error.message) || ''; reason = j.error && j.error.errors && j.error.errors[0] && j.error.errors[0].reason || (j.error && j.error.status) || ''; } catch (e) { /* not json */ }
-    throw new GError(res.status, msg || ('HTTP ' + res.status), reason);
-  }
-  return res;
-}
-/** Turn an API failure into a sentence a person can act on. what: 'sheet' | 'pdf' | 'write' */
-function explainError(e, what) {
-  const s = e && e.status, m = (e && e.message) || '';
-  if (s === 0) return m;
-  if (/API key not valid|API_KEY_INVALID/i.test(m)) return 'APIキーが正しくありません（ツールの設定値を確認してください）。';
-  if (/referer|referrer/i.test(m)) return 'このURLからのアクセスがAPIキーで許可されていません（APIキーのウェブサイト制限を確認してください）。';
-  if (/has not been used|is disabled|SERVICE_DISABLED/i.test(m)) return 'Google Cloudで ' + (what === 'pdf' ? 'Drive API' : 'Sheets API') + ' が有効になっていません。';
-  if (s === 404) return what === 'pdf' ? 'PDFが見つかりません（削除されたか、IDが違います）。' : 'スプレッドシートが見つかりません（URLを確認してください）。';
-  if (s === 403 && what === 'write') return '書き込む権限がありません（このシート・フォルダの編集権限があるアカウントでログインしてください）。';
-  if (s === 403 || s === 401) return what === 'pdf' ? 'PDFが公開されていません（ファイルかフォルダを「リンクを知っている全員」に共有してください）。' : 'スプレッドシートが公開されていません（「リンクを知っている全員・閲覧者」に共有してください）。';
-  if (s === 429) return 'アクセスが集中しています。少し待って再読み込みしてください。';
-  return m || '不明なエラー（' + s + '）';
+  return j;
 }
 
-/* ---- sheets (read) ---- */
-function a1(tab, range) { return "'" + String(tab).replace(/'/g, "''") + "'!" + range; }
-async function sheetMeta(id) {
-  const r = await gfetch(SHEETS + id + '?fields=properties.title,sheets.properties(sheetId,title)', null, true);
-  const j = await r.json();
-  return { title: (j.properties && j.properties.title) || '', tabs: (j.sheets || []).map((s) => ({ id: s.properties.sheetId, title: s.properties.title })) };
-}
-async function sheetBatch(id, ranges) {
-  if (!ranges.length) return [];
-  const q = ranges.map((r) => 'ranges=' + encodeURIComponent(r)).join('&');
-  const r = await gfetch(SHEETS + id + '/values:batchGet?' + q + '&valueRenderOption=FORMATTED_VALUE&majorDimension=ROWS', null, true);
-  const j = await r.json();
-  return (j.valueRanges || []).map((v) => (v.values || []).map((row) => row.map((c) => (c == null ? '' : String(c)))));
-}
-
-/* ---- drive (read) ---- */
-async function driveMeta(id) {
-  const r = await gfetch(DRIVE + 'files/' + id + '?fields=id,name,size,md5Checksum,modifiedTime,mimeType&supportsAllDrives=true', null, true);
-  return r.json();
-}
-/** PDFs directly inside a (link-shared) folder */
-async function driveListPdfs(folderId) {
-  const out = []; let page = '';
-  do {
-    const q = encodeURIComponent("'" + folderId + "' in parents and trashed=false and mimeType='application/pdf'");
-    const r = await gfetch(DRIVE + 'files?q=' + q + '&fields=' + encodeURIComponent('nextPageToken,files(id,name,modifiedTime,size)') + '&pageSize=200&supportsAllDrives=true&includeItemsFromAllDrives=true' + (page ? '&pageToken=' + encodeURIComponent(page) : ''), null, true);
-    const j = await r.json();
-    (j.files || []).forEach((f) => out.push(f));
-    page = j.nextPageToken || '';
-  } while (page && out.length < 1000);
-  return out;
-}
-async function driveBytes(id) {
-  const r = await gfetch(DRIVE + 'files/' + id + '?alt=media&supportsAllDrives=true', null, true);
-  return r.blob();
-}
-
-/* ---- sign-in (Google Identity Services token client) ---- */
+/* ---- sign-in with Google (identity only: no Drive or Sheets permission is asked) ---- */
 function loadGis() {
-  if (window.google && google.accounts && google.accounts.oauth2) return Promise.resolve();
+  if (window.google && google.accounts && google.accounts.id) return Promise.resolve();
   return new Promise((res, rej) => {
     const s = document.createElement('script');
     s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
-    s.onload = () => res(); s.onerror = () => rej(new GError(0, 'Googleのログイン画面を読み込めませんでした'));
+    s.onload = () => res(); s.onerror = () => rej(new RelayError('network', 'Googleのログイン画面を読み込めませんでした'));
     document.head.appendChild(s);
   });
 }
-async function signIn(silent) {
-  if (AUTH.pending) return AUTH.pending;
-  AUTH.pending = (async () => {
+let gisReady = false;
+async function showLogin(msg) {
+  document.body.classList.add('locked');
+  $('login').hidden = false; $('landing').hidden = true;
+  $('loginTitle').textContent = S.sheetTitle ? '「' + S.sheetTitle + '」' : '台割ボード';
+  setMsg('loginMsg', msg || '', msg ? 'err' : '');
+  try {
     await loadGis();
-    return new Promise((res, rej) => {
-      AUTH.client = google.accounts.oauth2.initTokenClient({
-        client_id: CONFIG.clientId, scope: CONFIG.scope,
-        callback: (t) => {
-          if (!t || t.error || !t.access_token) { rej(new GError(401, 'ログインできませんでした' + (t && t.error ? '（' + t.error + '）' : ''))); return; }
-          AUTH.token = t.access_token; AUTH.exp = Date.now() + Math.max(60, (+t.expires_in || 3600) - 60) * 1000;
-          res(true);
-        },
-        error_callback: (err) => rej(new GError(401, err && err.type === 'popup_closed' ? 'ログインが中断されました' : 'ログインできませんでした（ポップアップを許可してください）'))
-      });
-      AUTH.client.requestAccessToken({ prompt: silent && AUTH.email ? '' : (silent ? '' : 'select_account') });
-    });
-  })();
-  try { return await AUTH.pending; } finally { AUTH.pending = null; }
+    if (!gisReady) {
+      google.accounts.id.initialize({ client_id: CONFIG.clientId, callback: onCredential, auto_select: false, cancel_on_tap_outside: true, use_fedcm_for_prompt: true });
+      gisReady = true;
+    }
+    $('gsiBtn').textContent = '';
+    google.accounts.id.renderButton($('gsiBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'ja', width: 280 });
+  } catch (e) { setMsg('loginMsg', e.message, 'err'); }
 }
-async function whoAmI() {
-  try { const r = await gfetch(DRIVE + 'about?fields=user(emailAddress,displayName)', null, 'force'); const j = await r.json(); AUTH.email = (j.user && j.user.emailAddress) || ''; }
-  catch (e) { AUTH.email = ''; }
-  return AUTH.email;
+async function onCredential(resp) {
+  setMsg('loginMsg', '確認中…');
+  try {
+    const r = await relay('auth', { idToken: resp && resp.credential }, { quiet: true });
+    Object.assign(AUTH, { session: r.session, email: r.email, name: r.name });
+    saveSession();
+    $('login').hidden = true; document.body.classList.remove('locked');
+    await loadProject();
+  } catch (e) {
+    setMsg('loginMsg', e.message, 'err');
+    $('btnSwitch').hidden = e.code !== 'not_member';
+  }
 }
 function signOut() {
-  if (AUTH.token && window.google && google.accounts && google.accounts.oauth2) { try { google.accounts.oauth2.revoke(AUTH.token, () => {}); } catch (e) { /* ignore */ } }
-  AUTH.token = null; AUTH.exp = 0; AUTH.email = '';
+  clearSession();
+  try { google.accounts.id.disableAutoSelect(); } catch (e) { /* not loaded */ }
+  location.reload();
 }
 
-/* ---- writes (editor) ---- */
-const jsonOpts = (method, body) => ({ method, headers: { 'Content-Type': 'application/json; charset=UTF-8' }, body: JSON.stringify(body) });
-async function sheetAddTab(id, title) {
-  const r = await gfetch(SHEETS + id + ':batchUpdate', jsonOpts('POST', { requests: [{ addSheet: { properties: { title } } }] }), 'force');
-  const j = await r.json();
-  return j.replies && j.replies[0] && j.replies[0].addSheet && j.replies[0].addSheet.properties.sheetId;
+/* ---- files through the relay ---- */
+function b64ToBytes(b64) { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function blobToBase64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new RelayError('read', 'ファイルを読めませんでした')); r.readAsDataURL(blob); });
 }
-async function sheetUpdate(id, range, values) {
-  await gfetch(SHEETS + id + '/values/' + encodeURIComponent(range) + '?valueInputOption=RAW', jsonOpts('PUT', { range, majorDimension: 'ROWS', values }), 'force');
-}
-async function sheetClear(id, range) {
-  await gfetch(SHEETS + id + '/values/' + encodeURIComponent(range) + ':clear', jsonOpts('POST', {}), 'force');
-}
-async function sheetAppend(id, range, values) {
-  await gfetch(SHEETS + id + '/values/' + encodeURIComponent(range) + ':append?valueInputOption=RAW&insertDataOption=INSERT_ROWS', jsonOpts('POST', { values }), 'force');
-}
-async function sheetDeleteRow(id, tabId, rowNumber) {
-  await gfetch(SHEETS + id + ':batchUpdate', jsonOpts('POST', { requests: [{ deleteDimension: { range: { sheetId: tabId, dimension: 'ROWS', startIndex: rowNumber - 1, endIndex: rowNumber } } }] }), 'force');
-}
-async function driveCreateFolder(name, parentId) {
-  const body = { name, mimeType: 'application/vnd.google-apps.folder' };
-  if (parentId) body.parents = [parentId];
-  const r = await gfetch(DRIVE + 'files?supportsAllDrives=true&fields=id,name', jsonOpts('POST', body), 'force');
-  return r.json();
-}
-async function driveParents(id) {
-  const r = await gfetch(DRIVE + 'files/' + id + '?fields=parents&supportsAllDrives=true', null, 'force');
-  const j = await r.json(); return j.parents || [];
-}
-async function driveShareAnyone(id) {
-  await gfetch(DRIVE + 'files/' + id + '/permissions?supportsAllDrives=true', jsonOpts('POST', { role: 'reader', type: 'anyone' }), 'force');
-}
-/** resumable upload (works for 20MB+); falls back to multipart if the upload URL header is not readable */
-async function driveUpload(blob, name, folderId, onProgress) {
-  const meta = { name, mimeType: blob.type || 'application/pdf', parents: folderId ? [folderId] : undefined };
-  const init = await gfetch(UPLOAD + '?uploadType=resumable&supportsAllDrives=true&fields=id,name', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json; charset=UTF-8', 'X-Upload-Content-Type': meta.mimeType, 'X-Upload-Content-Length': String(blob.size) },
-    body: JSON.stringify(meta)
-  }, 'force');
-  const loc = init.headers.get('Location') || init.headers.get('location');
-  if (!loc) {
-    const fd = new FormData();
-    fd.append('metadata', new Blob([JSON.stringify(meta)], { type: 'application/json' }));
-    fd.append('file', blob);
-    const r = await gfetch(UPLOAD + '?uploadType=multipart&supportsAllDrives=true&fields=id,name', { method: 'POST', body: fd }, 'force');
-    return r.json();
+async function relayFileMeta(id) { return relay('fileMeta', { id }); }
+async function relayDownload(meta, onProgress) {
+  const parts = []; let off = 0;
+  while (off < meta.size) {
+    const r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 });
+    const b = b64ToBytes(r.data);
+    if (!b.length) break;
+    parts.push(b); off += b.length;
+    if (onProgress) onProgress(off / meta.size);
   }
-  return new Promise((res, rej) => {
-    const x = new XMLHttpRequest();
-    x.open('PUT', loc);
-    x.setRequestHeader('Content-Type', meta.mimeType);
-    x.upload.onprogress = (e) => { if (e.lengthComputable && onProgress) onProgress(e.loaded / e.total); };
-    x.onload = () => {
-      if (x.status >= 200 && x.status < 300) { try { res(JSON.parse(x.responseText)); } catch (e) { rej(new GError(x.status, 'アップロード結果を読めませんでした')); } }
-      else rej(new GError(x.status, 'アップロードに失敗しました（' + x.status + '）'));
-    };
-    x.onerror = () => rej(new GError(0, 'アップロード中に接続が切れました'));
-    x.send(blob);
-  });
+  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした');
+  return new Blob(parts, { type: meta.mime || 'application/pdf' });
+}
+async function relayUpload(file, target, onProgress) {
+  const init = await relay('uploadInit', { name: file.name, size: file.size, mime: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : ''), target: target || 'design' });
+  let off = 0, done = null;
+  while (off < file.size) {
+    const part = file.slice(off, off + init.chunk);
+    const r = await relay('uploadChunk', { uploadId: init.uploadId, offset: off, data: await blobToBase64(part) });
+    off += part.size;
+    if (onProgress) onProgress(off / file.size);
+    if (r.done) done = r.file;
+  }
+  if (!done) throw new RelayError('drive', 'アップロードが完了しませんでした');
+  return done;
 }
 
 /* ===== state, PDF cache, rendering ===== */
@@ -857,6 +947,7 @@ const S = {
   rows: null, headerRow: -1, map: null,
   model: { pages: new Map(), sections: [], n: 0, missing: [] },
   designs: [],                  // rows of 「デザイン」
+  me: null, members: [], comments: [], figures: [], expenses: null, statusOptions: {}, settingsRows: [],
   folderFiles: [], folderErr: '', // PDFs in the design folder
   sources: new Map(),           // drive file id -> {id,name,kind:'pdf',blob,numPages,pdf,err}
   assign: new Map(),            // kstr -> {src, page, half}
@@ -912,18 +1003,18 @@ function srcFor(id, name) {
   return s;
 }
 const blobLoads = new Map();
-/** bytes from local cache (same checksum) or Drive */
+/** bytes from this browser's cache (same version) or through the relay */
 function loadBlob(src) {
   if (src.blob) return Promise.resolve(src.blob);
   if (blobLoads.has(src.id)) return blobLoads.get(src.id);
   const p = (async () => {
-    let meta = null;
-    try { meta = await driveMeta(src.id); } catch (e) { src.err = explainError(e, 'pdf'); throw new Error(src.err); }
+    let meta;
+    try { meta = await relayFileMeta(src.id); } catch (e) { src.err = e.message; throw new Error(src.err); }
     if (meta.name && !src.name) src.name = meta.name;
-    const k = src.id + ':' + (meta.md5Checksum || meta.modifiedTime || meta.size || '');
+    const k = src.id + ':' + meta.v;
     const hit = await idb.get(k);
     if (hit && hit.blob) { src.blob = hit.blob; idb.put(Object.assign({}, hit, { t: Date.now() })); return src.blob; }
-    try { src.blob = await driveBytes(src.id); } catch (e) { src.err = explainError(e, 'pdf'); throw new Error(src.err); }
+    try { src.blob = await relayDownload(meta); } catch (e) { src.err = e.message; throw new Error(src.err); }
     await idb.put({ k, id: src.id, blob: src.blob, t: Date.now() });
     cachePrune(40);
     return src.blob;
@@ -1078,12 +1169,15 @@ function makeTile(k) {
   const label = keyLabel(k);
   const title = isPad ? '（調整用の白ページ）' : (info ? (info.title || info.kind) : '');
   const noteTxt = info ? [info.title ? info.kind : '', info.section, info.note].filter(Boolean).join(' ／ ') : '';
-  el.innerHTML = '<div class="bar"></div><div class="no"><span>' + esc(label) + '</span><span>' + esc(info && info.status ? info.status : '') + '</span></div>' +
-    '<div class="tt">' + esc(title) + '</div><div class="note">' + esc(noteTxt) + '</div><i class="st"></i>';
+  const cs = typeof currentStage === 'function' ? currentStage(k) : null;
+  const nC = typeof openComments === 'function' ? openComments(label) : 0;
+  el.innerHTML = '<div class="bar"></div><div class="no"><span>' + esc(label) + '</span>' + (nC ? '<b class="cbadge" title="未対応のコメント">' + nC + '</b>' : '') + '</div>' +
+    '<div class="tt">' + esc(title) + '</div><div class="note">' + esc(noteTxt) + '</div>' +
+    (cs ? '<span class="tchip st-' + stateClass(cs.value) + '" title="' + esc(cs.name + '：' + cs.value) + '">' + esc(cs.name + ' ' + cs.value) + '</span>' : '') + '<i class="st"></i>';
   if (!info && !isPad && typeof k === 'number') el.querySelector('.tt').style.color = 'var(--mute)';
   el.title = label + (title ? '：' + title : '');
-  el.addEventListener('click', () => goToKey(k));
-  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); goToKey(k); } });
+  el.addEventListener('click', () => selectPage(k));
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPage(k); } });
   el.addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); el.classList.add('over'); } });
   el.addEventListener('dragleave', () => el.classList.remove('over'));
   el.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); el.classList.remove('over'); dropOnTile([...e.dataTransfer.files], k); });
@@ -1211,12 +1305,17 @@ function addGutter(cv, k) {
   g.fillStyle = gr; g.fillRect(x0, 0, gw, h);
 }
 function wrapText(g, text, maxW, maxLines) {
-  const lines = []; let cur = '';
-  for (const ch of String(text)) {
-    if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; if (lines.length >= maxLines) break; }
-    else cur += ch;
+  const lines = []; let cur = '', cut = false;
+  const chars = Array.from(String(text).replace(/\s*\n\s*/g, ' '));
+  for (let i = 0; i < chars.length; i++) {
+    const ch = chars[i];
+    if (g.measureText(cur + ch).width > maxW && cur) {
+      lines.push(cur); cur = ch;
+      if (lines.length >= maxLines) { cut = true; break; }
+    } else cur += ch;
   }
-  if (lines.length < maxLines && cur) lines.push(cur);
+  if (!cut && cur) lines.push(cur);
+  if (cut && lines.length) { let last = lines[lines.length - 1]; while (last && g.measureText(last + '…').width > maxW) last = last.slice(0, -1); lines[lines.length - 1] = last + '…'; }
   return lines;
 }
 function drawPlaceholder(k, w) {
@@ -1229,24 +1328,31 @@ function drawPlaceholder(k, w) {
   const fg = isCover ? '#ffffff' : '#1d2a2e', mute = isCover ? 'rgba(255,255,255,.7)' : '#6b7a7f';
   if (!isCover) { g.fillStyle = sec; g.fillRect(0, 0, w, h * 0.022); }
   g.textBaseline = 'top';
-  const fs = w / 12;
-  g.fillStyle = mute; g.font = '500 ' + (fs * 1.1) + 'px "IBM Plex Mono", monospace';
-  g.fillText(keyLabel(k), w * 0.08, h * 0.05);
-  if (info && info.section) { g.font = '500 ' + (fs * 0.8) + 'px "Zen Kaku Gothic New", sans-serif'; g.textAlign = 'right'; g.fillText(info.section, w * 0.92, h * 0.056); g.textAlign = 'left'; }
+  // one column, measured top to bottom, so nothing overlaps; long text is cut with …
+  const u = w / 30, x = w * 0.08, maxW = w * 0.84, limit = h * 0.86;
+  const JP = '"Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif';
+  let y = h * 0.05;
+  const block = (text, weight, size, color, maxLines, gapAfter) => {
+    if (!text || y > limit) return;
+    g.font = weight + ' ' + size + 'px ' + JP; g.fillStyle = color;
+    const lh = size * 1.4, room = Math.max(1, Math.floor((limit - y) / lh));
+    wrapText(g, text, maxW, Math.min(maxLines, room)).forEach((ln) => { g.fillText(ln, x, y); y += lh; });
+    y += gapAfter;
+  };
+  g.fillStyle = mute; g.font = '500 ' + (u * 1.05) + 'px "IBM Plex Mono", monospace';
+  g.fillText(keyLabel(k), x, y); y += u * 1.6;
+  if (info && info.section) block(info.section, 500, u * 0.75, mute, 2, u * 0.9);
+  else y += u * 0.6;
   let title = info ? (info.title || info.kind) : '';
   if (typeof k === 'number' && k > N) title = '（調整用の白ページ）';
   if (k === 'F' && !title) title = S.set.title;
-  g.fillStyle = fg; g.font = '700 ' + (fs * 1.9) + 'px "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif';
-  const lines = wrapText(g, title, w * 0.84, 5);
-  lines.forEach((ln, i) => g.fillText(ln, w * 0.08, h * 0.2 + i * fs * 2.5));
-  if (info && info.note) {
-    g.fillStyle = mute; g.font = '400 ' + (fs * 0.9) + 'px "Zen Kaku Gothic New", sans-serif';
-    wrapText(g, info.note, w * 0.84, 3).forEach((ln, i) => g.fillText(ln, w * 0.08, h * 0.2 + lines.length * fs * 2.5 + fs * 0.8 + i * fs * 1.3));
-  }
-  if (!S.assign.has(kstr(k)) && k !== 'S') {
-    g.fillStyle = mute; g.font = '400 ' + (fs * 0.8) + 'px "Zen Kaku Gothic New", sans-serif';
-    g.fillText('デザイン未割当', w * 0.08, h * 0.93);
-  }
+  block(title, 700, u * 1.55, fg, 4, u * 0.5);
+  if (info && info.title && info.kind && info.kind !== info.title) block(info.kind, 500, u * 0.85, mute, 1, u * 0.5);
+  if (info && info.note) block(info.note, 400, u * 0.8, mute, 8, 0);
+  const cs = typeof currentStage === 'function' ? currentStage(k) : null;
+  g.font = '400 ' + (u * 0.8) + 'px ' + JP; g.fillStyle = mute;
+  if (cs) g.fillText(cs.name + '：' + cs.value, x, h * 0.895);
+  if (!S.assign.has(kstr(k)) && k !== 'S') g.fillText('デザイン未割当', x, h * 0.935);
   addGutter(cv, k);
   return cv;
 }
@@ -1618,13 +1724,11 @@ function tick(now) {
   if (busy) { V.last = now; V.raf = requestAnimationFrame(tick); }
 }
 
-/* ===== project: load the sheet, settings, designs, editor actions ===== */
-const TAB_DESIGN = 'デザイン', TAB_SET = '設定';
+/* ===== project: load through the relay, roles, settings, design PDFs ===== */
 const fileUrl = (id) => 'https://drive.google.com/file/d/' + id + '/view';
-const folderUrl = (id) => 'https://drive.google.com/drive/folders/' + id;
 
 function setTop(t, cls) { const e = $('topMsg'); if (!t) { e.hidden = true; return; } e.hidden = false; e.textContent = t; e.className = 'msg banner' + (cls ? ' ' + cls : ''); }
-function setMsg(id, t, cls) { const e = $(id); e.textContent = t || ''; e.className = 'msg' + (cls ? ' ' + cls : ''); }
+function setMsg(id, t, cls) { const e = $(id); if (!e) return; e.textContent = t || ''; e.className = 'msg' + (cls ? ' ' + cls : ''); }
 function openPanel(id) { const p = $(id); p.hidden = false; const b = document.querySelector('[data-panel="' + id + '"]'); if (b) b.classList.add('on'); }
 function startFieldText(k) { return typeof k === 'number' ? String(k) : (KEY_LABEL[k] || '1'); }
 function nextKeyAfter(start, count) {
@@ -1632,55 +1736,79 @@ function nextKeyAfter(start, count) {
   const i = order.findIndex((k) => kstr(k) === kstr(start));
   return i < 0 ? null : (order[i + count] === undefined ? null : order[i + count]);
 }
-function pickTab(tabs, wanted) {
-  if (wanted && tabs.some((t) => t.title === wanted)) return wanted;
-  const t = tabs.find((x) => /台割/.test(x.title)) || tabs.find((x) => x.title !== TAB_DESIGN && x.title !== TAB_SET);
-  return t ? t.title : '';
+function tableObjects(rows) {
+  if (!rows || rows.length < 2) return [];
+  const h = rows[0].map((x) => String(x).trim());
+  return rows.slice(1).filter((r) => r.some((c) => String(c).trim() !== '')).map((r) => { const o = {}; h.forEach((k, i) => { if (k) o[k] = r[i] == null ? '' : String(r[i]); }); return o; });
 }
-const hasTab = (name) => S.tabs.some((t) => t.title === name);
+
+/* ---- roles ---- */
+const role = () => (S.me && S.me.key) || '';
+const isStaff = () => role() === 'staff';
+const canProgress = () => role() === 'staff' || role() === 'ext';
+const canFigures = canProgress;
+const canSeeExpenses = () => role() === 'staff' || role() === 'client';
+function applyRole() {
+  const k = role();
+  document.body.classList.toggle('editor', k === 'staff');
+  ['staff', 'client', 'ext'].forEach((x) => document.body.classList.toggle('role-' + x, k === x));
+  document.body.classList.toggle('can-fig', canFigures());
+  document.querySelectorAll('.ed').forEach((el) => { el.disabled = k !== 'staff'; });
+  $('tabSelect').disabled = k !== 'staff';
+  $('colHint').textContent = k === 'staff' ? '（変更後「判型・製本」の「設定をシートに保存」で全員に反映）' : '（自動判別）';
+  $('vt-expenses').hidden = !canSeeExpenses();
+  $('vt-members').hidden = k !== 'staff';
+  const u = $('userChip'); u.hidden = !S.me; u.textContent = S.me ? (S.me.name || S.me.email) + '（' + S.me.role + '）' : '';
+}
 
 /* ---- load ---- */
 async function loadProject(opts) {
   opts = opts || {};
   if (!S.sheetId) return false;
-  S.loading = true; renderBoard(); setTop('');
-  try {
-    const meta = await sheetMeta(S.sheetId);
-    S.sheetTitle = meta.title; S.tabs = meta.tabs;
-    if (!meta.tabs.length) throw new GError(404, 'タブがありません');
-    let tab = pickTab(meta.tabs, opts.tab);
-    const ranges = [a1(tab, 'A1:Z600')];
-    if (hasTab(TAB_SET)) ranges.push(a1(TAB_SET, 'A1:B60'));
-    if (hasTab(TAB_DESIGN)) ranges.push(a1(TAB_DESIGN, 'A1:F400'));
-    let vals = await sheetBatch(S.sheetId, ranges);
-    let rows = vals[0];
-    const ps = parseSettingsRows(hasTab(TAB_SET) ? vals[1] : []);
-    const des = hasTab(TAB_DESIGN) ? vals[hasTab(TAB_SET) ? 2 : 1] : [];
-    if (!opts.tab && ps.set.tab && ps.set.tab !== tab && hasTab(ps.set.tab)) {   // the saved 台割 tab differs from the guess
-      tab = ps.set.tab; rows = (await sheetBatch(S.sheetId, [a1(tab, 'A1:Z600')]))[0];
-    }
-    S.set = Object.assign({}, DEFAULTS, { folder: '', tab: '' }, ps.set);
-    const trim = TRIMS.find((x) => x.w === S.set.w && x.h === S.set.h); S.set.trim = trim ? trim.id : 'custom';
-    const paper = PAPERS.find((x) => x.t && Math.abs(x.t - S.set.t) < 1e-6); S.set.paper = paper ? paper.id : 'custom';
-    S.colOverride = ps.cols; S.tabName = tab; S.rows = rows || [];
-    rebuildRows();
-    S.designs = parseDesignRows(des);
-    await listFolder();
-  } catch (e) {
+  if (!signedIn()) { showLogin(); return false; }
+  const first = !S.loaded;
+  if (first) { S.loading = true; renderBoard(); }
+  setTop('');
+  let r;
+  try { r = await relay('load', { tab: opts.tab || '' }); }
+  catch (e) {
     S.loading = false; renderBoard();
-    setTop(e instanceof GError ? explainError(e, 'sheet') : ('読み込めませんでした：' + e.message), 'err');
+    if (e.code === 'not_member') showNotMember(e.message);
+    else if (e.code !== 'auth') setTop(e.message, 'err');
     return false;
   }
-  S.loading = false;
+  S.loading = false; S.loaded = true;
+  const sig = () => JSON.stringify([S.tabName, S.settingsRows, S.designs.map((d) => [d.id, d.from, d.to, d.startText]), (S.folderFiles || []).map((f) => f.id + ':' + f.v), NS()]);
+  const before = sig();
+  applyLoad(r);
+  const heavy = first || opts.full || before !== sig();
   document.title = (S.sheetTitle ? S.sheetTitle + ' — ' : '') + '台割ボード';
-  $('projTitle').textContent = S.sheetTitle;
-  await passGate();
   rememberProject();
-  pushSettingsToUI(); renderProjectUI();
-  S.thumbs.clear(); texClearAll();
-  renderBoard(); buildBook(); renderStats(); syncControls();
-  await refreshAssignments();
+  applyRole(); pushSettingsToUI(); renderProjectUI();
+  if (heavy) S.thumbs.clear();
+  texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
+  renderViews();
+  if (heavy) await refreshAssignments(); else renderDesignList();
+  if (first) openPageFromUrl();
+  S.loadedAt = Date.now();
   return true;
+}
+function applyLoad(r) {
+  S.me = r.me; S.sheetTitle = r.title; S.tabs = (r.tabs || []).map((t) => ({ title: t })); S.tabName = r.tab || '';
+  S.rows = r.daiwari || []; S.settingsRows = r.settings || [];
+  const ps = parseSettingsRows(S.settingsRows);
+  S.set = Object.assign({}, DEFAULTS, { folder: '', tab: '', receiptFolder: '' }, ps.set);
+  const trim = TRIMS.find((x) => x.w === S.set.w && x.h === S.set.h); S.set.trim = trim ? trim.id : 'custom';
+  const paper = PAPERS.find((x) => x.t && Math.abs(x.t - S.set.t) < 1e-6); S.set.paper = paper ? paper.id : 'custom';
+  S.colOverride = ps.cols;
+  rebuildRows();
+  S.designs = parseDesignRows(r.designs || []);
+  S.folderErr = r.folder && r.folder.error ? r.folder.error : '';
+  S.folderFiles = r.folder && !r.folder.error ? naturalSort(r.folder.files || []) : [];
+  S.statusOptions = r.statusOptions || {};
+  S.comments = tableObjects(r.comments); S.figures = tableObjects(r.figures);
+  S.expenses = r.expenses ? tableObjects(r.expenses) : null;
+  S.members = r.members ? tableObjects(r.members) : [];
 }
 function rebuildRows() {
   const d = detectColumns(S.rows);
@@ -1688,19 +1816,12 @@ function rebuildRows() {
   S.map = Object.assign(d.map, S.colOverride);
   S.model = buildModel(S.rows, S.map, S.headerRow);
 }
-async function reloadDesigns() {
-  if (!hasTab(TAB_DESIGN)) { S.designs = []; }
-  else S.designs = parseDesignRows((await sheetBatch(S.sheetId, [a1(TAB_DESIGN, 'A1:F400')]))[0]);
-  await listFolder();
-  await refreshAssignments();
+function showNotMember(msg) {
+  showLogin();
+  setMsg('loginMsg', msg, 'err');
+  $('btnSwitch').hidden = false;
 }
-async function listFolder() {
-  const id = extractDriveId(S.set.folder);
-  S.folderErr = '';
-  if (!id) { S.folderFiles = []; return; }
-  try { S.folderFiles = naturalSort(await driveListPdfs(id)); }
-  catch (e) { S.folderFiles = []; S.folderErr = 'デザインフォルダを読めませんでした：' + (e instanceof GError ? explainError(e, 'pdf').replace('PDF', 'フォルダ') : e.message); }
-}
+const reloadDesigns = () => loadProject();
 const autoFiles = () => S.folderFiles.filter((f) => !S.designs.some((d) => d.id === f.id));
 function recompute() {
   const next = computeAssignments(S.designs, NS(), (id) => { const s = S.sources.get(id); return (s && s.numPages) || null; }, autoFiles());
@@ -1712,7 +1833,6 @@ async function refreshAssignments() {
   S.designs.forEach((d) => srcFor(d.id, d.name));
   autoFiles().forEach((f) => srcFor(f.id, f.name));
   recompute();
-  // page counts are needed before folder PDFs (and rows with no end page) can be placed
   const need = S.designs.filter((x) => !x.to).map((d) => d.id).concat(autoFiles().map((f) => f.id));
   for (const id of need) {
     const s = S.sources.get(id);
@@ -1722,7 +1842,6 @@ async function refreshAssignments() {
   }
   renderDesignList();
 }
-/** key range a source currently occupies, for the list */
 function placedRange(id) {
   const ks = orderKeys(Math.max(NS(), 2)).filter((k) => { const a = S.assign.get(kstr(k)); return a && a.src === id; });
   if (!ks.length) return '';
@@ -1734,11 +1853,10 @@ async function pinAutoFile(f) {
   if (!ks.length || !s.numPages) { setMsg('designMsg', 'このPDFはまだ読み込めていません。', 'err'); return; }
   setMsg('designMsg', '記録中…');
   try {
-    await ensureDesignTab();
-    await sheetAppend(S.sheetId, a1(TAB_DESIGN, 'A:F'), [[fileUrl(f.id), f.name, 1, s.numPages, startFieldText(ks[0]), new Date().toLocaleString('ja-JP')]]);
+    await relay('designAppend', { rows: [[fileUrl(f.id), f.name, 1, s.numPages, startFieldText(ks[0])]] });
     await reloadDesigns();
-    setMsg('designMsg', '「デザイン」タブに記録しました。割当開始を変えて「保存」で位置を動かせます。', 'ok');
-  } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
+    setMsg('designMsg', '「デザイン」タブに記録しました。貼る位置を変えられます。', 'ok');
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
 
 /* ---- recent projects (this browser only) ---- */
@@ -1771,20 +1889,20 @@ function renderProjectUI() {
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetTitle || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';
-  S.tabs.filter((t) => t.title !== TAB_DESIGN && t.title !== TAB_SET).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
-  sel.value = S.tabName; sel.disabled = !signedIn();
-  renderColMap(); renderPwState();
+  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費'];
+  S.tabs.filter((t) => special.indexOf(t.title) < 0).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
+  sel.value = S.tabName; sel.disabled = !isStaff();
+  renderColMap();
 }
 function renderColMap() {
   const box = $('colMap'); box.textContent = '';
-  if (!S.rows) return;
+  if (!S.rows || !S.rows.length) return;
   const width = Math.min(26, Math.max(1, ...S.rows.slice(0, 20).map((r) => r.length)));
   const head = S.rows[S.headerRow >= 0 ? S.headerRow : 0] || [];
-  const ed = signedIn();
   COLDEFS.forEach(([key, label]) => {
     const f = document.createElement('label'); f.className = 'field';
     const sp = document.createElement('span'); sp.textContent = label;
-    const sel = document.createElement('select'); sel.id = 'col_' + key; sel.disabled = !ed;
+    const sel = document.createElement('select'); sel.id = 'col_' + key; sel.disabled = !isStaff();
     const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
     add('auto', '自動'); add('-1', '使わない');
     for (let i = 0; i < width; i++) { const h = String(head[i] == null ? '' : head[i]).trim(); add(String(i), colName(i) + (h ? '：' + h.slice(0, 14) : '')); }
@@ -1792,7 +1910,7 @@ function renderColMap() {
     if (!(key in S.colOverride)) sel.options[0].textContent = '自動（' + (S.map[key] >= 0 ? colName(S.map[key]) : 'なし') + '）';
     sel.addEventListener('change', () => {
       if (sel.value === 'auto') delete S.colOverride[key]; else S.colOverride[key] = parseInt(sel.value, 10);
-      rebuildRows(); renderColMap(); renderBoard(); buildBook(); refreshAssignments();
+      rebuildRows(); renderColMap(); renderBoard(); buildBook(); refreshAssignments(); renderViews();
       setMsg('projMsg', '変更しました。「判型・製本」の「設定をシートに保存」で全員に反映されます。');
     });
     f.append(sp, sel); box.appendChild(f);
@@ -1815,7 +1933,7 @@ function pushSettingsToUI() {
   $('binding').value = s.binding; $('bindType').value = s.bindType;
   $('paperPreset').value = s.paper; $('paperT').value = s.t; $('coverT').value = s.c; $('bleed').value = s.bleed;
   $('bookTitle').value = s.title || ''; $('coverColor').value = s.color || '#27474f'; $('folderUrl').value = s.folder || '';
-  document.querySelectorAll('.ed').forEach((el) => { el.disabled = !signedIn(); });
+  document.querySelectorAll('.ed').forEach((el) => { el.disabled = !isStaff(); });
 }
 function readSettingsFromUI() {
   const s = S.set, num = (id, d, lo, hi) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
@@ -1834,57 +1952,29 @@ function onSettingsChanged() {
   settingsTimer = setTimeout(() => { S.thumbs.clear(); texClearAll(); renderBoard(); buildBook(); renderStats(); }, 220);
 }
 async function saveSettings() {
-  if (!signedIn()) return;
+  if (!isStaff()) return false;
   readSettingsFromUI(); S.set.tab = S.tabName;
   const rows = settingsToRows(S.set, S.colOverride);
   setMsg('bookMsg', '保存中…');
   try {
-    if (!hasTab(TAB_SET)) { const id = await sheetAddTab(S.sheetId, TAB_SET); S.tabs.push({ id, title: TAB_SET }); }
-    await sheetClear(S.sheetId, a1(TAB_SET, 'A1:B60'));
-    await sheetUpdate(S.sheetId, a1(TAB_SET, 'A1:B' + rows.length), rows);
+    await relay('settingsSave', { rows });
     setMsg('bookMsg', 'シートの「設定」タブに保存しました。', 'ok');
     return true;
-  } catch (e) { setMsg('bookMsg', explainError(e, 'write'), 'err'); return false; }
+  } catch (e) { setMsg('bookMsg', e.message, 'err'); return false; }
 }
 
-/* ---- editor sign-in ---- */
-let logoutArmed = 0;
-async function onLoginClick() {
-  const b = $('btnLogin');
-  if (signedIn()) {
-    if (!logoutArmed) { b.textContent = 'ログアウトする'; logoutArmed = setTimeout(() => { logoutArmed = 0; applyEditorMode(); }, 3000); return; }
-    clearTimeout(logoutArmed); logoutArmed = 0; signOut(); applyEditorMode(); return;
-  }
-  if (CONFIG.clientId.startsWith('__')) { setTop('OAuthクライアントIDが設定されていません。', 'err'); return; }
-  b.disabled = true; b.textContent = 'ログイン中…';
-  try { await signIn(false); await whoAmI(); setTop(''); }
-  catch (e) { setTop(e.message || 'ログインできませんでした', 'err'); }
-  finally { b.disabled = false; applyEditorMode(); }
-}
-function applyEditorMode() {
-  const ed = signedIn();
-  document.body.classList.toggle('editor', ed);
-  const b = $('btnLogin'); b.classList.toggle('on', ed);
-  b.textContent = ed ? (AUTH.email || '編集者') : '編集者ログイン';
-  document.querySelectorAll('.ed').forEach((el) => { el.disabled = !ed; });
-  $('tabSelect').disabled = !ed;
-  $('colHint').textContent = ed ? '（変更後「判型・製本」の「設定をシートに保存」で全員に反映）' : '（自動判別。変更は編集者ログイン後）';
-  renderColMap(); renderDesignList();
-}
-
-/* ---- デザイン list ---- */
+/* ---- デザインPDF list ---- */
 let listTimer = 0;
 function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
 function renderDesignList() {
   const ul = $('designList');
   if (ul.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') { renderDesignListSoon(); return; }
   ul.textContent = '';
-  const ed = signedIn();
-  if (S.folderErr) { const li = document.createElement('li'); li.innerHTML = '<span class="err"></span>'; li.firstChild.textContent = S.folderErr; ul.appendChild(li); }
-  else if (!extractDriveId(S.set.folder)) { const li = document.createElement('li'); li.innerHTML = '<span class="nm" style="color:var(--mute)"></span>'; li.firstChild.textContent = 'デザインフォルダが未設定です（「判型・製本」で設定するか、初回アップロード時に自動で作成されます）。'; ul.appendChild(li); }
-  if (!S.designs.length && !autoFiles().length) {
-    if (!S.folderErr && extractDriveId(S.set.folder)) ul.insertAdjacentHTML('beforeend', '<li><span class="nm" style="color:var(--mute)">デザインフォルダにPDFがありません</span></li>');
-  }
+  const ed = isStaff();
+  const note = (cls, text) => { const li = document.createElement('li'); const s = document.createElement('span'); s.className = cls; s.textContent = text; li.appendChild(s); ul.appendChild(li); };
+  if (S.folderErr) note('err', S.folderErr);
+  else if (!extractDriveId(S.set.folder)) note('nm muted', 'デザインフォルダが未設定です（初回のアップロード時に自動で作成されます）。');
+  if (!S.designs.length && !autoFiles().length && !S.folderErr && extractDriveId(S.set.folder)) note('nm muted', 'デザインフォルダにPDFがありません');
   S.designs.forEach((d) => {
     const src = S.sources.get(d.id) || {};
     const li = document.createElement('li');
@@ -1895,7 +1985,6 @@ function renderDesignList() {
       const f = mk(String(d.from), 'PDFのページ（開始）', '3.5em'), t = mk(d.to ? String(d.to) : '', 'PDFのページ（終了・空欄＝最後まで）', '3.5em'), s = mk(d.startText || startFieldText(d.start), '台割のどのページから貼るか', '4.5em');
       const lab = (txt) => { const e = document.createElement('span'); e.className = 'meta'; e.textContent = txt; return e; };
       li.append(lab('PDFの'), f, lab('〜'), t, lab('ページを、台割の'), s, lab('から'));
-      // saves as soon as a field is changed (Enter or leaving the field)
       const save = () => {
         if (f.value === String(d.from) && t.value === (d.to ? String(d.to) : '') && s.value === (d.startText || startFieldText(d.start))) return;
         editDesignRow(d, f.value, t.value, s.value);
@@ -1914,8 +2003,6 @@ function renderDesignList() {
       m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
       li.appendChild(m);
     }
-    const a = document.createElement('a'); a.href = fileUrl(d.id); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ドライブで開く';
-    li.appendChild(a);
     if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
     ul.appendChild(li);
   });
@@ -1929,12 +2016,10 @@ function renderDesignList() {
     li.append(nm, m);
     if (ed) {
       const pin = document.createElement('button'); pin.className = 'btn sm'; pin.textContent = '位置を指定';
-      pin.title = '今の位置で「デザイン」タブに記録し、割当開始を変えられるようにします';
+      pin.title = '今の位置で「デザイン」タブに記録し、貼る位置を変えられるようにします';
       pin.addEventListener('click', () => pinAutoFile(f));
       li.appendChild(pin);
     }
-    const a = document.createElement('a'); a.href = fileUrl(f.id); a.target = '_blank'; a.rel = 'noopener'; a.textContent = 'ドライブで開く';
-    li.appendChild(a);
     if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
     ul.appendChild(li);
   });
@@ -1942,51 +2027,33 @@ function renderDesignList() {
 async function editDesignRow(d, fromTxt, toTxt, startTxt) {
   const from = parseInt(z2h(fromTxt), 10), to = toTxt.trim() ? parseInt(z2h(toTxt), 10) : '';
   const start = parseKeyText(startTxt);
-  if (!(from > 0) || (to !== '' && !(to >= from)) || start === null) { setMsg('designMsg', 'PDFのページ範囲か割当開始が正しくありません（割当開始は 1／表1／表2／表3／表4／背）。', 'err'); return; }
+  if (!(from > 0) || (to !== '' && !(to >= from)) || start === null) { setMsg('designMsg', 'PDFのページ範囲か貼る位置が正しくありません（1／表1／表2／表3／表4／背）。', 'err'); return; }
   setMsg('designMsg', '保存中…');
   try {
-    await sheetUpdate(S.sheetId, a1(TAB_DESIGN, 'C' + d.row + ':E' + d.row), [[from, to, startFieldText(start)]]);
+    await relay('designUpdate', { row: d.row, id: d.id, from, to, start: startFieldText(start) });
     await reloadDesigns();
     setMsg('designMsg', (d.name || 'PDF') + 'を' + keyLabel(start) + 'から貼るように保存しました。', 'ok'); goToKey(start);
-  } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
 async function deleteDesignRow(d) {
   setMsg('designMsg', '外しています…');
   try {
-    const tab = S.tabs.find((t) => t.title === TAB_DESIGN);
-    if (!tab || tab.id === undefined) { const meta = await sheetMeta(S.sheetId); S.tabs = meta.tabs; }
-    await sheetDeleteRow(S.sheetId, S.tabs.find((t) => t.title === TAB_DESIGN).id, d.row);
+    await relay('designDelete', { row: d.row, id: d.id });
     await reloadDesigns();
     setMsg('designMsg', '指定を外しました。PDFがデザインフォルダにある場合は、名前順の自動配置に戻ります（台割から消すには、PDFをフォルダの外へ移してください）。', 'ok');
-  } catch (e) { setMsg('designMsg', explainError(e, 'write'), 'err'); }
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
 
-/* ---- upload ---- */
-async function ensureDesignTab() {
-  if (hasTab(TAB_DESIGN)) return;
-  const id = await sheetAddTab(S.sheetId, TAB_DESIGN);
-  S.tabs.push({ id, title: TAB_DESIGN });
-  await sheetUpdate(S.sheetId, a1(TAB_DESIGN, 'A1:F1'), [DESIGN_HEADER]);
-}
-async function ensureFolder() {
-  const id = extractDriveId(S.set.folder);
-  if (id) return id;
-  const parents = await driveParents(S.sheetId).catch(() => []);
-  const f = await driveCreateFolder((S.sheetTitle || '台割') + '_デザイン', parents[0]);
-  try { await driveShareAnyone(f.id); } catch (e) { /* reported by the per-file share below if it matters */ }
-  S.set.folder = folderUrl(f.id); $('folderUrl').value = S.set.folder;
-  await saveSettings();
-  return f.id;
-}
+/* ---- upload (社内) ---- */
 function dropOnTile(files, key) {
-  if (!signedIn()) { openPanel('panelDesign'); setMsg('designMsg', 'アップロードには編集者ログインが必要です。', 'err'); return; }
+  if (!isStaff()) { toast('PDFの登録は社内メンバーだけが行えます', 'err'); return; }
   uploadFiles(files, key);
 }
 let uploading = false;
 async function uploadFiles(files, startKey) {
   if (uploading) { setMsg('designMsg', '前のアップロードが終わるまでお待ちください。', 'err'); return; }
-  openPanel('panelDesign');
-  if (!signedIn()) { setMsg('designMsg', 'アップロードには編集者ログインが必要です。', 'err'); return; }
+  setView('board'); openPanel('panelDesign');
+  if (!isStaff()) { setMsg('designMsg', 'PDFの登録は社内メンバーだけが行えます。', 'err'); return; }
   if (!NS()) { setMsg('designMsg', '先に台割を読み込んでください。', 'err'); return; }
   const pdfs = files.filter((f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
   const skipped = files.length - pdfs.length;
@@ -1996,81 +2063,547 @@ async function uploadFiles(files, startKey) {
   const first = cursor, rows = [], notes = [];
   uploading = true; $('upProg').hidden = false; $('upBar').style.width = '0%';
   try {
-    await ensureDesignTab();
-    const folderId = await ensureFolder();
     for (let i = 0; i < pdfs.length; i++) {
       const f = pdfs[i];
       if (cursor === null) { notes.push(f.name + 'は台割の末尾を超えるため登録しませんでした'); continue; }
       setMsg('designMsg', 'アップロード中（' + (i + 1) + '／' + pdfs.length + '）：' + f.name);
       const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), isEvalSupported: false }).promise;
       const n = pdf.numPages;
-      const up = await driveUpload(f, f.name, folderId, (p) => { $('upBar').style.width = Math.round(((i + p) / pdfs.length) * 100) + '%'; });
-      try { await driveShareAnyone(up.id); } catch (e) { notes.push(f.name + 'の公開設定に失敗しました（フォルダの共有設定を確認してください）'); }
+      const up = await relayUpload(f, 'design', (p) => { $('upBar').style.width = Math.round(((i + p) / pdfs.length) * 100) + '%'; });
       const s = srcFor(up.id, f.name); s.blob = f; s.pdf = pdf; s.numPages = n; s.err = '';
-      rows.push([fileUrl(up.id), f.name, 1, n, startFieldText(cursor), new Date().toLocaleString('ja-JP')]);
+      rows.push([fileUrl(up.id), f.name, 1, n, startFieldText(cursor)]);
       cursor = cursor === 'S' ? null : nextKeyAfter(cursor, n);
     }
-    if (rows.length) await sheetAppend(S.sheetId, a1(TAB_DESIGN, 'A:F'), rows);
+    if (rows.length) await relay('designAppend', { rows });
     $('upBar').style.width = '100%';
     await reloadDesigns();
     if (cursor !== null && startKey === undefined) $('upStart').value = startFieldText(cursor);
     const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '');
-    setMsg('designMsg', rows.length + '件を登録し、' + keyLabel(first) + 'から貼りました。' + (cursor !== null ? ' 次の割当開始：' + startFieldText(cursor) : '') + tail, notes.length ? 'err' : 'ok');
+    setMsg('designMsg', rows.length + '件を登録し、' + keyLabel(first) + 'から貼りました。' + (cursor !== null ? ' 次の貼り始め：' + startFieldText(cursor) : '') + tail, notes.length ? 'err' : 'ok');
     if (rows.length) goToKey(first);
   } catch (e) {
-    setMsg('designMsg', (e instanceof GError ? explainError(e, 'write') : e.message) + (rows.length ? '（' + rows.length + '件はドライブに保存済み・シート未記録）' : ''), 'err');
+    setMsg('designMsg', e.message + (rows.length ? '（' + rows.length + '件はドライブに保存済み・シート未記録）' : ''), 'err');
   } finally {
     uploading = false; setTimeout(() => { $('upProg').hidden = true; }, 800);
   }
 }
 
-/* ---- 閲覧パスワード (a screen, not encryption: the sheet and PDFs stay link-shared) ---- */
-const UNLOCK_DAYS = 30;
-async function pwHash(sheetId, pw) {
-  const d = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(sheetId + '\n' + pw));
-  return 'sha256:' + [...new Uint8Array(d)].map((b) => b.toString(16).padStart(2, '0')).join('');
+/* ===== project management: views, page detail, progress, comments, figures, expenses, members ===== */
+const H_COMMENT = ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'];
+const H_FIGURE = ['ID', 'ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ', '更新者', '更新日時'];
+const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', '登録者', '登録日時'];
+const FIG_KINDS = ['写真', 'イラスト', '図', 'ロゴ', 'その他'];
+const FIG_STATES = ['未定', '依頼中', '入稿済', '確定'];
+const EXP_KINDS = ['撮影費', '原稿料', 'デザイン費', '印刷費', '交通費', 'その他'];
+const DEFAULT_STAGE_STATES = ['未／待ち', '未／着手OK', '調整中', '確定'];
+const rowObj = (head, arr) => { const o = {}; head.forEach((k, i) => { o[k] = arr[i] == null ? '' : String(arr[i]); }); return o; };
+
+/* ---- tiny DOM helper ---- */
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach((k) => {
+    const v = attrs[k];
+    if (v === undefined || v === null || v === false) return;
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k in e && typeof v !== 'string') e[k] = v;
+    else e.setAttribute(k, v === true ? '' : v);
+  });
+  kids.flat().forEach((c) => { if (c === null || c === undefined || c === false) return; e.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c); });
+  return e;
 }
-function unlockKey(id) { return 'dandori.unlock.' + id; }
-function isUnlocked() {
-  if (!S.set.pw) return true;
-  try { const u = JSON.parse(localStorage.getItem(unlockKey(S.sheetId)) || 'null'); return !!u && u.h === S.set.pw && u.exp > Date.now(); }
-  catch (e) { return false; }
+let toastTimer = 0;
+function toast(text, cls) {
+  const t = $('toast'); t.textContent = text; t.className = 'toast' + (cls ? ' ' + cls : ''); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, cls === 'err' ? 6000 : 2600);
 }
-function rememberUnlock() {
-  try { localStorage.setItem(unlockKey(S.sheetId), JSON.stringify({ h: S.set.pw, exp: Date.now() + UNLOCK_DAYS * 864e5 })); } catch (e) { /* this browser keeps no memory: asks each time */ }
+function armButton(btn, label, armedLabel, fn) {
+  let armed = 0;
+  btn.textContent = label;
+  btn.addEventListener('click', () => {
+    if (!armed) { btn.textContent = armedLabel; armed = setTimeout(() => { armed = 0; btn.textContent = label; }, 3000); return; }
+    clearTimeout(armed); armed = 0; btn.textContent = label; fn();
+  });
+  return btn;
 }
-function passGate() {
-  if (isUnlocked()) return Promise.resolve();
-  document.body.classList.add('locked');
-  $('gate').hidden = false; $('gateTitle').textContent = S.sheetTitle ? '「' + S.sheetTitle + '」を表示するには、パスワードを入力してください。' : 'パスワードを入力してください。';
-  setMsg('gateMsg', '');
-  setTimeout(() => { try { $('gatePw').focus(); } catch (e) { /* ignore */ } }, 50);
-  return new Promise((resolve) => {
-    const form = $('gateForm');
-    const onSubmit = async (e) => {
-      e.preventDefault();
-      const h = await pwHash(S.sheetId, $('gatePw').value);
-      if (h !== S.set.pw) { setMsg('gateMsg', 'パスワードが違います。', 'err'); $('gatePw').select(); return; }
-      rememberUnlock();
-      form.removeEventListener('submit', onSubmit);
-      $('gatePw').value = ''; $('gate').hidden = true; document.body.classList.remove('locked');
-      resolve();
-    };
-    form.addEventListener('submit', onSubmit);
+async function busy(btn, fn) {
+  if (btn) btn.disabled = true;
+  try { return await fn(); } catch (e) { toast(e.message, 'err'); if (e.code === 'stale') loadProject(); return null; } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---- views ---- */
+const VIEWS = ['board', 'progress', 'comments', 'figures', 'expenses', 'members'];
+let curView = 'board';
+function setView(v) {
+  if (VIEWS.indexOf(v) < 0 || $('vt-' + v).hidden) v = 'board';
+  curView = v;
+  VIEWS.forEach((x) => { $('view-' + x).hidden = x !== v; $('vt-' + x).classList.toggle('on', x === v); });
+  try { sessionStorage.setItem('dandori.view', v); } catch (e) { /* ignore */ }
+  renderView(v);
+  if (v === 'board' && V.ok) { resize(); invalidate(); }
+}
+function renderViews() { renderBadges(); renderView(curView); if (S.detailKey !== undefined && !$('detail').hidden) renderDetail(); }
+function renderView(v) {
+  if (!S.loaded) return;
+  if (v === 'progress') renderProgress();
+  else if (v === 'comments') renderComments();
+  else if (v === 'figures') renderFigures();
+  else if (v === 'expenses') renderExpenses();
+  else if (v === 'members') renderMembers();
+}
+function renderBadges() {
+  const n = S.comments.filter((c) => !c['返信先'] && c['状態'] !== '対応済').length;
+  const b = $('badgeComments'); b.hidden = !n; b.textContent = n;
+}
+
+/* ---- pages ---- */
+const pageLabel = (k) => keyLabel(k);
+const keyOfLabel = (label) => { const k = parseKeyText(label); return k === null ? null : k; };
+function pageKeys() { return orderKeys(Math.max(NS(), 2)).filter((k) => S.model.pages.has(k)); }
+function pageTitle(k) { const i = S.model.pages.get(k); return i ? (i.title || i.kind || '') : ''; }
+function stageCols() {
+  if (S.headerRow < 0) return [];
+  const h = S.rows[S.headerRow] || [];
+  const out = [];
+  h.forEach((name, i) => { if (/校/.test(String(name))) out.push({ col: i, name: String(name).trim() }); });
+  return out;
+}
+function stageOptions(col) {
+  const fromSheet = S.statusOptions[col] || S.statusOptions[String(col)];
+  const base = fromSheet && fromSheet.length ? fromSheet.slice() : DEFAULT_STAGE_STATES.slice();
+  S.rows.slice(S.headerRow + 1).forEach((r) => { const v = String(r[col] || '').trim(); if (v && base.indexOf(v) < 0) base.push(v); });
+  return base;
+}
+function stateClass(v) {
+  v = String(v || '').trim();
+  if (!v) return 'none';
+  if (/確定|完了|校了|済|^ok$|^ＯＫ$/i.test(v)) return 'done';
+  if (/着手ok|着手ＯＫ/i.test(v)) return 'ready';
+  if (/調整|作業|確認|修正|進行|対応中/.test(v)) return 'doing';
+  if (/未|待/.test(v)) return 'todo';
+  return 'other';
+}
+function pageStages(k) {
+  const info = S.model.pages.get(k);
+  if (!info) return [];
+  const row = S.rows[info.row] || [];
+  return stageCols().map((s) => Object.assign({}, s, { value: String(row[s.col] || '').trim() }));
+}
+function currentStage(k) { const st = pageStages(k); for (let i = st.length - 1; i >= 0; i--) if (st[i].value) return st[i]; return null; }
+function stageChip(st, short) {
+  if (!st) return null;
+  return el('span', { class: 'chip st-' + stateClass(st.value), title: st.name + '：' + st.value }, short ? st.name : st.name + ' ' + st.value);
+}
+function openComments(label) { return S.comments.filter((c) => c['ページ'] === label && !c['返信先'] && c['状態'] !== '対応済').length; }
+async function setStage(k, col, value, sel) {
+  const info = S.model.pages.get(k);
+  if (!info || S.map.page < 0) { toast('ページ列がない台割では進捗を変更できません', 'err'); return; }
+  const row = S.rows[info.row];
+  await busy(sel, async () => {
+    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value });
+    row[col] = r.value;
+    toast(pageLabel(k) + '：' + (S.rows[S.headerRow][col]) + 'を「' + r.value + '」にしました');
+    renderBoard(); renderViews();
   });
 }
-function renderPwState() { $('pwState').textContent = S.set.pw ? '（設定済み）' : '（未設定：URLを知っている人は誰でも見られます）'; }
-async function setViewPassword(clear) {
-  const pw = $('pwNew').value;
-  if (!clear && pw.length < 4) { setMsg('projMsg', 'パスワードは4文字以上にしてください。', 'err'); return; }
-  const prev = S.set.pw;
-  S.set.pw = clear ? '' : await pwHash(S.sheetId, pw);
-  if (await saveSettings()) {
-    if (!clear) rememberUnlock();
-    $('pwNew').value = '';
-    setMsg('projMsg', clear ? '閲覧パスワードを解除しました。' : '閲覧パスワードを設定しました。見る人にはパスワードを別途伝えてください。', 'ok');
-  } else { S.set.pw = prev; setMsg('projMsg', $('bookMsg').textContent, 'err'); }
-  renderPwState();
+function stageSelect(k, st) {
+  const sel = el('select', { class: 'stsel st-' + stateClass(st.value), 'aria-label': pageLabel(k) + 'の' + st.name, disabled: !canProgress() });
+  sel.appendChild(el('option', { value: '', text: '—' }));
+  stageOptions(st.col).forEach((o) => sel.appendChild(el('option', { value: o, text: o })));
+  sel.value = st.value;
+  sel.addEventListener('change', () => setStage(k, st.col, sel.value, sel));
+  return sel;
+}
+
+/* ---- selecting a page ---- */
+function selectPage(k) {
+  if (k === null || k === undefined) return;
+  goToKey(k);
+  openDetail(k);
+}
+function openPageFromUrl() {
+  const p = new URLSearchParams(location.search).get('page');
+  if (!p) return;
+  const k = keyOfLabel(p);
+  if (k !== null) { setView('board'); selectPage(k); }
+}
+
+/* ---- page detail drawer ---- */
+function openDetail(k) {
+  S.detailKey = k; $('detail').hidden = false; document.body.classList.add('has-detail');
+  renderDetail();
+  if (V.ok) { resize(); }
+}
+function closeDetail() { $('detail').hidden = true; document.body.classList.remove('has-detail'); if (V.ok) resize(); }
+function stepDetail(d) {
+  const keys = orderKeys(Math.max(NS(), 2));
+  let i = keys.findIndex((k) => kstr(k) === kstr(S.detailKey));
+  i = Math.max(0, Math.min(keys.length - 1, i + d));
+  selectPage(keys[i]);
+}
+function renderDetail() {
+  const k = S.detailKey, body = $('dBody'), label = pageLabel(k), info = S.model.pages.get(k);
+  $('dTitle').textContent = label + (pageTitle(k) ? '　' + pageTitle(k) : '');
+  body.textContent = '';
+  // 台割の内容
+  const head = S.rows[S.headerRow >= 0 ? S.headerRow : 0] || [];
+  const stageIdx = stageCols().map((s) => s.col);
+  if (info) {
+    const row = S.rows[info.row] || [];
+    const dl = el('dl', { class: 'kvlist' });
+    head.forEach((h, i) => { if (i === S.map.page || stageIdx.indexOf(i) >= 0) return; const v = String(row[i] || '').trim(); if (!h || !v) return; dl.append(el('dt', { text: h }), el('dd', { text: v })); });
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '台割の内容' }), dl.children.length ? dl : el('p', { class: 'muted', text: '記入がありません' })));
+  } else body.appendChild(el('p', { class: 'muted', text: typeof k === 'number' && k > NS() ? '調整用の白ページです' : '台割にこのページの行がありません' }));
+  // 進捗
+  const st = pageStages(k);
+  if (st.length) {
+    const box = el('div', { class: 'stages' });
+    st.forEach((s) => box.appendChild(el('label', { class: 'stage' }, el('span', { text: s.name }), stageSelect(k, s))));
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内と外部スタッフが行えます' })));
+  }
+  // デザイン
+  const a = S.assign.get(kstr(k));
+  const src = a && S.sources.get(a.src);
+  body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: 'デザイン' }),
+    a ? el('p', null, (src && src.name ? src.name : 'PDF') + ' の ' + a.page + 'ページ目', ' ', el('button', { class: 'btn sm', onclick: () => { setView('board'); goToKey(k); } }, '3Dで見る')) : el('p', { class: 'muted', text: 'まだPDFが貼られていません' })));
+  // コメント
+  body.appendChild(commentSection(label));
+  // 図版
+  body.appendChild(figureSection(label));
+}
+
+/* ---- comments ---- */
+async function addComment(label, text, replyTo, btn) {
+  text = String(text || '').trim();
+  if (!text) { toast('コメントを入力してください', 'err'); return false; }
+  const r = await busy(btn, () => relay('commentAdd', { page: label, text, replyTo: replyTo || '', origin: location.origin + location.pathname }));
+  if (!r) return false;
+  S.comments.push(rowObj(H_COMMENT, r.comment));
+  toast(r.notified ? 'コメントしました（' + r.notified + '人にメールで通知）' : 'コメントしました');
+  renderBoard(); renderViews();
+  return true;
+}
+async function setCommentState(c, state, btn) {
+  const r = await busy(btn, () => relay('commentState', { id: c.ID, state }));
+  if (!r) return;
+  c['状態'] = state; renderBoard(); renderViews();
+}
+async function deleteComment(c) {
+  const r = await busy(null, () => relay('commentDelete', { id: c.ID }));
+  if (!r) return;
+  S.comments = S.comments.filter((x) => x !== c && x['返信先'] !== c.ID);
+  toast('コメントを削除しました'); renderBoard(); renderViews();
+}
+const mineOrStaff = (c) => isStaff() || String(c['投稿者']).toLowerCase() === String(S.me && S.me.email).toLowerCase();
+function commentItem(c, withPage) {
+  const replies = S.comments.filter((x) => x['返信先'] === c.ID);
+  const done = c['状態'] === '対応済';
+  const li = el('li', { class: 'citem' + (done ? ' done' : '') });
+  const k = keyOfLabel(c['ページ']);
+  li.appendChild(el('div', { class: 'cmeta' },
+    withPage ? el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, c['ページ'] + (k !== null && pageTitle(k) ? ' ' + pageTitle(k) : '')) : null,
+    el('b', { text: c['名前'] || c['投稿者'] }), el('span', { class: 'muted', text: c['日時'] }),
+    done ? el('span', { class: 'chip st-done', text: '対応済' }) : el('span', { class: 'chip st-doing', text: '未対応' })));
+  li.appendChild(el('p', { class: 'ctext', text: c['本文'] }));
+  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: rp['名前'] || rp['投稿者'] }), el('span', { class: 'muted', text: rp['日時'] }),
+    mineOrStaff(rp) ? armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(rp)) : null), el('p', { class: 'ctext', text: rp['本文'] }))));
+  const acts = el('div', { class: 'cacts' });
+  const replyBox = el('div', { class: 'replybox', hidden: true });
+  const ta = el('textarea', { rows: 2, placeholder: '返信を書く', 'aria-label': '返信' });
+  const send = el('button', { class: 'btn sm primary' }, '返信する');
+  send.addEventListener('click', async () => { if (await addComment(c['ページ'], ta.value, c.ID, send)) { ta.value = ''; } });
+  replyBox.append(ta, send);
+  acts.appendChild(el('button', { class: 'btn xs', onclick: () => { replyBox.hidden = !replyBox.hidden; if (!replyBox.hidden) ta.focus(); } }, '返信'));
+  if (mineOrStaff(c)) {
+    const t = el('button', { class: 'btn xs' }, done ? '未対応に戻す' : '対応済にする');
+    t.addEventListener('click', () => setCommentState(c, done ? '未対応' : '対応済', t));
+    acts.appendChild(t);
+    acts.appendChild(armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(c)));
+  }
+  li.append(acts, replyBox);
+  return li;
+}
+function commentSection(label) {
+  const list = S.comments.filter((c) => c['ページ'] === label && !c['返信先']);
+  const ul = el('ul', { class: 'clist' }, list.map((c) => commentItem(c, false)));
+  const ta = el('textarea', { rows: 3, placeholder: 'このページへのコメント（投稿すると社内メンバーにメールで通知されます）', 'aria-label': 'コメント' });
+  const send = el('button', { class: 'btn primary' }, 'コメントする');
+  send.addEventListener('click', async () => { if (await addComment(label, ta.value, '', send)) ta.value = ''; });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send.click(); } });
+  return el('section', { class: 'dsec' }, el('h3', { text: 'コメント（' + list.length + '）' }), list.length ? ul : el('p', { class: 'muted', text: 'まだコメントはありません' }), el('div', { class: 'cform' }, ta, send));
+}
+let cFilter = 'open';
+function renderComments() {
+  const q = ($('cSearch').value || '').trim().toLowerCase();
+  const list = S.comments.filter((c) => !c['返信先'])
+    .filter((c) => cFilter === 'all' || c['状態'] !== '対応済')
+    .filter((c) => !q || [c['本文'], c['ページ'], c['名前'], pageTitle(keyOfLabel(c['ページ']))].join(' ').toLowerCase().indexOf(q) >= 0)
+    .slice().reverse();
+  const ul = $('commentList'); ul.textContent = '';
+  if (!list.length) ul.appendChild(el('li', { class: 'muted', text: cFilter === 'open' ? '未対応のコメントはありません' : 'コメントはありません' }));
+  list.forEach((c) => ul.appendChild(commentItem(c, true)));
+}
+
+/* ---- figures ---- */
+function figureForm(f, label, onDone) {
+  f = f || {};
+  const inp = (name, attrs) => el('input', Object.assign({ type: 'text', value: f[name] || '', 'aria-label': name }, attrs || {}));
+  const sel = (name, opts) => { const s = el('select', { 'aria-label': name }); opts.forEach((o) => s.appendChild(el('option', { value: o, text: o }))); s.value = f[name] || opts[0]; return s; };
+  const pageSel = el('select', { 'aria-label': 'ページ' });
+  pageKeys().concat(orderKeys(Math.max(NS(), 2)).filter((k) => !S.model.pages.has(k))).forEach((k) => pageSel.appendChild(el('option', { value: pageLabel(k), text: pageLabel(k) + (pageTitle(k) ? ' ' + pageTitle(k) : '') })));
+  pageSel.value = f['ページ'] || label || pageLabel(pageKeys()[0] || 1);
+  const F = { 'ページ': pageSel, '図版番号': inp('図版番号'), '種別': sel('種別', FIG_KINDS), '内容': el('textarea', { rows: 2, 'aria-label': '内容' }), '手配状況': sel('手配状況', FIG_STATES), '提供元・撮影者': inp('提供元・撮影者'), 'クレジット': inp('クレジット'), 'ファイル': inp('ファイル', { placeholder: 'ドライブなどのURL' }), 'メモ': el('textarea', { rows: 2, 'aria-label': 'メモ' }) };
+  F['内容'].value = f['内容'] || ''; F['メモ'].value = f['メモ'] || '';
+  const save = el('button', { class: 'btn primary' }, f.ID ? '保存' : '追加');
+  const box = el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === '内容' || k === 'メモ' ? ' wide' : '') }, el('span', { text: k }), F[k])),
+    el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => onDone(false) }, 'やめる')));
+  save.addEventListener('click', async () => {
+    const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
+    const r = await busy(save, () => relay('figureSave', { id: f.ID || '', values }));
+    if (!r) return;
+    const obj = rowObj(H_FIGURE, r.row);
+    const i = S.figures.findIndex((x) => x.ID === obj.ID);
+    if (i >= 0) S.figures[i] = obj; else S.figures.push(obj);
+    toast(f.ID ? '図版を更新しました' : '図版を追加しました'); onDone(true);
+  });
+  return box;
+}
+async function deleteFigure(f) {
+  const r = await busy(null, () => relay('figureDelete', { id: f.ID }));
+  if (!r) return;
+  S.figures = S.figures.filter((x) => x !== f); toast('図版を削除しました'); renderViews();
+}
+function figStateChip(v) { const c = v === '確定' ? 'done' : v === '入稿済' ? 'ready' : v === '依頼中' ? 'doing' : 'todo'; return el('span', { class: 'chip st-' + c, text: v || '未定' }); }
+function fileLink(url) { if (!url) return null; return /^https?:\/\//.test(url) ? el('a', { href: url, target: '_blank', rel: 'noopener', text: 'ファイル' }) : el('span', { text: url }); }
+function figureSection(label) {
+  const list = S.figures.filter((f) => f['ページ'] === label);
+  const sec = el('section', { class: 'dsec' }, el('h3', { text: '図版（' + list.length + '）' }));
+  const box = el('div');
+  const draw = () => {
+    box.textContent = '';
+    list.forEach((f) => {
+      const card = el('div', { class: 'fcard' },
+        el('div', { class: 'cmeta' }, el('b', { text: (f['図版番号'] ? f['図版番号'] + ' ' : '') + (f['種別'] || '') }), figStateChip(f['手配状況'])),
+        f['内容'] ? el('p', { text: f['内容'] }) : null,
+        el('p', { class: 'muted' }, [f['提供元・撮影者'], f['クレジット'] ? '© ' + f['クレジット'] : ''].filter(Boolean).join('　'), ' ', fileLink(f['ファイル'])),
+        f['メモ'] ? el('p', { class: 'muted', text: f['メモ'] }) : null);
+      if (canFigures()) {
+        const acts = el('div', { class: 'cacts' }, el('button', { class: 'btn xs', onclick: () => { card.replaceWith(figureForm(f, label, (ch) => { if (ch) renderViews(); else draw(); })); } }, '編集'),
+          armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteFigure(f)));
+        card.appendChild(acts);
+      }
+      box.appendChild(card);
+    });
+    if (!list.length) box.appendChild(el('p', { class: 'muted', text: '図版は登録されていません' }));
+    if (canFigures()) box.appendChild(el('button', { class: 'btn sm', onclick: (e) => { e.target.replaceWith(figureForm(null, label, (ch) => { if (ch) renderViews(); else draw(); })); } }, '図版を追加'));
+  };
+  draw(); sec.appendChild(box);
+  return sec;
+}
+function renderFigures() {
+  const fsel = $('figFilter');
+  if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
+  const want = fsel.value;
+  const order = orderKeys(Math.max(NS(), 2)).map(pageLabel);
+  const list = S.figures.filter((f) => !want || (f['手配状況'] || '未定') === want).slice().sort((a, b) => order.indexOf(a['ページ']) - order.indexOf(b['ページ']) || String(a['図版番号']).localeCompare(String(b['図版番号']), 'ja', { numeric: true }));
+  const t = $('figTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['ページ', '番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', '更新', ''].map((h) => el('th', { text: h })))));
+  const tb = el('tbody');
+  list.forEach((f) => {
+    const k = keyOfLabel(f['ページ']);
+    const tr = el('tr', null,
+      el('td', null, el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, f['ページ'])),
+      el('td', { text: f['図版番号'] }), el('td', { text: f['種別'] }), el('td', { class: 'wrap', text: f['内容'] }), el('td', null, figStateChip(f['手配状況'])),
+      el('td', { text: f['提供元・撮影者'] }), el('td', { text: f['クレジット'] }), el('td', null, fileLink(f['ファイル'])), el('td', { class: 'muted', text: [f['更新者'], f['更新日時']].filter(Boolean).join(' ') }),
+      el('td', null, canFigures() ? el('button', { class: 'btn xs', onclick: () => showFigForm(f) }, '編集') : null));
+    tb.appendChild(tr);
+  });
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 10, class: 'muted', text: '図版は登録されていません' })));
+  t.appendChild(tb);
+  $('btnFigAdd').hidden = !canFigures();
+}
+function showFigForm(f) {
+  const box = $('figFormBox'); box.textContent = '';
+  box.appendChild(figureForm(f, f ? f['ページ'] : '', (ch) => { box.textContent = ''; if (ch) renderViews(); }));
+  if (f && canFigures()) box.firstChild.querySelector('.formacts').appendChild(armButton(el('button', { class: 'btn' }), '削除', 'もう一度押すと削除', () => { box.textContent = ''; deleteFigure(f); }));
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---- progress view ---- */
+function renderProgress() {
+  const stages = stageCols(), keys = pageKeys();
+  const sum = $('progSummary'); sum.textContent = '';
+  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内と外部スタッフが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
+  if (!stages.length) sum.appendChild(el('p', { class: 'muted', text: '工程の列が見つかりません（台割の見出しに「初校」などの列を追加してください）' }));
+  const classes = ['done', 'doing', 'ready', 'todo', 'other', 'none'], names = { done: '確定', doing: '調整中', ready: '着手OK', todo: '未・待ち', other: 'その他', none: '空欄' };
+  stages.forEach((s) => {
+    const cnt = {}; classes.forEach((c) => { cnt[c] = 0; });
+    keys.forEach((k) => { cnt[stateClass(pageStages(k).find((x) => x.col === s.col).value)]++; });
+    const bar = el('div', { class: 'sbar', role: 'img', 'aria-label': s.name + '：' + classes.map((c) => names[c] + cnt[c]).join('、') }, classes.filter((c) => cnt[c]).map((c) => el('i', { class: 'st-' + c, style: 'flex:' + cnt[c], title: names[c] + ' ' + cnt[c] + 'P' })));
+    sum.appendChild(el('div', { class: 'srow' }, el('b', { text: s.name }), bar, el('span', { class: 'muted', text: classes.filter((c) => cnt[c]).map((c) => names[c] + ' ' + cnt[c]).join('　') })));
+  });
+  if (stages.length) sum.appendChild(el('div', { class: 'legend2' }, classes.slice(0, 5).map((c) => el('span', null, el('i', { class: 'st-' + c }), names[c]))));
+  // table
+  const ssel = $('progSection');
+  const cur = ssel.value;
+  ssel.textContent = ''; ssel.appendChild(el('option', { value: '', text: 'すべて' }));
+  S.model.sections.forEach((s) => ssel.appendChild(el('option', { value: s, text: s })));
+  ssel.value = S.model.sections.indexOf(cur) >= 0 ? cur : '';
+  const onlyOpen = $('progOpen').checked;
+  const t = $('progTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, el('th', { text: 'ページ' }), el('th', { text: '内容' }), el('th', { text: 'セクション' }), stages.map((s) => el('th', { text: s.name })), el('th', { text: 'コメント' }), el('th', { text: '図版' }))));
+  const tb = el('tbody');
+  keys.forEach((k) => {
+    const info = S.model.pages.get(k);
+    if (ssel.value && info.section !== ssel.value) return;
+    const st = pageStages(k);
+    if (onlyOpen && st.length && stateClass(st[st.length - 1].value) === 'done') return;
+    const label = pageLabel(k), nC = openComments(label), nF = S.figures.filter((f) => f['ページ'] === label).length;
+    tb.appendChild(el('tr', null,
+      el('td', null, el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, label)),
+      el('td', { class: 'wrap', text: pageTitle(k) }), el('td', { class: 'muted', text: info.section || '' }),
+      st.map((s) => el('td', null, stageSelect(k, s))),
+      el('td', null, nC ? el('span', { class: 'chip st-doing', text: '未対応 ' + nC }) : ''), el('td', { class: 'muted', text: nF || '' })));
+  });
+  t.appendChild(tb);
+}
+
+/* ---- expenses ---- */
+const yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
+const amount = (e) => { const n = Number(String(e['金額（税込）'] || '').replace(/[^\d.-]/g, '')); return isFinite(n) ? n : 0; };
+function renderExpenses() {
+  const list = (S.expenses || []).slice();
+  const sum = $('expSummary'); sum.textContent = '';
+  const total = list.reduce((a, e) => a + amount(e), 0);
+  const approved = list.filter((e) => /済|承認/.test(e['承認'])).reduce((a, e) => a + amount(e), 0);
+  sum.appendChild(el('div', { class: 'kpis' },
+    el('div', { class: 'kpi' }, el('span', { text: '合計' }), el('b', { text: yen(total) })),
+    el('div', { class: 'kpi' }, el('span', { text: '承認済' }), el('b', { text: yen(approved) })),
+    el('div', { class: 'kpi' }, el('span', { text: '件数' }), el('b', { text: list.length + '件' }))));
+  const byKind = {}; list.forEach((e) => { const k = e['区分'] || '未分類'; byKind[k] = (byKind[k] || 0) + amount(e); });
+  const max = Math.max(1, ...Object.values(byKind));
+  sum.appendChild(el('div', { class: 'bars' }, Object.keys(byKind).sort((a, b) => byKind[b] - byKind[a]).map((k) => el('div', { class: 'brow' }, el('span', { text: k }), el('div', { class: 'btrack' }, el('i', { style: 'width:' + (byKind[k] / max * 100).toFixed(1) + '%' })), el('b', { text: yen(byKind[k]) })))));
+  const t = $('expTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
+  const tb = el('tbody');
+  list.sort((a, b) => String(b['日付']).localeCompare(String(a['日付']))).forEach((e) => {
+    tb.appendChild(el('tr', null, el('td', { text: e['日付'] }), el('td', { text: e['区分'] }), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num', text: e['金額（税込）'] ? yen(amount(e)) : '' }), el('td', { text: e['担当'] }),
+      el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
+      el('td', null, e['承認'] ? el('span', { class: 'chip st-' + (/済|承認/.test(e['承認']) ? 'done' : 'todo'), text: e['承認'] }) : ''),
+      el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
+  });
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 9, class: 'muted', text: '経費は登録されていません' })));
+  t.appendChild(tb);
+}
+async function openReceipt(url, btn) {
+  const id = extractDriveId(url);
+  if (!id) { window.open(url, '_blank', 'noopener'); return; }
+  const w = window.open('', '_blank');
+  await busy(btn, async () => {
+    const meta = await relayFileMeta(id);
+    const blob = await relayDownload(meta);
+    const u = URL.createObjectURL(blob);
+    if (w) w.location = u; else window.open(u, '_blank');
+  });
+}
+function showExpForm(e) {
+  e = e || {};
+  const box = $('expFormBox'); box.textContent = '';
+  const today = new Date(); const ymd = today.getFullYear() + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + String(today.getDate()).padStart(2, '0');
+  const F = {
+    '日付': el('input', { type: 'text', value: e['日付'] || ymd, 'aria-label': '日付' }),
+    '区分': (() => { const s = el('select', { 'aria-label': '区分' }); EXP_KINDS.forEach((k) => s.appendChild(el('option', { value: k, text: k }))); s.value = e['区分'] || EXP_KINDS[0]; return s; })(),
+    '内容': el('input', { type: 'text', value: e['内容'] || '', 'aria-label': '内容' }),
+    '支払先': el('input', { type: 'text', value: e['支払先'] || '', 'aria-label': '支払先' }),
+    '金額（税込）': el('input', { type: 'text', inputmode: 'numeric', value: e['金額（税込）'] ? String(amount(e)) : '', 'aria-label': '金額（税込）' }),
+    '担当': el('input', { type: 'text', value: e['担当'] || (S.me ? S.me.name : ''), 'aria-label': '担当' }),
+    '領収書': el('input', { type: 'text', value: e['領収書'] || '', placeholder: 'URL、または右のボタンでアップロード', 'aria-label': '領収書' }),
+    '承認': (() => { const s = el('select', { 'aria-label': '承認' }); ['未承認', '承認済'].forEach((k) => s.appendChild(el('option', { value: k, text: k }))); s.value = e['承認'] || '未承認'; return s; })()
+  };
+  const file = el('input', { type: 'file', accept: 'application/pdf,image/*', hidden: true });
+  const upBtn = el('button', { class: 'btn sm', onclick: () => file.click() }, '領収書をアップロード');
+  file.addEventListener('change', async () => {
+    const f = file.files[0]; if (!f) return;
+    const done = await busy(upBtn, () => relayUpload(f, 'receipt', (p) => { upBtn.textContent = 'アップロード中 ' + Math.round(p * 100) + '%'; }));
+    upBtn.textContent = '領収書をアップロード';
+    if (done) { F['領収書'].value = fileUrl(done.id); toast('領収書をアップロードしました'); }
+  });
+  const save = el('button', { class: 'btn primary' }, e.ID ? '保存' : '追加');
+  save.addEventListener('click', async () => {
+    const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
+    if (!values['内容'] && !values['金額（税込）']) { toast('内容か金額を入力してください', 'err'); return; }
+    const r = await busy(save, () => relay('expenseSave', { id: e.ID || '', values }));
+    if (!r) return;
+    const obj = rowObj(H_EXPENSE, r.row);
+    const i = S.expenses.findIndex((x) => x.ID === obj.ID);
+    if (i >= 0) S.expenses[i] = obj; else S.expenses.push(obj);
+    box.textContent = ''; toast(e.ID ? '経費を更新しました' : '経費を追加しました'); renderExpenses();
+  });
+  const acts = el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => { box.textContent = ''; } }, 'やめる'));
+  if (e.ID) acts.appendChild(armButton(el('button', { class: 'btn' }), '削除', 'もう一度押すと削除', async () => {
+    const r = await busy(null, () => relay('expenseDelete', { id: e.ID }));
+    if (!r) return;
+    S.expenses = S.expenses.filter((x) => x.ID !== e.ID); box.textContent = ''; toast('経費を削除しました'); renderExpenses();
+  }));
+  box.appendChild(el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === '内容' || k === '領収書' ? ' wide' : '') }, el('span', { text: k }), F[k], k === '領収書' ? upBtn : null)), file, acts));
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---- members ---- */
+function renderMembers() {
+  const t = $('memTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['メールアドレス', '名前', '役割', 'メモ', ''].map((h) => el('th', { text: h })))));
+  const tb = el('tbody');
+  S.members.forEach((m) => {
+    const name = el('input', { type: 'text', value: m['名前'] || '', 'aria-label': '名前' });
+    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', '外部スタッフ'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = m['役割'] || '外部スタッフ';
+    const memo = el('input', { type: 'text', value: m['メモ'] || '', 'aria-label': 'メモ' });
+    const save = el('button', { class: 'btn xs' }, '保存');
+    save.addEventListener('click', async () => {
+      const r = await busy(save, () => relay('memberSave', { orig: m['メール'], email: m['メール'], name: name.value, role: roleSel.value, memo: memo.value }));
+      if (r) { m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value; toast('保存しました'); }
+    });
+    const del = armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', async () => {
+      const r = await busy(del, () => relay('memberDelete', { email: m['メール'] }));
+      if (r) { S.members = S.members.filter((x) => x !== m); toast('削除しました'); renderMembers(); }
+    });
+    const me = S.me && String(m['メール']).toLowerCase() === S.me.email;
+    if (me) { roleSel.disabled = true; del.disabled = true; }
+    tb.appendChild(el('tr', null, el('td', { text: m['メール'] + (me ? '（あなた）' : '') }), el('td', null, name), el('td', null, roleSel), el('td', null, memo), el('td', null, save, ' ', del)));
+  });
+  t.appendChild(tb);
+}
+async function addMember(btn) {
+  const email = $('mEmail').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('メールアドレスを確認してください', 'err'); return; }
+  const r = await busy(btn, () => relay('memberSave', { email, name: $('mName').value.trim(), role: $('mRole').value, memo: $('mMemo').value.trim() }));
+  if (!r) return;
+  S.members.push({ 'メール': email.toLowerCase(), '名前': $('mName').value.trim(), '役割': $('mRole').value, 'メモ': $('mMemo').value.trim() });
+  ['mEmail', 'mName', 'mMemo'].forEach((id) => { $(id).value = ''; });
+  toast(email + ' を追加しました。このアドレスのGoogleアカウントでログインできます'); renderMembers();
+}
+
+/* ---- wiring for this module ---- */
+function wirePM() {
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('dClose').addEventListener('click', closeDetail);
+  $('dPrev').addEventListener('click', () => stepDetail(-1));
+  $('dNext').addEventListener('click', () => stepDetail(1));
+  document.querySelectorAll('[data-cfilter]').forEach((b) => b.addEventListener('click', () => {
+    cFilter = b.dataset.cfilter; document.querySelectorAll('[data-cfilter]').forEach((x) => x.classList.toggle('on', x === b)); renderComments();
+  }));
+  $('cSearch').addEventListener('input', renderComments);
+  $('figFilter').addEventListener('change', renderFigures);
+  $('btnFigAdd').addEventListener('click', () => showFigForm(null));
+  $('progSection').addEventListener('change', renderProgress);
+  $('progOpen').addEventListener('change', renderProgress);
+  $('btnExpAdd').addEventListener('click', () => showExpForm(null));
+  $('btnMemAdd').addEventListener('click', (e) => addMember(e.target));
+  $('btnSwitch').addEventListener('click', signOut);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('detail').hidden) closeDetail(); });
+  // others' changes: refresh quietly when coming back to the tab after a while
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.loaded && Date.now() - (S.loadedAt || 0) > 120000) loadProject(); });
 }
 
 /* ===== self-check, wiring, startup ===== */
@@ -2106,7 +2639,7 @@ async function runDiagnosis() {
   const t0 = performance.now();
   lines.push('3D表示: ' + (V.ok ? 'OK' : 'NG（WebGLを開始できません）'));
   lines.push('PDFライブラリ: ' + (window.pdfjsLib ? 'OK ' + (pdfjsLib.version || '') : 'NG（読み込めていません）'));
-  lines.push('APIキー: ' + (CONFIG.apiKey.startsWith('__') ? '未設定' : '設定済み') + ' ／ 編集者ログイン: ' + (signedIn() ? (AUTH.email || 'ログイン中') : 'なし'));
+  lines.push('ログイン: ' + (S.me ? S.me.email + '（' + S.me.role + '）' : 'なし'));
   lines.push('台割: ' + (S.tabName || '—') + '・本文 ' + NS() + 'P');
   lines.push('デザイン登録: ' + S.designs.length + '件 ／ 割当: ' + S.assign.size + '枠');
   S.designs.forEach((d) => { const s = S.sources.get(d.id) || {}; lines.push('  ・' + (d.name || d.id) + '：' + (s.err ? 'NG ' + s.err : (s.pdf ? 'OK ' + s.numPages + 'P' : '未読込'))); });
@@ -2139,7 +2672,12 @@ function wire() {
     await loadProject({ tab: S.tabName });
     b.disabled = false;
   });
-  $('btnLogin').addEventListener('click', onLoginClick);
+  let logoutArmed = 0;
+  $('userChip').addEventListener('click', () => {
+    const u = $('userChip');
+    if (!logoutArmed) { u.dataset.label = u.textContent; u.textContent = 'ログアウトする'; logoutArmed = setTimeout(() => { logoutArmed = 0; u.textContent = u.dataset.label; }, 3000); return; }
+    clearTimeout(logoutArmed); signOut();
+  });
   $('btnOpen').addEventListener('click', () => openSheetFromInput('openUrl', 'landingMsg'));
   $('openUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') openSheetFromInput('openUrl', 'landingMsg'); });
   $('btnOpen2').addEventListener('click', () => openSheetFromInput('openUrl2', 'projMsg'));
@@ -2169,13 +2707,6 @@ function wire() {
   };
   $('btnWide').addEventListener('click', () => setWide(!document.body.classList.contains('wide')));
   try { if (localStorage.getItem('dandori.wide')) setWide(true); } catch (e) { /* ignore */ }
-  $('btnSetPw').addEventListener('click', () => setViewPassword(false));
-  let clearArmed = 0;
-  $('btnClearPw').addEventListener('click', () => {
-    const b = $('btnClearPw');
-    if (!clearArmed) { b.textContent = 'もう一度押すと解除'; clearArmed = setTimeout(() => { clearArmed = 0; b.textContent = '解除する'; }, 3000); return; }
-    clearTimeout(clearArmed); clearArmed = 0; b.textContent = '解除する'; setViewPassword(true);
-  });
   $('btnPrev').addEventListener('click', () => setSpread(Math.round(V.target) - 1, true));
   $('btnNext').addEventListener('click', () => setSpread(Math.round(V.target) + 1, true));
   $('spreadSlider').addEventListener('input', (e) => setSpread(parseInt(e.target.value, 10), true));
@@ -2195,17 +2726,20 @@ function wire() {
 function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
 
 async function start() {
-  initSettingsUI(); wire(); initThree(); syncControls(); applyEditorMode();
+  initSettingsUI(); wire(); wirePM(); initThree(); syncControls(); applyRole();
   await idb.open();
-  if (CONFIG.apiKey.startsWith('__')) { setTop('APIキーが設定されていません（ツールの設定値を入れてください）。', 'err'); }
+  loadSession();
+  if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
   if (!id) {
-    $('landing').hidden = false; $('mainArea').hidden = true;
-    document.querySelectorAll('[data-panel], #btnReload').forEach((b) => { b.disabled = true; });
+    document.body.classList.add('locked');
+    $('landing').hidden = false;
     renderRecent(); return;
   }
   S.sheetId = id;
-  await loadProject();
+  let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
+  if (!signedIn()) { showLogin(); return; }
+  if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }
 }
 start();
 
