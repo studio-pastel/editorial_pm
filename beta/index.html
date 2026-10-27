@@ -1,0 +1,2736 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="robots" content="noindex">
+<title>台割ボード</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600;800&display=swap">
+<style>
+/* Layout: left = 台割 spreads board (scrolls), right = sticky 3D book stage; panels fold open above the board. */
+:root {
+  --bg: #eef1f2;
+  --panel: #ffffff;
+  --panel-2: #e5eaec;
+  --line: #cdd6d9;
+  --fg: #172226;
+  --mute: #5b6b70;
+  --accent: #0d6a78;
+  --accent-fg: #ffffff;
+  --accent-soft: #d3ebee;
+  --warn: #a15c00;
+  --warn-soft: #f6e6c9;
+  --bad: #b3261e;
+  --ok: #2a7a3b;
+  --stage: #d9e0e3;
+  --violet: #6a4fb3;
+  --font-body: "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", "Yu Gothic", sans-serif;
+  --font-display: "Shippori Mincho", "Hiragino Mincho ProN", "Yu Mincho", serif;
+  --font-mono: "IBM Plex Mono", ui-monospace, "SFMono-Regular", Menlo, monospace;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111719; --panel: #182024; --panel-2: #1f2a2f; --line: #2e3c42;
+    --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; --accent-fg: #06262b;
+    --accent-soft: #17383e; --warn: #e2a64a; --warn-soft: #3a2d14; --bad: #ff8a80; --ok: #7bd58a;
+    --stage: #0c1214; --violet: #b49cf2; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111719; --panel: #182024; --panel-2: #1f2a2f; --line: #2e3c42;
+  --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; --accent-fg: #06262b;
+  --accent-soft: #17383e; --warn: #e2a64a; --warn-soft: #3a2d14; --bad: #ff8a80; --ok: #7bd58a;
+  --stage: #0c1214; --violet: #b49cf2; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { height: auto; }
+body {
+  background: var(--bg); color: var(--fg); font-family: var(--font-body); font-size: 14px; line-height: 1.6;
+  padding-block: 0;
+  padding-left: max(16px, env(safe-area-inset-left, 0px));
+  padding-right: max(16px, env(safe-area-inset-right, 0px));
+}
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.wrap { max-width: 1680px; margin: 0 auto; padding-block: 14px 40px; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 18px; padding-bottom: 12px; border-bottom: 1px solid var(--line); }
+.brand { font-family: var(--font-display); font-weight: 800; font-size: 22px; letter-spacing: .04em; margin: 0; }
+.stats { display: flex; flex-wrap: wrap; gap: 6px 14px; font-family: var(--font-mono); font-size: 12px; color: var(--mute); min-width: 0; }
+.stats b { color: var(--fg); font-weight: 500; }
+.stats .warn { color: var(--warn); }
+.spacer { flex: 1 1 auto; }
+.btn { border: 1px solid var(--line); background: var(--panel); border-radius: 6px; padding: 6px 12px; min-height: 34px; }
+.btn:hover { border-color: var(--accent); }
+.btn.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.primary { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn.sm { padding: 3px 9px; min-height: 28px; font-size: 13px; }
+.btn[disabled] { opacity: .45; cursor: default; }
+
+/* panels */
+.panel { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; margin-top: 12px; }
+.panel h2 { margin: 0 0 10px; font-size: 13px; letter-spacing: .08em; color: var(--mute); font-weight: 700; }
+.grid-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; }
+.field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.field > span { font-size: 12px; color: var(--mute); }
+.field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 6px 8px; min-width: 0; width: 100%; }
+.field input[type="color"] { padding: 2px; height: 34px; }
+.field textarea { min-height: 84px; font-family: var(--font-mono); font-size: 12px; resize: vertical; }
+.row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
+.row > .field { flex: 1 1 200px; }
+.msg { margin: 8px 0 0; font-size: 13px; color: var(--mute); min-height: 1.4em; overflow-wrap: anywhere; }
+.msg.err { color: var(--bad); }
+.msg.ok { color: var(--ok); }
+.hint { font-size: 12px; color: var(--mute); margin: 6px 0 0; }
+.cols { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px 12px; margin-top: 10px; }
+.drop { border: 1.5px dashed var(--line); border-radius: 8px; padding: 16px; text-align: center; color: var(--mute); background: var(--bg); }
+.drop.over { border-color: var(--accent); background: var(--accent-soft); color: var(--fg); }
+.srclist { list-style: none; margin: 10px 0 0; padding: 0; display: grid; gap: 6px; }
+.srclist li { display: flex; gap: 8px; align-items: center; justify-content: space-between; border: 1px solid var(--line); border-radius: 6px; padding: 5px 8px; background: var(--bg); min-width: 0; }
+.srclist li span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.srclist small { font-family: var(--font-mono); color: var(--mute); flex: none; }
+.srclist li span { flex: 1 1 auto; }
+.srclist em { font-style: normal; font-size: 12px; color: var(--ok); flex: none; }
+.srclist em.none { color: var(--warn); }
+.diag { display: flex; gap: 12px; align-items: flex-start; margin-top: 10px; padding: 10px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); min-width: 0; }
+.diag canvas { flex: none; border: 1px solid var(--line); background: #fff; }
+.diag pre { margin: 0; font-family: var(--font-mono); font-size: 12px; white-space: pre-wrap; overflow-wrap: anywhere; min-width: 0; }
+
+/* main two-pane */
+.main { display: grid; grid-template-columns: fit-content(46%) minmax(0, 1fr); gap: 20px; margin-top: 14px; align-items: start; }
+.main > section { min-width: 0; }
+/* labels wrap inside the board's width instead of widening the column */
+.boardbar, .legend { width: 0; min-width: 100%; }
+body.wide .main { grid-template-columns: minmax(0, 1fr); }
+body.wide .main > section { display: none; }
+.boardbar { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-bottom: 10px; font-size: 13px; color: var(--mute); }
+.boardbar input[type="range"] { width: 120px; accent-color: var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: 4px 12px; margin-bottom: 10px; }
+.legend i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 5px; vertical-align: -1px; }
+.legend span { font-size: 12px; }
+.board { display: flex; flex-direction: column; gap: 14px; }
+.spread { display: flex; align-items: stretch; gap: 0; width: max-content; max-width: 100%; }
+.spread-wrap { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.spread-wrap.cur .spread { outline: 2px solid var(--accent); outline-offset: 3px; border-radius: 3px; }
+.spread-label { font-family: var(--font-mono); font-size: 11px; color: var(--mute); }
+.spread-scroll { overflow-x: auto; padding: 4px; margin: -4px; }
+.tile { position: relative; flex: none; width: var(--tw, 118px); aspect-ratio: var(--ar, 0.707); background: var(--panel); border: 1px solid var(--line); overflow: hidden; display: flex; flex-direction: column; cursor: pointer; }
+.tile.empty { background: var(--panel-2); border-style: dashed; cursor: default; }
+.tile.over { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.tile .bar { height: 5px; background: var(--sec, var(--line)); flex: none; }
+.tile .no { font-family: var(--font-mono); font-size: 11px; padding: 3px 6px 0; display: flex; justify-content: space-between; color: var(--mute); }
+.tile .tt { font-size: 12px; line-height: 1.35; padding: 2px 6px 6px; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 5; -webkit-box-orient: vertical; flex: 1 1 auto; }
+.tile .note { font-size: 10.5px; color: var(--mute); padding: 0 6px 5px; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile img { position: absolute; inset: 5px 0 0 0; width: 100%; height: calc(100% - 5px); object-fit: cover; }
+.tile.hasimg .no { position: relative; z-index: 1; background: color-mix(in srgb, var(--panel) 78%, transparent); }
+.tile.hasimg .tt, .tile.hasimg .note { display: none; }
+.tile .st { position: absolute; right: 5px; bottom: 5px; width: 8px; height: 8px; border-radius: 50%; background: var(--sec, var(--mute)); z-index: 2; }
+.tile.cur { box-shadow: 0 0 0 2px var(--accent); z-index: 1; }
+.spine-tile { width: 54px; }
+.sidepair { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
+
+/* stage */
+.stage { position: sticky; top: 12px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+.view3d { position: relative; background: var(--stage); height: calc(100vh - 190px); min-height: 380px; touch-action: none; }
+.view3d canvas { display: block; width: 100%; height: 100%; }
+.view3d .ph { position: absolute; inset: 0; display: grid; place-items: center; color: var(--mute); text-align: center; padding: 20px; pointer-events: none; }
+.ctrl { display: flex; flex-wrap: wrap; gap: 8px 10px; align-items: center; padding: 10px 12px; border-top: 1px solid var(--line); }
+.ctrl input[type="range"] { flex: 1 1 140px; min-width: 100px; accent-color: var(--accent); }
+.ctrl .lab { font-family: var(--font-mono); font-size: 12px; color: var(--mute); min-width: 7.5em; text-align: center; }
+.cams { display: flex; flex-wrap: wrap; gap: 6px; padding: 0 12px 12px; }
+.cams .spacer { flex: 1 1 auto; }
+
+@media (max-width: 1000px) {
+  .main { grid-template-columns: minmax(0, 1fr); }
+  .stage { position: static; order: -1; }
+  .view3d { height: 56vh; min-height: 300px; }
+  body.wide .view3d { height: calc(100vh - 190px); }
+}
+@media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+
+.top .btn { padding: 5px 10px; }
+.proj { font-size: 13px; color: var(--mute); max-width: 24ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+.btn.login { border-color: var(--accent); color: var(--accent); }
+.btn.login.on { background: var(--accent-soft); color: var(--fg); }
+.banner { margin: 10px 0 0; padding: 8px 12px; border-radius: 6px; background: var(--warn-soft); color: var(--fg); }
+.banner.err { background: color-mix(in srgb, var(--bad) 14%, var(--panel)); color: var(--fg); }
+.panel h3 { margin: 14px 0 0; font-size: 13px; font-weight: 700; }
+.panel h3 small { font-weight: 400; color: var(--mute); }
+.kv { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; margin: 4px 0; min-width: 0; }
+.kv > span { font-size: 12px; color: var(--mute); min-width: 7em; }
+.kv a, .kv code { overflow-wrap: anywhere; min-width: 0; }
+.kv code { font-family: var(--font-mono); font-size: 12px; background: var(--bg); padding: 2px 6px; border-radius: 4px; }
+.recent { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; }
+.recent a { color: var(--accent); }
+.howto { margin: 14px 0 0; padding-left: 1.4em; color: var(--mute); font-size: 13px; max-width: 75ch; }
+.dlist { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 6px; }
+.dlist li { display: flex; flex-wrap: wrap; gap: 6px 10px; align-items: center; border: 1px solid var(--line); border-radius: 6px; padding: 6px 8px; background: var(--bg); min-width: 0; }
+.dlist .nm { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dlist .meta { font-family: var(--font-mono); font-size: 12px; color: var(--mute); }
+.dlist .err { color: var(--bad); font-size: 12px; flex-basis: 100%; }
+.dlist input { width: 5.5em; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 2px 6px; }
+.dlist a { font-size: 12px; color: var(--accent); }
+.progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
+.progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .2s; }
+#login, #landing { max-width: 520px; margin: 9vh auto 0; }
+#login h2 { font-family: var(--font-display); font-size: 22px; letter-spacing: .04em; color: var(--fg); margin: 0 0 6px; }
+#login p { margin: 0 0 12px; }
+#login .lead { font-weight: 700; font-size: 16px; }
+.gsi { min-height: 44px; margin: 14px 0 8px; }
+body.locked .top > :not(.brand):not(.proj), body.locked .vtabs, body.locked .view, body.locked #detail { display: none !important; }
+.muted { color: var(--mute); }
+
+/* view tabs: the project's main navigation */
+.vtabs { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 12px; border-bottom: 2px solid var(--line); }
+.vtab { position: relative; border: 0; background: transparent; padding: 10px 18px 9px; font-size: 15px; font-weight: 700; color: var(--mute); border-bottom: 3px solid transparent; margin-bottom: -2px; border-radius: 6px 6px 0 0; }
+.vtab:hover { color: var(--fg); background: var(--panel); }
+.vtab.on { color: var(--fg); border-bottom-color: var(--accent); background: var(--panel); }
+.badge { display: inline-block; min-width: 1.5em; margin-left: 6px; padding: 0 6px; border-radius: 999px; background: var(--warn); color: #1d1300; font-size: 12px; line-height: 1.6; text-align: center; font-family: var(--font-mono); }
+.btn.user { border-color: var(--accent); color: var(--fg); max-width: 26ch; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.subbar { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; }
+.btn.xs { padding: 1px 8px; min-height: 24px; font-size: 12px; }
+.btn.sm.on, .seg .btn.on { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.vhead { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 8px 14px; margin-bottom: 8px; }
+.vhead h2 { margin: 0 auto 0 0; }
+.field.inline { flex-direction: row; align-items: center; gap: 6px; }
+.field.inline > span { white-space: nowrap; }
+.field.grow { flex: 1 1 220px; }
+.check { display: inline-flex; gap: 6px; align-items: center; font-size: 13px; }
+.seg { display: inline-flex; gap: 4px; }
+
+/* states */
+.chip { display: inline-block; font-size: 11.5px; line-height: 1.5; padding: 0 7px; border-radius: 999px; border: 1px solid var(--line); background: var(--panel-2); color: var(--fg); white-space: nowrap; }
+.st-done { --c: var(--ok); } .st-doing { --c: var(--warn); } .st-ready { --c: var(--accent); } .st-todo { --c: var(--mute); } .st-other { --c: var(--violet); } .st-none { --c: var(--line); }
+.chip[class*="st-"] { border-color: var(--c); background: color-mix(in srgb, var(--c) 16%, var(--panel)); }
+.stsel { border: 1px solid var(--c, var(--line)); background: color-mix(in srgb, var(--c, var(--line)) 12%, var(--panel)); border-radius: 5px; padding: 3px 6px; max-width: 11em; }
+.tile .tchip { position: absolute; left: 4px; bottom: 4px; right: 18px; z-index: 2; font-size: 10.5px; line-height: 1.5; padding: 0 5px; border-radius: 4px; border-left: 3px solid var(--c); background: color-mix(in srgb, var(--c) 22%, var(--panel)); color: var(--fg); overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
+.tile .cbadge { background: var(--warn); color: #1d1300; border-radius: 999px; padding: 0 6px; font-size: 10.5px; font-family: var(--font-mono); position: relative; z-index: 1; }
+.tile .note { margin-bottom: 16px; }
+
+/* tables */
+.tablewrap { overflow-x: auto; margin-top: 6px; }
+table.grid { border-collapse: collapse; width: 100%; font-size: 13px; }
+table.grid th { text-align: left; font-size: 12px; color: var(--mute); font-weight: 500; padding: 6px 8px; border-bottom: 1px solid var(--line); position: sticky; top: 0; background: var(--panel); white-space: nowrap; }
+table.grid td { padding: 5px 8px; border-bottom: 1px solid var(--line); vertical-align: top; }
+table.grid td.wrap { min-width: 14em; max-width: 30em; }
+table.grid tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transparent); }
+.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); }
+.pagelink { border: 0; background: none; padding: 0; color: var(--accent); font-weight: 700; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; text-align: left; }
+
+/* progress summary */
+.srow { display: grid; grid-template-columns: 6em minmax(0, 1fr); gap: 4px 12px; align-items: center; margin: 8px 0; }
+.srow .muted { grid-column: 2; font-size: 12px; }
+.sbar { display: flex; height: 14px; border-radius: 4px; overflow: hidden; background: var(--panel-2); }
+.sbar i { display: block; background: var(--c); min-width: 2px; }
+.legend2 { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 12px; color: var(--mute); margin-top: 6px; }
+.legend2 i { display: inline-block; width: 10px; height: 10px; border-radius: 2px; background: var(--c); margin-right: 5px; vertical-align: -1px; }
+
+/* comments, figures */
+.clist { list-style: none; padding: 0; margin: 8px 0 0; display: grid; gap: 8px; }
+.citem { border: 1px solid var(--line); border-left: 3px solid var(--warn); border-radius: 6px; padding: 8px 10px; background: var(--panel); }
+.citem.done { border-left-color: var(--ok); opacity: .85; }
+.cmeta { display: flex; flex-wrap: wrap; gap: 4px 10px; align-items: center; font-size: 12.5px; }
+.ctext { margin: 4px 0 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.reply { margin: 8px 0 0 14px; padding-left: 10px; border-left: 2px solid var(--line); }
+.cacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+.replybox, .cform { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
+.replybox textarea, .cform textarea, .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 6px 8px; font: inherit; resize: vertical; }
+.replybox .btn, .cform .btn { align-self: flex-end; }
+.fcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; background: var(--panel); }
+.fcard p { margin: 4px 0 0; overflow-wrap: anywhere; }
+.form { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 8px 12px; border: 1px solid var(--line); border-radius: 8px; padding: 12px; margin: 8px 0 12px; background: var(--bg); }
+.form .field.wide { grid-column: 1 / -1; }
+.form .field input, .form .field select { width: 100%; }
+.formacts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
+.memadd { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; margin-bottom: 10px; }
+.memadd .field input, .memadd .field select { width: 100%; }
+table.grid td input, table.grid td select { border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 3px 6px; max-width: 16em; }
+
+/* expenses */
+.kpis { display: flex; flex-wrap: wrap; gap: 10px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; min-width: 9em; background: var(--bg); }
+.kpi span { display: block; font-size: 12px; color: var(--mute); }
+.kpi b { font-family: var(--font-mono); font-size: 20px; font-variant-numeric: tabular-nums; }
+.bars { display: grid; gap: 6px; margin-top: 14px; max-width: 640px; }
+.brow { display: grid; grid-template-columns: 7em minmax(0, 1fr) 8em; gap: 10px; align-items: center; font-size: 13px; }
+.brow b { font-family: var(--font-mono); text-align: right; font-variant-numeric: tabular-nums; }
+.btrack { height: 12px; background: var(--panel-2); border-radius: 3px; overflow: hidden; }
+.btrack i { display: block; height: 100%; background: var(--accent); }
+
+/* page detail */
+.drawer { position: fixed; top: 0; right: 0; bottom: 0; width: min(440px, 100vw); z-index: 30; background: var(--panel); border-left: 1px solid var(--line); box-shadow: -8px 0 24px color-mix(in srgb, var(--fg) 12%, transparent); display: flex; flex-direction: column; padding-top: env(safe-area-inset-top, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.dhead { display: flex; align-items: center; gap: 6px; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+.dhead h2 { flex: 1 1 auto; margin: 0; font-size: 15px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.dbody { overflow-y: auto; padding: 4px 14px 24px; flex: 1 1 auto; }
+.dsec { border-bottom: 1px solid var(--line); padding: 10px 0 12px; }
+.dsec h3 { margin: 0 0 8px; font-size: 13px; color: var(--mute); letter-spacing: .06em; }
+.kvlist { display: grid; grid-template-columns: 7em minmax(0, 1fr); gap: 3px 10px; margin: 0; font-size: 13px; }
+.kvlist dt { color: var(--mute); }
+.kvlist dd { margin: 0; overflow-wrap: anywhere; white-space: pre-wrap; }
+.stages { display: flex; flex-wrap: wrap; gap: 8px 14px; }
+.stage { display: flex; flex-direction: column; gap: 3px; font-size: 12px; color: var(--mute); }
+@media (min-width: 1200px) { body.has-detail .wrap { padding-right: 456px; } }
+.toast { position: fixed; left: 50%; transform: translateX(-50%); bottom: calc(18px + env(safe-area-inset-bottom, 0px)); z-index: 40; background: var(--fg); color: var(--bg); padding: 9px 16px; border-radius: 8px; font-size: 13px; max-width: min(92vw, 640px); box-shadow: 0 6px 20px color-mix(in srgb, var(--fg) 25%, transparent); }
+.toast.err { background: var(--bad); color: #fff; }
+.pwrow { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; margin-top: 10px; }
+.pwrow .field { flex: 1 1 200px; }
+body:not(.editor) .edonly { display: none !important; }
+body.editor .viewonly { display: none !important; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header class="top">
+    <h1 class="brand">台割ボード</h1>
+    <span class="proj" id="projTitle"></span>
+    <div class="stats" id="stats"></div>
+    <div class="spacer"></div>
+    <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
+    <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
+  </header>
+  <nav class="vtabs" id="viewTabs" aria-label="画面の切り替え">
+    <button class="vtab on" id="vt-board" data-view="board">台割・3D</button>
+    <button class="vtab" id="vt-progress" data-view="progress">進捗</button>
+    <button class="vtab" id="vt-comments" data-view="comments">コメント<b class="badge" id="badgeComments" hidden></b></button>
+    <button class="vtab" id="vt-figures" data-view="figures">図版</button>
+    <button class="vtab" id="vt-expenses" data-view="expenses" hidden>経費</button>
+    <button class="vtab" id="vt-members" data-view="members" hidden>メンバー</button>
+  </nav>
+  <p class="msg banner" id="topMsg" hidden></p>
+
+  <section class="panel" id="login" hidden>
+    <h2>ログイン</h2>
+    <p class="lead" id="loginTitle"></p>
+    <p>この台割ボードは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
+    <div id="gsiBtn" class="gsi"></div>
+    <p class="msg" id="loginMsg"></p>
+    <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
+    <p class="hint">Googleアカウントは、Gmail以外のメールアドレス（大学や会社のアドレス）でも作成できます。ログインに使うアドレスを、この案件の社内担当者に伝えてください。</p>
+  </section>
+
+  <section class="panel" id="landing" hidden>
+    <h2>案件を開く</h2>
+    <div class="row">
+      <label class="field" style="flex:3 1 320px"><span>台割のスプレッドシートのURL</span><input id="openUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+      <button class="btn primary" id="btnOpen">開く</button>
+    </div>
+    <p class="msg" id="landingMsg"></p>
+    <ul class="recent" id="recentList"></ul>
+  </section>
+
+  <!-- ============ 台割・3D ============ -->
+  <div class="view" id="view-board">
+    <div class="subbar">
+      <button class="btn sm" data-panel="panelProject">案件・列</button>
+      <button class="btn sm" data-panel="panelBook">判型・製本</button>
+      <button class="btn sm" data-panel="panelDesign">デザインPDF</button>
+    </div>
+
+    <section class="panel" id="panelProject" hidden>
+      <h2>案件</h2>
+      <p class="kv"><span>スプレッドシート</span><a id="sheetLink" target="_blank" rel="noopener"></a></p>
+      <p class="kv"><span>共有用URL</span><code id="shareUrl"></code><button class="btn sm" id="btnCopyUrl">コピー</button></p>
+      <div class="row" style="margin-top:8px">
+        <label class="field"><span>台割のタブ</span><select id="tabSelect" disabled></select></label>
+        <label class="field" style="flex:3 1 320px"><span>別の案件を開く（スプレッドシートのURL）</span><input id="openUrl2" type="text" autocomplete="off"></label>
+        <button class="btn" id="btnOpen2">開く</button>
+      </div>
+      <h3>列の割り当て <small id="colHint">（自動判別）</small></h3>
+      <div class="cols" id="colMap"></div>
+      <p class="msg" id="projMsg"></p>
+    </section>
+
+    <section class="panel" id="panelBook" hidden>
+      <h2>判型・製本</h2>
+      <div class="grid-form">
+        <label class="field"><span>判型</span><select id="trimPreset" class="ed"></select></label>
+        <label class="field"><span>仕上がり 幅 (mm)</span><input id="trimW" class="ed" type="number" min="40" max="600" step="0.5"></label>
+        <label class="field"><span>仕上がり 高さ (mm)</span><input id="trimH" class="ed" type="number" min="40" max="800" step="0.5"></label>
+        <label class="field"><span>綴じ</span><select id="binding" class="ed"><option value="L">左綴じ（横組み）</option><option value="R">右綴じ（縦組み）</option></select></label>
+        <label class="field"><span>製本</span><select id="bindType" class="ed"><option value="perfect">無線綴じ</option><option value="saddle">中綴じ</option></select></label>
+        <label class="field"><span>本文紙</span><select id="paperPreset" class="ed"></select></label>
+        <label class="field"><span>紙厚 (mm／1枚)</span><input id="paperT" class="ed" type="number" min="0.02" max="0.5" step="0.005"></label>
+        <label class="field"><span>表紙厚 (mm)</span><input id="coverT" class="ed" type="number" min="0.1" max="8" step="0.1"></label>
+        <label class="field"><span>塗り足し (mm)</span><input id="bleed" class="ed" type="number" min="0" max="10" step="0.5"></label>
+        <label class="field"><span>書名（背に表示）</span><input id="bookTitle" class="ed" type="text" autocomplete="off"></label>
+        <label class="field"><span>背と表紙の色</span><input id="coverColor" class="ed" type="color"></label>
+      </div>
+      <label class="field" style="margin-top:10px"><span>デザインフォルダ（空欄なら初回アップロード時に自動で作成）</span><input id="folderUrl" class="ed" type="text" autocomplete="off" placeholder="https://drive.google.com/drive/folders/…"></label>
+      <div class="row" style="margin-top:10px">
+        <button class="btn primary edonly" id="btnSaveSet">設定をシートに保存</button>
+        <span class="msg" id="bookMsg" style="margin:0"></span>
+      </div>
+      <p class="msg" id="spineInfo"></p>
+      <p class="hint">PDFのページが仕上がりより大きい場合（塗り足し・トンボ付き）は、サイズから判別して仕上がり範囲だけを貼ります。判別できないときに「塗り足し」の値を使います。</p>
+    </section>
+
+    <section class="panel" id="panelDesign" hidden>
+      <h2>デザインPDF</h2>
+      <div class="edonly">
+        <div class="drop" id="dropZone">片ページのPDFをここへドラッグ、または<button class="btn sm" id="btnPick" style="margin-left:6px">ファイルを選ぶ</button>
+          <input id="designFile" type="file" accept="application/pdf" multiple hidden>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <label class="field" style="flex:0 1 260px"><span>これからアップロードするPDFを貼り始めるページ（1／表1／表2／表3／表4／背）</span><input id="upStart" type="text" value="1" autocomplete="off"></label>
+          <p class="hint" style="flex:1 1 300px;margin:0">ドライブのデザインフォルダに保存し、「デザイン」タブに記録します。台割のページ枠に直接ドロップすると、そのページから貼ります。複数のPDFは選んだ順に続けて貼ります。</p>
+        </div>
+        <div class="progress" id="upProg" hidden><i id="upBar"></i></div>
+      </div>
+      <p class="hint viewonly">PDFの登録と貼る位置の変更は、社内メンバーが行えます。</p>
+      <h3>登録済みのデザイン <small class="edonly">（貼る位置は各行の入力欄で変更。入力して Enter で保存）</small></h3>
+      <ul class="dlist" id="designList"></ul>
+      <div class="row" style="margin-top:8px">
+        <button class="btn sm" id="btnDiag">表示の診断</button>
+        <span class="msg" id="designMsg" style="margin:0"></span>
+      </div>
+      <div class="diag" id="diagBox" hidden><canvas id="diagCanvas" width="84" height="119"></canvas><pre id="diagOut"></pre></div>
+    </section>
+
+    <div class="main" id="mainArea">
+      <section>
+        <div class="boardbar">
+          <span id="boardInfo"></span>
+          <label>枠の大きさ <input id="tileSize" type="range" min="70" max="200" value="118"></label>
+        </div>
+        <div class="legend" id="legend"></div>
+        <div class="board" id="board"></div>
+      </section>
+      <aside class="stage">
+        <div class="view3d" id="view3d"><div class="ph" id="stagePh">台割を読み込むと、ここに立体の書籍が表示されます。</div></div>
+        <div class="ctrl">
+          <button class="btn sm" id="btnPrev" aria-label="前の見開き">◀</button>
+          <input type="range" id="spreadSlider" min="0" max="1" value="0" aria-label="見開き位置">
+          <button class="btn sm" id="btnNext" aria-label="次の見開き">▶</button>
+          <span class="lab" id="spreadLabel">—</span>
+        </div>
+        <div class="cams">
+          <button class="btn sm" data-cam="closed">表紙</button>
+          <button class="btn sm" data-cam="oblique">斜め</button>
+          <button class="btn sm" data-cam="top">真上</button>
+          <button class="btn sm" data-cam="fore">小口側</button>
+          <button class="btn sm" data-cam="spine">背</button>
+          <button class="btn sm" data-cam="back">裏表紙</button>
+          <span class="spacer"></span>
+          <button class="btn sm" id="btnWide" aria-pressed="false">3Dだけを表示</button>
+        </div>
+      </aside>
+    </div>
+  </div>
+
+  <!-- ============ 進捗 ============ -->
+  <div class="view" id="view-progress" hidden>
+    <section class="panel"><h2>工程ごとの進み具合</h2><div id="progSummary"></div></section>
+    <section class="panel">
+      <div class="vhead">
+        <h2>ページごとの進捗</h2>
+        <label class="field inline"><span>セクション</span><select id="progSection"></select></label>
+        <label class="check"><input type="checkbox" id="progOpen"> 未確定のページだけ</label>
+      </div>
+      <p class="hint" id="progHint"></p>
+      <div class="tablewrap"><table class="grid" id="progTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ コメント ============ -->
+  <div class="view" id="view-comments" hidden>
+    <section class="panel">
+      <div class="vhead">
+        <h2>コメント</h2>
+        <div class="seg" role="group" aria-label="表示するコメント">
+          <button class="btn sm on" data-cfilter="open">未対応</button>
+          <button class="btn sm" data-cfilter="all">すべて</button>
+        </div>
+        <label class="field inline grow"><span>検索</span><input id="cSearch" type="search" autocomplete="off" placeholder="本文・ページ・名前"></label>
+      </div>
+      <p class="hint">ページへのコメントは、台割のページをクリックして開く「ページ詳細」から書き込めます。</p>
+      <ul class="clist" id="commentList"></ul>
+    </section>
+  </div>
+
+  <!-- ============ 図版 ============ -->
+  <div class="view" id="view-figures" hidden>
+    <section class="panel">
+      <div class="vhead">
+        <h2>図版</h2>
+        <label class="field inline"><span>手配状況</span><select id="figFilter"></select></label>
+        <button class="btn primary can-figure" id="btnFigAdd">図版を追加</button>
+      </div>
+      <div id="figFormBox"></div>
+      <div class="tablewrap"><table class="grid" id="figTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ 経費 ============ -->
+  <div class="view" id="view-expenses" hidden>
+    <section class="panel"><h2>経費の集計</h2><div id="expSummary"></div></section>
+    <section class="panel">
+      <div class="vhead">
+        <h2>経費の一覧</h2>
+        <button class="btn primary edonly" id="btnExpAdd">経費を追加</button>
+      </div>
+      <div id="expFormBox"></div>
+      <div class="tablewrap"><table class="grid" id="expTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ メンバー ============ -->
+  <div class="view" id="view-members" hidden>
+    <section class="panel">
+      <h2>メンバー</h2>
+      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／外部スタッフ：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
+      <div class="memadd">
+        <label class="field"><span>メールアドレス（Googleアカウント）</span><input id="mEmail" type="email" autocomplete="off"></label>
+        <label class="field"><span>名前</span><input id="mName" type="text" autocomplete="off"></label>
+        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>外部スタッフ</option></select></label>
+        <label class="field"><span>メモ</span><input id="mMemo" type="text" autocomplete="off"></label>
+        <button class="btn primary" id="btnMemAdd">追加</button>
+      </div>
+      <div class="tablewrap"><table class="grid" id="memTable"></table></div>
+    </section>
+  </div>
+</div>
+
+<aside class="drawer" id="detail" hidden aria-label="ページ詳細">
+  <header class="dhead">
+    <button class="btn sm" id="dPrev" aria-label="前のページ">◀</button>
+    <h2 id="dTitle"></h2>
+    <button class="btn sm" id="dNext" aria-label="次のページ">▶</button>
+    <button class="btn sm" id="dClose" aria-label="閉じる">閉じる</button>
+  </header>
+  <div class="dbody" id="dBody"></div>
+</aside>
+<div class="toast" id="toast" hidden role="status"></div>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script>
+/* ===== core: constants, parsing, spread logic (pure, no DOM) ===== */
+const MAX_PAGES = 250;
+const KEY_LABEL = { F: '表1', IF: '表2', IB: '表3', B: '表4', S: '背' };
+const TRIMS = [
+  { id: 'A4', name: 'A4 (210×297)', w: 210, h: 297 },
+  { id: 'B5', name: 'B5 (182×257)', w: 182, h: 257 },
+  { id: 'A5', name: 'A5 (148×210)', w: 148, h: 210 },
+  { id: 'kiku', name: '菊判 (150×220)', w: 150, h: 220 },
+  { id: 'B6', name: 'B6 (128×182)', w: 128, h: 182 },
+  { id: 'shiroku', name: '四六判 (127×188)', w: 127, h: 188 },
+  { id: 'shinsho', name: '新書判 (112×173)', w: 112, h: 173 },
+  { id: 'A6', name: 'A6・文庫 (105×148)', w: 105, h: 148 },
+  { id: 'sq210', name: 'A4正方形 (210×210)', w: 210, h: 210 },
+  { id: 'custom', name: '任意サイズ', w: 0, h: 0 }
+];
+const PAPERS = [
+  { id: 'jou70', name: '上質紙 70kg（目安）', t: 0.09 },
+  { id: 'jou90', name: '上質紙 90kg（目安）', t: 0.11 },
+  { id: 'jou110', name: '上質紙 110kg（目安）', t: 0.14 },
+  { id: 'coat90', name: 'コート 90kg（目安）', t: 0.08 },
+  { id: 'matte90', name: 'マットコート 90kg（目安）', t: 0.09 },
+  { id: 'book', name: '書籍用紙 72.5kg（目安）', t: 0.12 },
+  { id: 'custom', name: '任意の厚み', t: 0 }
+];
+const DEFAULTS = {
+  trim: 'A4', w: 210, h: 297, binding: 'L', bindType: 'perfect',
+  paper: 'jou90', t: 0.11, c: 0.4, bleed: 3, title: '', color: '#27474f',
+  sheetUrl: '', tab: '', range: 'A1:Z600', colMap: null
+};
+
+function z2h(s) {
+  return String(s == null ? '' : s).replace(/[０-９]/g, c => String.fromCharCode(c.charCodeAt(0) - 0xFEE0))
+    .replace(/[－−‐‑‒–—]/g, '-').replace(/[〜～~]/g, '~').replace(/[，、・／/]/g, ',').replace(/\s+/g, ' ').trim();
+}
+
+function parseKeyText(s) {
+  const t = z2h(s).replace(/^p\.?\s*/i, '').replace(/\s*(p|ページ|頁)$/i, '');
+  if (!t) return null;
+  if (/^\d+$/.test(t)) return parseInt(t, 10);
+  if (/^(表1|表紙|オモテ|表一|cover|front)$/i.test(t)) return 'F';
+  if (/^(表2|表二|見返し|見返し前|表紙裏)$/i.test(t)) return 'IF';
+  if (/^(表3|表三|見返し後)$/i.test(t)) return 'IB';
+  if (/^(表4|表四|裏表紙|裏|back)$/i.test(t)) return 'B';
+  if (/^(背|背表紙|spine)$/i.test(t)) return 'S';
+  return null;
+}
+
+/** "12" "12-15" "表1" "3,4" -> array of keys (numbers or F/IF/IB/B/S) */
+function parsePageSpec(s) {
+  const t = z2h(s);
+  if (!t) return [];
+  const out = [];
+  t.split(',').forEach(part => {
+    part = part.trim();
+    if (!part) return;
+    const m = part.match(/^(?:p\.?\s*)?(\d+)\s*(?:p|ページ|頁)?\s*[-~]\s*(?:p\.?\s*)?(\d+)\s*(?:p|ページ|頁)?$/i);
+    if (m) {
+      let a = +m[1], b = +m[2];
+      if (b < a) { const x = a; a = b; b = x; }
+      if (b - a > 400) b = a + 400;
+      for (let i = a; i <= b; i++) out.push(i);
+      return;
+    }
+    const k = parseKeyText(part);
+    if (k !== null) out.push(k);
+  });
+  return out;
+}
+
+function keyLabel(k) { return typeof k === 'number' ? 'P' + k : (KEY_LABEL[k] || String(k)); }
+
+/* ---- CSV / TSV ---- */
+function parseDelimited(text) {
+  text = String(text || '').replace(/^﻿/, '');
+  const firstLine = text.split(/\r?\n/, 1)[0] || '';
+  const delim = (firstLine.match(/\t/g) || []).length >= (firstLine.match(/,/g) || []).length && /\t/.test(text) ? '\t' : ',';
+  const rows = []; let row = [], cur = '', q = false;
+  for (let i = 0; i < text.length; i++) {
+    const ch = text[i];
+    if (q) {
+      if (ch === '"') { if (text[i + 1] === '"') { cur += '"'; i++; } else q = false; }
+      else cur += ch;
+    } else if (ch === '"' && cur === '') q = true;
+    else if (ch === delim) { row.push(cur); cur = ''; }
+    else if (ch === '\n' || ch === '\r') {
+      if (ch === '\r' && text[i + 1] === '\n') i++;
+      row.push(cur); rows.push(row); row = []; cur = '';
+    } else cur += ch;
+  }
+  if (cur !== '' || row.length) { row.push(cur); rows.push(row); }
+  return rows.filter(r => r.some(c => String(c).trim() !== ''));
+}
+
+/* ---- header detection ---- */
+const HEAD_RULES = [
+  ['count', /ページ数|頁数|枚数|P数|ボリューム|分量|count/i],
+  ['page', /^(ページ|頁|p|pp|page|no\.?|ノンブル|ページ番号|頁番号|台割|ページ割)$/i],
+  ['title', /内容|タイトル|見出し|題|項目|コンテンツ|title|テーマ|記事|企画|コーナー/i],
+  ['section', /区分|セクション|章|カテゴリ|分類|部門|section|category|chapter|パート|ブロック/i],
+  ['kind', /^(種別|ページ種別|種類|タイプ|type|形式)$/i],
+  ['note', /備考|メモ|note|コメント|memo|補足|担当/i],
+  ['status', /状態|ステータス|進捗|status|進行|初校|再校|校正/i]
+];
+const EMPTY_MAP = () => ({ page: -1, title: -1, kind: -1, section: -1, note: -1, status: -1, count: -1 });
+function detectColumns(rows) {
+  let hi = -1, best = 0, map = null;
+  const lim = Math.min(rows.length, 12);
+  for (let r = 0; r < lim; r++) {
+    const m = EMPTY_MAP();
+    let hit = 0;
+    rows[r].forEach((cell, ci) => {
+      const t = z2h(cell);
+      if (!t) return;
+      for (const [k, re] of HEAD_RULES) {
+        if (m[k] === -1 && re.test(t) && !Object.values(m).includes(ci)) { m[k] = ci; hit++; break; }
+      }
+    });
+    if (hit > best) { best = hit; hi = r; map = m; }
+  }
+  if (best === 0) {
+    const m = EMPTY_MAP();
+    const first = rows[0] || [];
+    if (first.length > 1 && parsePageSpec(first[0]).length) { m.page = 0; m.title = 1; if (first.length > 2) m.section = 2; }
+    else { m.title = 0; if (first.length > 1) m.section = 1; }
+    return { headerRow: -1, map: m };
+  }
+  if (map.title === -1) {
+    const used = new Set(Object.values(map));
+    const c = (rows[hi] || []).findIndex((_, i) => !used.has(i) && z2h(rows[hi][i]));
+    if (c >= 0) map.title = c;
+  }
+  return { headerRow: hi, map };
+}
+
+/* ---- build the dummy model ---- */
+function buildModel(rows, map, headerRow) {
+  const pages = new Map();      // key -> {key,title,section,note,status,row}
+  const sections = [];          // names in order
+  let curSection = '', cursor = 1, maxN = 0;
+  const cell = (r, c) => (c >= 0 && c < r.length ? String(r[c] == null ? '' : r[c]).trim() : '');
+  for (let ri = headerRow + 1; ri < rows.length; ri++) {
+    const r = rows[ri];
+    const title = cell(r, map.title), kind = cell(r, map.kind), note = cell(r, map.note), status = cell(r, map.status);
+    let sec = cell(r, map.section);
+    let keys = [];
+    if (map.page >= 0) {
+      keys = parsePageSpec(cell(r, map.page));
+      if (!keys.length) {
+        if (title && !sec && !note && !status && !kind && !cell(r, map.count)) { curSection = title; if (!sections.includes(curSection)) sections.push(curSection); }
+        continue;
+      }
+    } else if (map.count >= 0) {
+      const n = parseInt(z2h(cell(r, map.count)).replace(/[^\d]/g, ''), 10);
+      const special = parseKeyText(title);
+      if (typeof special === 'string') keys = [special];
+      else if (n > 0) { for (let i = 0; i < n && cursor <= 400; i++) keys.push(cursor++); }
+      else continue;
+    } else {
+      if (!title && !sec && !note) continue;
+      const special = parseKeyText(title);
+      if (typeof special === 'string') keys = [special]; else keys = [cursor++];
+    }
+    if (sec) curSection = sec;
+    sec = sec || curSection;
+    if (sec && !sections.includes(sec)) sections.push(sec);
+    const nums = keys.filter(k => typeof k === 'number');
+    keys.forEach((k, idx) => {
+      if (typeof k === 'number') { if (k > maxN) maxN = k; if (k > 400) return; }
+      pages.set(k, { key: k, title, kind, section: sec, note, status, span: keys.length > 1 ? nums.length : 1, row: ri });
+    });
+    if (map.page >= 0 && nums.length) cursor = Math.max(cursor, Math.max(...nums) + 1);
+  }
+  const missing = [];
+  for (let i = 1; i <= maxN; i++) if (!pages.has(i)) missing.push(i);
+  return { pages, sections, n: maxN, missing };
+}
+
+/* ---- spreads ---- */
+function paddedN(N) { return N % 2 ? N + 1 : N; }
+function leafCount(N) { return Math.max(1, paddedN(N) / 2); }   // body leaves m (each leaf = 1 sheet = 2 pages)
+function spreadCount(N) { return leafCount(N) + 2; }              // s = 0 .. m+1
+function backOf(i) { return i === 0 ? 'IF' : 2 * i; }
+function frontOf(i) { return i === 0 ? 'F' : 2 * i - 1; }
+/** screen-order pair for spread s. binding 'L' (spine left) or 'R' (spine right) */
+function spreadKeys(s, N, binding) {
+  const m = leafCount(N);
+  let origin, other;
+  if (s <= 0) { origin = 'F'; other = null; }
+  else if (s <= m) { other = backOf(s - 1); origin = frontOf(s); }
+  else { other = backOf(m); origin = 'IB'; }
+  return binding === 'R' ? { left: origin, right: other } : { left: other, right: origin };
+}
+function spreadOfKey(k, N) {
+  const m = leafCount(N);
+  if (k === 'F') return 0;
+  if (k === 'IF') return 1;
+  if (k === 'IB' || k === 'B') return m + 1;
+  if (typeof k === 'number') return k % 2 ? (k + 1) / 2 : k / 2 + 1;
+  return 0;
+}
+function orderKeys(N) {
+  const out = ['F', 'IF'];
+  for (let i = 1; i <= paddedN(N); i++) out.push(i);
+  out.push('IB', 'B');
+  return out;
+}
+function spineWidthMM(N, t, c) { return +(leafCount(N) * t + 2 * c).toFixed(2); }
+function signatureNote(N, type) {
+  if (!N) return '';
+  const Np = paddedN(N);
+  if (type === 'saddle') return Np % 4 === 0 ? '中綴じ：4の倍数でOK' : '中綴じは4の倍数が必要（あと' + (4 - Np % 4) + 'P）';
+  const up = (u) => Math.ceil(Np / u) * u;
+  if (Np % 16 === 0) return '16P単位でOK';
+  const a = Np % 8 === 0 ? '8P単位でOK' : '8P単位まであと' + (up(8) - Np) + 'P';
+  return a + '／16P単位まであと' + (up(16) - Np) + 'P';
+}
+function sectionHue(i) { return Math.round((i * 137.508 + 188) % 360); }
+
+
+/* ---- column letters ---- */
+function colName(i) { let s = '', n = i; do { s = String.fromCharCode(65 + (n % 26)) + s; n = Math.floor(n / 26) - 1; } while (n >= 0); return s; }
+function colIndex(letters) {
+  const t = String(letters || '').trim().toUpperCase();
+  if (!/^[A-Z]{1,2}$/.test(t)) return -1;
+  let n = 0; for (const ch of t) n = n * 26 + (ch.charCodeAt(0) - 64);
+  return n - 1;
+}
+
+/* ---- Google IDs ---- */
+function extractSheetId(s) {
+  s = String(s || '').trim();
+  const m = s.match(/\/spreadsheets\/d\/([a-zA-Z0-9_-]+)/);
+  if (m) return m[1];
+  return /^[a-zA-Z0-9_-]{25,}$/.test(s) ? s : '';
+}
+function extractDriveId(s) {
+  s = String(s || '').trim();
+  let m = s.match(/\/(?:file\/d|folders|document\/d|spreadsheets\/d)\/([a-zA-Z0-9_-]{10,})/);
+  if (m) return m[1];
+  m = s.match(/[?&]id=([a-zA-Z0-9_-]{10,})/);
+  if (m) return m[1];
+  return /^[a-zA-Z0-9_-]{20,}$/.test(s) ? s : '';
+}
+
+/* ---- 「設定」tab: two columns, 項目 | 値 ---- */
+const SETTING_KEYS = [
+  ['w', '判型幅（mm）'], ['h', '判型高さ（mm）'], ['binding', '綴じ'], ['bindType', '製本'],
+  ['t', '本文紙の厚み（mm）'], ['c', '表紙の厚み（mm）'], ['bleed', '塗り足し（mm）'],
+  ['title', '書名'], ['color', '背と表紙の色'], ['folder', 'デザインフォルダ'], ['tab', '台割タブ'], ['receiptFolder', '領収書フォルダ'],
+  ['col_page', 'ページ列'], ['col_title', '内容列'], ['col_kind', '種別列'], ['col_section', '区分列'],
+  ['col_note', '備考列'], ['col_status', '状態列'], ['col_count', 'ページ数列']
+];
+const COL_KEYS = ['page', 'title', 'kind', 'section', 'note', 'status', 'count'];
+function parseSettingsRows(rows) {
+  const byLabel = {};
+  (rows || []).forEach((r) => { if (r && r[0] != null) byLabel[String(r[0]).trim()] = r[1] == null ? '' : String(r[1]).trim(); });
+  const out = {}, cols = {};
+  SETTING_KEYS.forEach(([k, label]) => {
+    const v = byLabel[label];
+    if (v === undefined || v === '') return;
+    if (k.startsWith('col_')) { if (/^(-|なし|使わない)$/.test(v)) { cols[k.slice(4)] = -1; return; } const i = colIndex(v); if (i >= 0) cols[k.slice(4)] = i; return; }
+    if (['w', 'h', 't', 'c', 'bleed'].includes(k)) { const n = parseFloat(z2h(v)); if (isFinite(n) && n >= 0) out[k] = n; return; }
+    if (k === 'binding') { out.binding = /右/.test(v) ? 'R' : 'L'; return; }
+    if (k === 'bindType') { out.bindType = /中/.test(v) ? 'saddle' : 'perfect'; return; }
+    if (k === 'color') { if (/^#[0-9a-f]{6}$/i.test(v)) out.color = v; return; }
+    out[k] = v;
+  });
+  return { set: out, cols };
+}
+function settingsToRows(set, cols) {
+  const val = {
+    w: set.w, h: set.h, binding: set.binding === 'R' ? '右綴じ' : '左綴じ', bindType: set.bindType === 'saddle' ? '中綴じ' : '無線綴じ',
+    t: set.t, c: set.c, bleed: set.bleed, title: set.title || '', color: set.color || '', folder: set.folder || '', tab: set.tab || '', receiptFolder: set.receiptFolder || ''
+  };
+  COL_KEYS.forEach((k) => { const c = cols ? cols[k] : undefined; val['col_' + k] = c === undefined ? '' : (c < 0 ? 'なし' : colName(c)); });
+  return [['項目', '値']].concat(SETTING_KEYS.map(([k, label]) => [label, val[k] === undefined || val[k] === null ? '' : String(val[k])]));
+}
+
+/* ---- 「デザイン」tab: ファイル | ファイル名 | PDFページ開始 | PDFページ終了 | 割当開始 | 登録日時 ---- */
+const DESIGN_HEADER = ['ファイル', 'ファイル名', 'PDFページ開始', 'PDFページ終了', '割当開始', '登録日時'];
+function parseDesignRows(rows) {
+  const list = [];
+  (rows || []).forEach((r, i) => {
+    if (!r) return;
+    const id = extractDriveId(r[0]);
+    if (!id) return;   // header or blank
+    const from = parseInt(z2h(r[2]), 10), to = parseInt(z2h(r[3]), 10);
+    const start = parseKeyText(r[4]);
+    list.push({
+      row: i + 1, id, name: String(r[1] || '').trim(),
+      from: from > 0 ? from : 1, to: to > 0 ? to : null,
+      start: start === null ? 1 : start, startText: String(r[4] || '').trim(), date: String(r[5] || '').trim()
+    });
+  });
+  return list;
+}
+/** later rows win on overlap. pageCount(id) -> number|null used when 終了 is blank */
+function computeAssignments(designs, N, pageCount, autos) {
+  const assign = new Map(), order = orderKeys(Math.max(N, 2));
+  designs.forEach((d) => {
+    let to = d.to;
+    if (!to) { const pc = pageCount(d.id); to = pc || d.from; }
+    if (to < d.from) return;
+    if (d.start === 'S') { assign.set('S', { src: d.id, page: d.from, half: null }); return; }
+    let i = order.findIndex((k) => String(k) === String(d.start));
+    if (i < 0) return;
+    for (let p = d.from; p <= to && i < order.length; p++, i++) assign.set(String(order[i]), { src: d.id, page: p, half: null, row: d.row });
+  });
+  // PDFs that sit in the design folder but have no row: name order, into the free body pages from P1
+  let cur = 1;
+  (autos || []).forEach((f) => {
+    const n = pageCount(f.id);
+    if (!n) return;
+    for (let p = 1; p <= n; p++) {
+      while (cur <= N && assign.has(String(cur))) cur++;
+      if (cur > N) return;
+      assign.set(String(cur), { src: f.id, page: p, half: null, auto: true });
+      cur++;
+    }
+  });
+  return assign;
+}
+function naturalSort(list) { return list.slice().sort((a, b) => String(a.name).localeCompare(String(b.name), 'ja', { numeric: true, sensitivity: 'base' })); }
+
+if (false) {
+  module.exports = { DESIGN_HEADER, parseKeyText, parsePageSpec, detectColumns, buildModel, spreadKeys, spreadOfKey, orderKeys, leafCount, spreadCount, spineWidthMM, signatureNote, paddedN, colName, colIndex, extractSheetId, extractDriveId, parseSettingsRows, settingsToRows, parseDesignRows, computeAssignments, naturalSort };
+}
+
+/* ===== relay: every read and write goes through the Apps Script relay; sign-in = Google ID token ===== */
+const CONFIG = { relayUrl: 'https://script.google.com/macros/s/AKfycbxMrLbqXxx3qNizdkk9G1S1xhQwpaSlSYqYr20-18z4K3tK1-O8Y2n0FwDRRafXOxE-Zw/exec', clientId: '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com' };
+
+class RelayError extends Error { constructor(code, message) { super(message); this.code = code; } }
+const AUTH = { session: '', email: '', name: '' };
+function loadSession() { try { const j = JSON.parse(localStorage.getItem('dandori.session') || 'null'); if (j && j.session) Object.assign(AUTH, j); } catch (e) { /* none */ } }
+function saveSession() { try { localStorage.setItem('dandori.session', JSON.stringify(AUTH)); } catch (e) { /* this browser keeps no memory */ } }
+function clearSession() { AUTH.session = ''; AUTH.email = ''; AUTH.name = ''; try { localStorage.removeItem('dandori.session'); } catch (e) { /* ignore */ } }
+const signedIn = () => !!AUTH.session;
+
+async function relay(action, params, opts) {
+  opts = opts || {};
+  const body = Object.assign({ action, sheet: S.sheetId, session: AUTH.session }, params || {});
+  let res;
+  try { res = await fetch(CONFIG.relayUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify(body), redirect: 'follow' }); }
+  catch (e) { throw new RelayError('network', '中継スクリプトに接続できませんでした（ネットワークを確認してください）'); }
+  let j;
+  try { j = await res.json(); }
+  catch (e) { throw new RelayError('server', '中継スクリプトの応答を読めませんでした（' + res.status + '）。デプロイの設定「アクセスできるユーザー：全員」を確認してください'); }
+  if (!j || !j.ok) {
+    const err = new RelayError((j && j.code) || 'server', (j && j.message) || '中継スクリプトでエラーが起きました');
+    if (err.code === 'auth' && !opts.quiet) { clearSession(); showLogin(err.message); }
+    throw err;
+  }
+  return j;
+}
+
+/* ---- sign-in with Google (identity only: no Drive or Sheets permission is asked) ---- */
+function loadGis() {
+  if (window.google && google.accounts && google.accounts.id) return Promise.resolve();
+  return new Promise((res, rej) => {
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client'; s.async = true;
+    s.onload = () => res(); s.onerror = () => rej(new RelayError('network', 'Googleのログイン画面を読み込めませんでした'));
+    document.head.appendChild(s);
+  });
+}
+let gisReady = false;
+async function showLogin(msg) {
+  document.body.classList.add('locked');
+  $('login').hidden = false; $('landing').hidden = true;
+  $('loginTitle').textContent = S.sheetTitle ? '「' + S.sheetTitle + '」' : '台割ボード';
+  setMsg('loginMsg', msg || '', msg ? 'err' : '');
+  try {
+    await loadGis();
+    if (!gisReady) {
+      google.accounts.id.initialize({ client_id: CONFIG.clientId, callback: onCredential, auto_select: false, cancel_on_tap_outside: true, use_fedcm_for_prompt: true });
+      gisReady = true;
+    }
+    $('gsiBtn').textContent = '';
+    google.accounts.id.renderButton($('gsiBtn'), { theme: 'outline', size: 'large', text: 'signin_with', shape: 'rectangular', locale: 'ja', width: 280 });
+  } catch (e) { setMsg('loginMsg', e.message, 'err'); }
+}
+async function onCredential(resp) {
+  setMsg('loginMsg', '確認中…');
+  try {
+    const r = await relay('auth', { idToken: resp && resp.credential }, { quiet: true });
+    Object.assign(AUTH, { session: r.session, email: r.email, name: r.name });
+    saveSession();
+    $('login').hidden = true; document.body.classList.remove('locked');
+    await loadProject();
+  } catch (e) {
+    setMsg('loginMsg', e.message, 'err');
+    $('btnSwitch').hidden = e.code !== 'not_member';
+  }
+}
+function signOut() {
+  clearSession();
+  try { google.accounts.id.disableAutoSelect(); } catch (e) { /* not loaded */ }
+  location.reload();
+}
+
+/* ---- files through the relay ---- */
+function b64ToBytes(b64) { const s = atob(b64); const u = new Uint8Array(s.length); for (let i = 0; i < s.length; i++) u[i] = s.charCodeAt(i); return u; }
+function blobToBase64(blob) {
+  return new Promise((res, rej) => { const r = new FileReader(); r.onload = () => res(String(r.result).split(',')[1] || ''); r.onerror = () => rej(new RelayError('read', 'ファイルを読めませんでした')); r.readAsDataURL(blob); });
+}
+async function relayFileMeta(id) { return relay('fileMeta', { id }); }
+async function relayDownload(meta, onProgress) {
+  const parts = []; let off = 0;
+  while (off < meta.size) {
+    const r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 });
+    const b = b64ToBytes(r.data);
+    if (!b.length) break;
+    parts.push(b); off += b.length;
+    if (onProgress) onProgress(off / meta.size);
+  }
+  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした');
+  return new Blob(parts, { type: meta.mime || 'application/pdf' });
+}
+async function relayUpload(file, target, onProgress) {
+  const init = await relay('uploadInit', { name: file.name, size: file.size, mime: file.type || (/\.pdf$/i.test(file.name) ? 'application/pdf' : ''), target: target || 'design' });
+  let off = 0, done = null;
+  while (off < file.size) {
+    const part = file.slice(off, off + init.chunk);
+    const r = await relay('uploadChunk', { uploadId: init.uploadId, offset: off, data: await blobToBase64(part) });
+    off += part.size;
+    if (onProgress) onProgress(off / file.size);
+    if (r.done) done = r.file;
+  }
+  if (!done) throw new RelayError('drive', 'アップロードが完了しませんでした');
+  return done;
+}
+
+/* ===== state, PDF cache, rendering ===== */
+const $ = (id) => document.getElementById(id);
+const S = {
+  set: Object.assign({}, DEFAULTS, { folder: '', tab: '' }),
+  colOverride: {},              // from 「設定」: key -> column index
+  sheetId: '', sheetTitle: '', tabs: [], tabName: '',
+  rows: null, headerRow: -1, map: null,
+  model: { pages: new Map(), sections: [], n: 0, missing: [] },
+  designs: [],                  // rows of 「デザイン」
+  me: null, members: [], comments: [], figures: [], expenses: null, statusOptions: {}, settingsRows: [],
+  folderFiles: [], folderErr: '', // PDFs in the design folder
+  sources: new Map(),           // drive file id -> {id,name,kind:'pdf',blob,numPages,pdf,err}
+  assign: new Map(),            // kstr -> {src, page, half}
+  thumbs: new Map(),            // kstr -> data url
+  loading: false
+};
+const kstr = (k) => String(k);
+const NS = () => S.model.n;
+
+/* ---- IndexedDB: downloaded PDFs, keyed by file id + checksum ---- */
+const idb = {
+  db: null,
+  open() {
+    return new Promise((res) => {
+      try {
+        const rq = indexedDB.open('dandori-pages', 1);
+        rq.onupgradeneeded = () => { rq.result.createObjectStore('pdf', { keyPath: 'k' }); };
+        rq.onsuccess = () => { idb.db = rq.result; res(true); };
+        rq.onerror = () => res(false);
+        rq.onblocked = () => res(false);
+      } catch (e) { res(false); }
+    });
+  },
+  tx(mode, fn) {
+    return new Promise((res) => {
+      if (!idb.db) return res(null);
+      try {
+        const t = idb.db.transaction('pdf', mode);
+        const r = fn(t.objectStore('pdf'));
+        t.oncomplete = () => res(r && r.result !== undefined ? r.result : true);
+        t.onerror = () => res(null); t.onabort = () => res(null);
+      } catch (e) { res(null); }
+    });
+  },
+  get(k) { return idb.tx('readonly', (os) => os.get(k)); },
+  all() { return idb.tx('readonly', (os) => os.getAll()); },
+  put(v) { return idb.tx('readwrite', (os) => os.put(v)); },
+  del(k) { return idb.tx('readwrite', (os) => os.delete(k)); }
+};
+async function cachePrune(keep) {
+  const all = await idb.all();
+  if (!Array.isArray(all) || all.length <= keep) return;
+  all.sort((a, b) => (a.t || 0) - (b.t || 0));
+  for (const r of all.slice(0, all.length - keep)) await idb.del(r.k);
+}
+
+if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+function srcFor(id, name) {
+  let s = S.sources.get(id);
+  if (!s) { s = { id, name: name || '', kind: 'pdf', blob: null, numPages: 0, pdf: null, err: '' }; S.sources.set(id, s); }
+  if (name && !s.name) s.name = name;
+  return s;
+}
+const blobLoads = new Map();
+/** bytes from this browser's cache (same version) or through the relay */
+function loadBlob(src) {
+  if (src.blob) return Promise.resolve(src.blob);
+  if (blobLoads.has(src.id)) return blobLoads.get(src.id);
+  const p = (async () => {
+    let meta;
+    try { meta = await relayFileMeta(src.id); } catch (e) { src.err = e.message; throw new Error(src.err); }
+    if (meta.name && !src.name) src.name = meta.name;
+    const k = src.id + ':' + meta.v;
+    const hit = await idb.get(k);
+    if (hit && hit.blob) { src.blob = hit.blob; idb.put(Object.assign({}, hit, { t: Date.now() })); return src.blob; }
+    try { src.blob = await relayDownload(meta); } catch (e) { src.err = e.message; throw new Error(src.err); }
+    await idb.put({ k, id: src.id, blob: src.blob, t: Date.now() });
+    cachePrune(40);
+    return src.blob;
+  })();
+  blobLoads.set(src.id, p);
+  p.catch(() => blobLoads.delete(src.id));
+  return p;
+}
+async function getPdf(src) {
+  if (src.pdf) return src.pdf;
+  if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+  const blob = await loadBlob(src);
+  if (src.pdf) return src.pdf;
+  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise;
+  src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
+  return pdf;
+}
+async function getBitmap(src) { throw new Error('画像には対応していません'); }
+
+/* ---- region geometry: which part of the source page becomes the book page ---- */
+function regionFor(nw, nh, half, pt) {
+  const W = S.set.w, H = S.set.h;
+  if (pt && !half) {
+    // PDF page in points: a page larger than the trim by an even margin (bleed, crop marks) is cut to the trim, centred
+    const wmm = nw * 25.4 / 72, hmm = nh * 25.4 / 72, bx = (wmm - W) / 2, by = (hmm - H) / 2;
+    if (bx > -0.8 && by > -0.8 && bx < 30 && by < 30 && Math.abs(bx - by) < 2) {
+      const k = 72 / 25.4, x = Math.max(0, bx) * k, y = Math.max(0, by) * k;
+      return { x, y, w: Math.min(nw - 2 * x, W * k), h: Math.min(nh - 2 * y, H * k) };
+    }
+  }
+  const b = Math.max(0, S.set.bleed || 0);
+  let x0 = 0, x1 = nw, y0 = 0, y1 = nh;
+  if (b > 0) {
+    const fy = b / (H + 2 * b);
+    y0 = nh * fy; y1 = nh * (1 - fy);
+    if (!half) { const fx = b / (W + 2 * b); x0 = nw * fx; x1 = nw * (1 - fx); }
+    else {
+      const fx = b / (2 * W + 2 * b);
+      if (half === 'L') { x0 = nw * fx; x1 = nw / 2; } else { x0 = nw / 2; x1 = nw * (1 - fx); }
+    }
+  } else if (half) { if (half === 'L') x1 = nw / 2; else x0 = nw / 2; }
+  // cover-fit to trim aspect
+  const ar = W / H, rw = x1 - x0, rh = y1 - y0;
+  if (rw / rh > ar) { const nw2 = rh * ar, d = (rw - nw2) / 2; x0 += d; x1 -= d; }
+  else { const nh2 = rw / ar, d = (rh - nh2) / 2; y0 += d; y1 -= d; }
+  return { x: x0, y: y0, w: x1 - x0, h: y1 - y0 };
+}
+
+/* one render at a time; 3D textures (hi) jump ahead of board thumbnails (lo) */
+const RQ = { hi: [], lo: [], running: false };
+function queueRender(fn, hi) {
+  return new Promise((res) => {
+    (hi ? RQ.hi : RQ.lo).push(async () => { try { res(await fn()); } catch (e) { res(undefined); } });
+    pumpRender();
+  });
+}
+async function pumpRender() {
+  if (RQ.running) return;
+  RQ.running = true;
+  try {
+    while (RQ.hi.length || RQ.lo.length) { const job = RQ.hi.length ? RQ.hi.shift() : RQ.lo.shift(); await job(); }
+  } finally { RQ.running = false; }
+}
+
+/** Draw the assigned design for a key into a new canvas of width px (null if none/fails). */
+async function renderAssigned(a, widthPx) {
+  const src = S.sources.get(a.src);
+  if (!src) return null;
+  const outW = Math.max(16, Math.round(widthPx)), outH = Math.round(outW * S.set.h / S.set.w);
+  const out = document.createElement('canvas'); out.width = outW; out.height = outH;
+  const g = out.getContext('2d');
+  g.fillStyle = '#ffffff'; g.fillRect(0, 0, outW, outH);
+  if (src.kind === 'img') {
+    const bmp = await getBitmap(src);
+    const r = regionFor(bmp.width, bmp.height, a.half);
+    g.imageSmoothingQuality = 'high';
+    g.drawImage(bmp, r.x, r.y, r.w, r.h, 0, 0, outW, outH);
+    return out;
+  }
+  const pdf = await getPdf(src);
+  const page = await pdf.getPage(a.page || 1);
+  const v1 = page.getViewport({ scale: 1 });
+  const r = regionFor(v1.width, v1.height, a.half, true);
+  let scale = outW / r.w;
+  const maxSide = 4096;
+  if (v1.width * scale > maxSide || v1.height * scale > maxSide) scale = Math.min(maxSide / v1.width, maxSide / v1.height);
+  const vp = page.getViewport({ scale });
+  const tmp = document.createElement('canvas'); tmp.width = Math.ceil(vp.width); tmp.height = Math.ceil(vp.height);
+  await page.render({ canvasContext: tmp.getContext('2d'), viewport: vp, background: 'rgb(255,255,255)' }).promise;
+  g.imageSmoothingQuality = 'high';
+  g.drawImage(tmp, r.x * scale, r.y * scale, r.w * scale, r.h * scale, 0, 0, outW, outH);
+  tmp.width = tmp.height = 0;
+  return out;
+}
+
+/* ---- thumbnails (data: URLs for the board — blob: images may be refused by the viewer's CSP) ---- */
+const thumbBusy = new Set();
+function dropThumb(k) { S.thumbs.delete(k); }
+function makeThumb(k) {
+  const a = S.assign.get(k);
+  if (!a || thumbBusy.has(k)) return;
+  if (k === 'S') { refreshTile(k); return; }
+  thumbBusy.add(k);
+  queueRender(async () => {
+    try {
+      const cur = S.assign.get(k);
+      if (!cur) return;
+      const cv = await renderAssigned(cur, 260);
+      if (!cv) return;
+      const url = cv.toDataURL('image/jpeg', 0.82);
+      if (S.assign.get(k) !== cur) return;
+      S.thumbs.set(k, url);
+      refreshTile(k);
+    } catch (e) {
+      S.thumbErr = (S.thumbErr || 0) + 1;
+      if (S.onRenderError) S.onRenderError(k, e);
+    } finally { thumbBusy.delete(k); }
+  });
+}
+
+
+/* ---- assignments come from the 「デザイン」 tab ---- */
+function applyAssignments(next) {
+  const changed = new Set();
+  S.assign.forEach((v, k) => { const n = next.get(k); if (!n || n.src !== v.src || n.page !== v.page) changed.add(k); });
+  next.forEach((v, k) => { if (!S.assign.has(k)) changed.add(k); });
+  S.assign = next;
+  changed.forEach((k) => { dropThumb(k); texDrop(k); makeThumb(k); refreshTile(k); });
+  return changed.size;
+}
+
+/* ===== board: 台割 grid, stats, drag & drop ===== */
+const tileEls = new Map();   // kstr -> element
+let curSpread = 0;
+
+function secColor(name) {
+  const i = S.model.sections.indexOf(name);
+  return i < 0 ? 'var(--line)' : 'hsl(' + sectionHue(i) + ' 56% 48%)';
+}
+function pageInfo(k) {
+  const info = S.model.pages.get(k);
+  if (info) return info;
+  return null;
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+
+function makeTile(k) {
+  const N = NS(), el = document.createElement('div');
+  const info = pageInfo(k), isPad = typeof k === 'number' && k > N;
+  el.className = 'tile'; el.dataset.k = kstr(k); el.tabIndex = 0;
+  if (info && info.section) el.style.setProperty('--sec', secColor(info.section));
+  const label = keyLabel(k);
+  const title = isPad ? '（調整用の白ページ）' : (info ? (info.title || info.kind) : '');
+  const noteTxt = info ? [info.title ? info.kind : '', info.section, info.note].filter(Boolean).join(' ／ ') : '';
+  const cs = typeof currentStage === 'function' ? currentStage(k) : null;
+  const nC = typeof openComments === 'function' ? openComments(label) : 0;
+  el.innerHTML = '<div class="bar"></div><div class="no"><span>' + esc(label) + '</span>' + (nC ? '<b class="cbadge" title="未対応のコメント">' + nC + '</b>' : '') + '</div>' +
+    '<div class="tt">' + esc(title) + '</div><div class="note">' + esc(noteTxt) + '</div>' +
+    (cs ? '<span class="tchip st-' + stateClass(cs.value) + '" title="' + esc(cs.name + '：' + cs.value) + '">' + esc(cs.name + ' ' + cs.value) + '</span>' : '') + '<i class="st"></i>';
+  if (!info && !isPad && typeof k === 'number') el.querySelector('.tt').style.color = 'var(--mute)';
+  el.title = label + (title ? '：' + title : '');
+  el.addEventListener('click', () => selectPage(k));
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectPage(k); } });
+  el.addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); el.classList.add('over'); } });
+  el.addEventListener('dragleave', () => el.classList.remove('over'));
+  el.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); e.stopPropagation(); el.classList.remove('over'); dropOnTile([...e.dataTransfer.files], k); });
+  tileEls.set(kstr(k), el);
+  applyTileImage(el, kstr(k));
+  return el;
+}
+function hasFiles(e) { return e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'); }
+function applyTileImage(el, key) {
+  if (key === 'S') { const tt = el.querySelector('.tt'); if (tt) tt.textContent = S.assign.has('S') ? '割当済' : ''; return; }
+  const url = S.thumbs.get(key);
+  let img = el.querySelector('img');
+  if (url) {
+    if (!img) { img = document.createElement('img'); img.alt = ''; img.draggable = false; el.insertBefore(img, el.querySelector('.st')); }
+    img.src = url; el.classList.add('hasimg');
+  } else { if (img) img.remove(); el.classList.remove('hasimg'); }
+}
+function refreshTile(key) { const el = tileEls.get(kstr(key)); if (el) applyTileImage(el, kstr(key)); renderStats(); }
+
+function emptyTile() { const e = document.createElement('div'); e.className = 'tile empty'; return e; }
+
+function renderBoard() {
+  const board = $('board'); tileEls.clear(); board.textContent = '';
+  const N = NS();
+  const sp = S.set;
+  board.style.setProperty('--ar', (sp.w / sp.h).toFixed(4));
+  board.style.setProperty('--tw', $('tileSize').value + 'px');
+  if (!N) {
+    board.innerHTML = '<div class="panel" style="margin:0"><h2>' + (S.loading ? '読み込み中…' : '台割がありません') + '</h2><p style="margin:0">' + (S.loading ? 'スプレッドシートを読み込んでいます。' : '公開用スプレッドシートの「台割」タブにページ列と内容を入れ、「再読み込み」を押してください。') + '</p></div>';
+    renderLegend(); renderStats(); return;
+  }
+  const m = leafCount(N);
+  // cover row: 表1 + 背
+  {
+    const wrap = document.createElement('div'); wrap.className = 'spread-wrap'; wrap.dataset.s = '0';
+    wrap.innerHTML = '<div class="spread-label">表紙まわり</div>';
+    const row = document.createElement('div'); row.className = 'sidepair';
+    row.appendChild(makeTile('F'));
+    const sp2 = makeTile('S'); sp2.classList.add('spine-tile'); sp2.style.aspectRatio = 'auto'; sp2.style.height = 'calc(var(--tw) / var(--ar))';
+    row.appendChild(sp2);
+    wrap.appendChild(row); board.appendChild(wrap);
+  }
+  for (let s = 1; s <= m + 1; s++) {
+    const keys = spreadKeys(s, N, sp.binding);
+    const wrap = document.createElement('div'); wrap.className = 'spread-wrap'; wrap.dataset.s = String(s);
+    const a = keys.left, b = keys.right;
+    const lab = [a, b].map((k) => (k === null ? '' : keyLabel(k))).filter(Boolean).join(' | ');
+    wrap.innerHTML = '<div class="spread-label">見開き ' + s + '　' + esc(lab) + '</div>';
+    const sc = document.createElement('div'); sc.className = 'spread-scroll';
+    const row = document.createElement('div'); row.className = 'spread';
+    row.appendChild(a === null ? emptyTile() : makeTile(a));
+    row.appendChild(b === null ? emptyTile() : makeTile(b));
+    sc.appendChild(row); wrap.appendChild(sc); board.appendChild(wrap);
+  }
+  {
+    const wrap = document.createElement('div'); wrap.className = 'spread-wrap'; wrap.dataset.s = 'back';
+    wrap.innerHTML = '<div class="spread-label">裏表紙</div>';
+    const row = document.createElement('div'); row.className = 'sidepair'; row.appendChild(makeTile('B'));
+    wrap.appendChild(row); board.appendChild(wrap);
+  }
+  S.assign.forEach((_, k) => { if (!S.thumbs.has(k)) makeThumb(k); });
+  renderLegend(); renderStats(); markCurrent(curSpread);
+}
+
+function renderLegend() {
+  const lg = $('legend'); lg.textContent = '';
+  S.model.sections.forEach((name) => {
+    const s = document.createElement('span');
+    s.innerHTML = '<i style="background:' + secColor(name) + '"></i>' + esc(name);
+    lg.appendChild(s);
+  });
+}
+
+function markCurrent(s) {
+  curSpread = s;
+  document.querySelectorAll('.spread-wrap.cur').forEach((e) => e.classList.remove('cur'));
+  const w = document.querySelector('.spread-wrap[data-s="' + s + '"]');
+  if (w) w.classList.add('cur');
+}
+
+function renderStats() {
+  const N = NS(), st = $('stats'), sp = S.set;
+  if (!N) { st.innerHTML = '<span>本文 <b>—</b></span>'; $('boardInfo').textContent = ''; $('spineInfo').textContent = '背幅の目安：本文ページ数が決まると計算します。'; return; }
+  const Np = paddedN(N), spine = spineWidthMM(N, sp.t, sp.c);
+  const total = Np + 4, placed = S.assign.size;
+  const bits = ['<span>本文 <b>' + N + 'P</b></span>'];
+  if (Np !== N) bits.push('<span class="warn">奇数ページのため ' + Np + 'P に調整</span>');
+  bits.push('<span>見開き <b>' + (leafCount(N) + 1) + '</b></span>');
+  bits.push('<span>背幅 <b>' + spine + 'mm</b></span>');
+  bits.push('<span>' + esc(signatureNote(N, sp.bindType)) + '</span>');
+  if (N > MAX_PAGES) bits.push('<span class="warn">目安の' + MAX_PAGES + 'Pを超えています</span>');
+  if (S.model.missing.length) bits.push('<span class="warn">未記入 ' + S.model.missing.length + 'P</span>');
+  bits.push('<span>デザイン <b>' + placed + '</b>／' + total + '</span>');
+  st.innerHTML = bits.join('');
+  $('boardInfo').textContent = '本文 ' + N + 'P（' + (sp.binding === 'L' ? '左綴じ' : '右綴じ') + '・' + (sp.bindType === 'saddle' ? '中綴じ' : '無線綴じ') + '）';
+  $('spineInfo').textContent = '背幅の目安 ' + spine + ' mm＝（' + leafCount(N) + '枚×' + sp.t + 'mm）＋表紙 ' + sp.c + 'mm×2　※糊代・ミゾの分は含みません';
+}
+
+
+/* ===== 3D book (three.js r128): textures ===== */
+const TEX_W = 1024, PH_W = 512;
+const V = {
+  ok: false, renderer: null, scene: null, camera: null, book: null,
+  p: 0, target: 0, dirty: true, raf: 0, last: 0,
+  th: 0.5, ph: 0.7, r: 600, tth: 0.5, tph: 0.7, tr: 600, camTween: false, tx: 0, ty: 0, tz: 0,
+  objs: null, inUse: new Set()
+};
+const texCache = new Map();   // kstr -> {tex, hi, hiReq, canvas}
+function colr(hex) { const c = new THREE.Color(hex); return c.convertSRGBToLinear ? c.convertSRGBToLinear() : c; }
+
+function gutterOnRight(k) {
+  const R = S.set.binding === 'R';
+  if (typeof k === 'number') return R ? k % 2 === 1 : k % 2 === 0;
+  if (k === 'IF') return !R;
+  if (k === 'IB') return R;
+  return null;
+}
+function addGutter(cv, k) {
+  const right = gutterOnRight(k);
+  if (right === null) return;
+  const g = cv.getContext('2d'), w = cv.width, h = cv.height, gw = w * 0.1;
+  const x0 = right ? w - gw : 0, x1 = right ? w : gw;
+  const gr = g.createLinearGradient(right ? x0 : x1, 0, right ? x1 : x0, 0);
+  gr.addColorStop(0, 'rgba(0,0,0,0)'); gr.addColorStop(1, 'rgba(0,0,0,0.20)');
+  g.fillStyle = gr; g.fillRect(x0, 0, gw, h);
+}
+function wrapText(g, text, maxW, maxLines) {
+  const lines = []; let cur = '';
+  for (const ch of String(text)) {
+    if (g.measureText(cur + ch).width > maxW && cur) { lines.push(cur); cur = ch; if (lines.length >= maxLines) break; }
+    else cur += ch;
+  }
+  if (lines.length < maxLines && cur) lines.push(cur);
+  return lines;
+}
+function drawPlaceholder(k, w) {
+  const h = Math.round(w * S.set.h / S.set.w), cv = document.createElement('canvas');
+  cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'), info = S.model.pages.get(k), N = NS();
+  const isCover = k === 'F' || k === 'B';
+  const sec = info && info.section ? 'hsl(' + sectionHue(Math.max(0, S.model.sections.indexOf(info.section))) + ',56%,48%)' : '#9aa9ae';
+  g.fillStyle = isCover ? S.set.color : '#f8f7f3'; g.fillRect(0, 0, w, h);
+  const fg = isCover ? '#ffffff' : '#1d2a2e', mute = isCover ? 'rgba(255,255,255,.7)' : '#6b7a7f';
+  if (!isCover) { g.fillStyle = sec; g.fillRect(0, 0, w, h * 0.022); }
+  g.textBaseline = 'top';
+  const fs = w / 12;
+  g.fillStyle = mute; g.font = '500 ' + (fs * 1.1) + 'px "IBM Plex Mono", monospace';
+  g.fillText(keyLabel(k), w * 0.08, h * 0.05);
+  if (info && info.section) { g.font = '500 ' + (fs * 0.8) + 'px "Zen Kaku Gothic New", sans-serif'; g.textAlign = 'right'; g.fillText(info.section, w * 0.92, h * 0.056); g.textAlign = 'left'; }
+  let title = info ? (info.title || info.kind) : '';
+  if (typeof k === 'number' && k > N) title = '（調整用の白ページ）';
+  if (k === 'F' && !title) title = S.set.title;
+  g.fillStyle = fg; g.font = '700 ' + (fs * 1.9) + 'px "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif';
+  const lines = wrapText(g, title, w * 0.84, 5);
+  lines.forEach((ln, i) => g.fillText(ln, w * 0.08, h * 0.2 + i * fs * 2.5));
+  if (info && info.note) {
+    g.fillStyle = mute; g.font = '400 ' + (fs * 0.9) + 'px "Zen Kaku Gothic New", sans-serif';
+    wrapText(g, info.note, w * 0.84, 3).forEach((ln, i) => g.fillText(ln, w * 0.08, h * 0.2 + lines.length * fs * 2.5 + fs * 0.8 + i * fs * 1.3));
+  }
+  if (!S.assign.has(kstr(k)) && k !== 'S') {
+    g.fillStyle = mute; g.font = '400 ' + (fs * 0.8) + 'px "Zen Kaku Gothic New", sans-serif';
+    g.fillText('デザイン未割当', w * 0.08, h * 0.93);
+  }
+  addGutter(cv, k);
+  return cv;
+}
+function mkTex(cv) {
+  const t = new THREE.CanvasTexture(cv);
+  t.encoding = THREE.sRGBEncoding; t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter;
+  t.generateMipmaps = false;
+  if (V.renderer) t.anisotropy = Math.min(8, V.renderer.capabilities.getMaxAnisotropy());
+  return t;
+}
+function spineSize() {
+  const N = Math.max(NS(), 2), T = Math.max(0.6, spineWidthMM(N, S.set.t, S.set.c)), H = S.set.h;
+  const ch = Math.min(2048, Math.round(H * 8)), cw = Math.max(24, Math.round(ch * T / H));
+  return { cw, ch, T };
+}
+async function drawSpine(cv, withDesign) {
+  const g = cv.getContext('2d'), w = cv.width, h = cv.height;
+  const a = S.assign.get('S');
+  if (withDesign && a && S.sources.has(a.src)) {
+    const src = S.sources.get(a.src);
+    if (src.kind === 'img') { g.drawImage(await getBitmap(src), 0, 0, w, h); return true; }
+    const pdf = await getPdf(src), page = await pdf.getPage(a.page || 1), v1 = page.getViewport({ scale: 1 });
+    const sc = Math.min(3000 / v1.width, 3000 / v1.height, Math.max(w / v1.width, h / v1.height) * 1.5);
+    const vp = page.getViewport({ scale: sc }), tmp = document.createElement('canvas');
+    tmp.width = Math.ceil(vp.width); tmp.height = Math.ceil(vp.height);
+    await page.render({ canvasContext: tmp.getContext('2d'), viewport: vp, background: 'rgb(255,255,255)' }).promise;
+    g.drawImage(tmp, 0, 0, tmp.width, tmp.height, 0, 0, w, h); return true;
+  }
+  g.fillStyle = S.set.color; g.fillRect(0, 0, w, h);
+  const T = spineSize().T;
+  if (S.set.title && T >= 2.5) {
+    const chars = Array.from(S.set.title), fs = Math.min(w * 0.62, (h * 0.8) / Math.max(chars.length, 1));
+    g.fillStyle = '#ffffff'; g.textAlign = 'center'; g.textBaseline = 'middle';
+    g.font = '700 ' + fs + 'px "Zen Kaku Gothic New", "Hiragino Kaku Gothic ProN", sans-serif';
+    chars.forEach((ch, i) => g.fillText(ch, w / 2, h * 0.1 + fs * (i + 0.5) * 1.02));
+  }
+  return false;
+}
+function texFor(k) {
+  const key = kstr(k);
+  V.inUse.add(key);
+  let ent = texCache.get(key);
+  if (ent) return ent.tex;
+  let cv;
+  if (key === 'S') { const sz = spineSize(); cv = document.createElement('canvas'); cv.width = sz.cw; cv.height = sz.ch; drawSpine(cv, false); }
+  else cv = drawPlaceholder(k, PH_W);
+  ent = { tex: mkTex(cv), hi: false, hiReq: false };
+  texCache.set(key, ent);
+  if (texCache.size > 22) texEvict();
+  const a = S.assign.get(key);
+  if (a && !ent.hiReq) {
+    ent.hiReq = true;
+    queueRender(async () => {
+      try {
+        if (texCache.get(key) !== ent) return;
+        let out;
+        if (key === 'S') { const sz = spineSize(); out = document.createElement('canvas'); out.width = sz.cw; out.height = sz.ch; if (!(await drawSpine(out, true))) return; }
+        else { out = await renderAssigned(a, TEX_W); if (!out) return; addGutter(out, k); }
+        if (texCache.get(key) !== ent) return;
+        ent.tex.image = out; ent.tex.needsUpdate = true; ent.hi = true; invalidate();
+      } catch (e) { if (S.onRenderError) S.onRenderError(key, e); }
+    }, true);
+  }
+  return ent.tex;
+}
+function texEvict() {
+  for (const [key, ent] of texCache) {
+    if (texCache.size <= 18) break;
+    if (V.inUse.has(key)) continue;
+    ent.tex.dispose(); texCache.delete(key);
+  }
+}
+function texDrop(k) {
+  const key = kstr(k), ent = texCache.get(key);
+  if (ent) { ent.tex.dispose(); texCache.delete(key); }
+  if (V.ok) invalidate();
+}
+function texClearAll() {
+  texCache.forEach((e) => e.tex.dispose()); texCache.clear();
+  if (V.ok) invalidate();
+}
+function gotoCurrentTextures() { if (V.ok) invalidate(); }
+
+/* ===== 3D book: scene, layout, orbit, animation ===== */
+function invalidate() { V.dirty = true; if (!V.raf) { V.last = performance.now(); V.raf = requestAnimationFrame(tick); } }
+
+function edgeTex(vertical) {
+  const cv = document.createElement('canvas');
+  cv.width = vertical ? 2 : 32; cv.height = vertical ? 32 : 2;
+  const g = cv.getContext('2d');
+  for (let i = 0; i < 32; i++) {
+    g.fillStyle = i % 2 ? '#e6e2d8' : '#f7f5ef';
+    if (vertical) g.fillRect(0, i, 2, 1); else g.fillRect(i, 0, 1, 2);
+  }
+  const t = new THREE.CanvasTexture(cv); t.encoding = THREE.sRGBEncoding; t.generateMipmaps = false;
+  t.minFilter = THREE.LinearFilter; t.magFilter = THREE.LinearFilter; return t;
+}
+function faceMat() { return new THREE.MeshBasicMaterial({ color: 0xffffff }); }
+function bindMat(mat, key) {
+  if (key === null || key === undefined) { if (mat.map) { mat.map = null; mat.needsUpdate = true; } mat.userData.key = null; return; }
+  const t = texFor(key);
+  if (mat.map !== t) { const had = !!mat.map; mat.map = t; if (!had) mat.needsUpdate = true; }
+  mat.userData.key = kstr(key);
+}
+
+function initThree() {
+  if (!window.THREE) { $('stagePh').textContent = '3Dライブラリを読み込めませんでした。台割ボードはそのまま使えます。'; return; }
+  try {
+    const host = $('view3d');
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: false });
+    renderer.outputEncoding = THREE.sRGBEncoding;
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    host.insertBefore(renderer.domElement, host.firstChild);
+    V.renderer = renderer;
+    V.scene = new THREE.Scene();
+    V.camera = new THREE.PerspectiveCamera(32, 1, 5, 20000);
+    V.camera.up.set(0, 1, 0);
+    V.scene.add(new THREE.AmbientLight(0xffffff, 0.8));
+    const dl = new THREE.DirectionalLight(0xffffff, 0.45); dl.position.set(-300, 400, 800); V.scene.add(dl);
+    V.ok = true;
+    const ro = new ResizeObserver(() => { resize(); });
+    ro.observe(host);
+    bindOrbit(host);
+    resize();
+    setBg();
+    matchMedia('(prefers-color-scheme: dark)').addEventListener('change', () => { setBg(); invalidate(); });
+    new MutationObserver(() => { setBg(); invalidate(); }).observe(document.documentElement, { attributes: true, attributeFilter: ['data-theme'] });
+  } catch (e) {
+    V.ok = false; $('stagePh').textContent = 'この環境では3D表示を開始できませんでした（' + (e && e.message ? e.message : 'WebGL') + '）。';
+  }
+}
+function setBg() {
+  if (!V.scene) return;
+  const c = getComputedStyle($('view3d')).backgroundColor;
+  V.scene.background = new THREE.Color(c);
+}
+function resize() {
+  if (!V.ok) return;
+  const host = $('view3d'), w = Math.max(200, host.clientWidth), h = Math.max(200, host.clientHeight);
+  V.renderer.setSize(w, h, false);
+  V.camera.aspect = w / h; V.camera.updateProjectionMatrix();
+  invalidate();
+}
+
+function disposeBook() {
+  if (!V.book) return;
+  V.scene.remove(V.book);
+  V.book.traverse((o) => {
+    if (o.geometry) o.geometry.dispose();
+    const ms = o.material ? (Array.isArray(o.material) ? o.material : [o.material]) : [];
+    ms.forEach((m) => { if (m.userData && m.userData.own && m.map) m.map.dispose(); m.dispose(); });
+  });
+  V.book = null; V.objs = null;
+}
+
+/** (re)build geometry for the current trim / binding / thickness */
+function buildBook() {
+  if (!V.ok) return;
+  disposeBook(); texClearAll();
+  const N = NS();
+  $('stagePh').hidden = N > 0;
+  if (!N) { invalidate(); return; }
+  const sp = S.set, W = sp.w, H = sp.h, dir = sp.binding === 'R' ? -1 : 1;
+  const book = new THREE.Group();
+  const sideMat = new THREE.MeshLambertMaterial({ color: colr(sp.color) });
+  const edgeA = new THREE.MeshLambertMaterial({ map: edgeTex(false) }), edgeB = new THREE.MeshLambertMaterial({ map: edgeTex(true) });
+  edgeA.userData.own = true; edgeB.userData.own = true;
+  const unit = new THREE.BoxGeometry(1, 1, 1);
+  const mkBox = (mats, shiftX) => { const g = unit.clone(); if (shiftX) g.translate(shiftX, 0, 0); return g; };
+  void mkBox;
+  // back cover (origin side, static): +z = 表3, -z = 表4
+  const backMats = [sideMat, sideMat, sideMat, sideMat, faceMat(), faceMat()];
+  const back = new THREE.Mesh(unit, backMats); back.scale.set(W, H, sp.c); back.position.set(dir * W / 2, 0, sp.c / 2);
+  // body stacks: sides use edge stripes, top uses page texture
+  const oMats = [edgeA, edgeA, edgeB, edgeB, faceMat(), edgeA];
+  const fMats = [edgeA, edgeA, edgeB, edgeB, faceMat(), edgeA];
+  const bodyO = new THREE.Mesh(unit, oMats), bodyF = new THREE.Mesh(unit, fMats);
+  // leaves: pivot group at the spine; mesh offset by half width
+  const leafGeo = unit.clone(); leafGeo.translate(dir * 0.5, 0, 0);
+  const coverMats = [sideMat, sideMat, sideMat, sideMat, faceMat(), faceMat()];
+  const coverGrp = new THREE.Group(), coverMesh = new THREE.Mesh(leafGeo, coverMats); coverMesh.scale.set(W, H, sp.c); coverGrp.add(coverMesh);
+  const leafMats = [edgeA, edgeA, edgeB, edgeB, faceMat(), faceMat()];
+  const leafGrp = new THREE.Group(), leafMesh = new THREE.Mesh(leafGeo, leafMats); leafMesh.scale.set(W, H, sp.t); leafGrp.add(leafMesh);
+  // spine plane
+  const spineMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+  const spine = new THREE.Mesh(new THREE.PlaneGeometry(1, 1), spineMat); spine.rotation.y = -dir * Math.PI / 2;
+  // soft shadow under the book
+  const sc = document.createElement('canvas'); sc.width = sc.height = 128;
+  const sg = sc.getContext('2d'), gr = sg.createRadialGradient(64, 64, 8, 64, 64, 64);
+  gr.addColorStop(0, 'rgba(0,0,0,0.38)'); gr.addColorStop(1, 'rgba(0,0,0,0)'); sg.fillStyle = gr; sg.fillRect(0, 0, 128, 128);
+  const shMat = new THREE.MeshBasicMaterial({ map: new THREE.CanvasTexture(sc), transparent: true, depthWrite: false }); shMat.userData.own = true;
+  const shadow = new THREE.Mesh(new THREE.PlaneGeometry(W * 2.5, H * 1.35), shMat); shadow.position.set(0, 0, -0.4);
+  book.add(shadow, back, bodyO, bodyF, coverGrp, leafGrp, spine);
+  V.scene.add(book); V.book = book;
+  V.objs = { dir, back, backMats, bodyO, oMats, bodyF, fMats, coverGrp, coverMesh, coverMats, leafGrp, leafMesh, leafMats, spine, spineMat };
+  const sl = $('spreadSlider'); sl.max = String(spreadCount(Math.max(N, 2)) - 1);
+  const mx = spreadCount(Math.max(N, 2)) - 1; V.p = Math.min(V.p, mx); V.target = Math.min(V.target, mx);
+  fitCamera(false);
+  invalidate();
+}
+
+function layout() {
+  const o = V.objs; if (!o) return;
+  V.inUse.clear();
+  const N = Math.max(NS(), 2), m = leafCount(N), L = m + 1, sp = S.set, W = sp.w, H = sp.h, t = sp.t, c = sp.c, dir = o.dir;
+  const p = Math.max(0, Math.min(L, V.p)), r = Math.round(p);
+  let F, part = -1, frac = 0;
+  if (Math.abs(p - r) < 1e-4) F = r; else { F = Math.floor(p); part = F; frac = p - F; }
+  const firstO = Math.max(1, part >= 0 ? part + 1 : F);
+  const nBO = Math.max(0, m - firstO + 1), nBF = Math.max(0, F - 1);
+  const lerp = (a, b, x) => a + (b - a) * x;
+  // back cover
+  bindMat(o.backMats[4], 'IB'); bindMat(o.backMats[5], 'B');
+  // origin stack
+  o.bodyO.visible = nBO > 0;
+  if (nBO > 0) { const th = nBO * t; o.bodyO.scale.set(W, H, th); o.bodyO.position.set(dir * W / 2, 0, c + th / 2); bindMat(o.oMats[4], frontOf(firstO)); }
+  // flipped stack (top shows the back of leaf F-1)
+  o.bodyF.visible = nBF > 0;
+  if (nBF > 0) { const th = nBF * t; o.bodyF.scale.set(W, H, th); o.bodyF.position.set(-dir * W / 2, 0, c + th / 2); bindMat(o.fMats[4], backOf(F - 1)); }
+  // cover leaf
+  bindMat(o.coverMats[4], 'F'); bindMat(o.coverMats[5], 'IF');
+  let cTheta, cz;
+  if (part === 0) { cTheta = frac * Math.PI; cz = lerp(c + m * t + c / 2, c / 2, frac); }
+  else if (F >= 1) { cTheta = Math.PI; cz = c / 2; }
+  else { cTheta = 0; cz = c + nBO * t + c / 2; }
+  o.coverGrp.rotation.y = -dir * cTheta; o.coverGrp.position.z = cz;
+  // partial body leaf
+  const bodyPart = part >= 1;
+  o.leafGrp.visible = bodyPart;
+  if (bodyPart) {
+    const i = part;
+    bindMat(o.leafMats[4], frontOf(i)); bindMat(o.leafMats[5], backOf(i));
+    o.leafGrp.rotation.y = -dir * frac * Math.PI;
+    o.leafGrp.position.z = lerp(c + (m - i) * t + t / 2, c + (i - 1) * t + t / 2, frac);
+  }
+  // spine
+  const topO = c + nBO * t + (F === 0 || part === 0 ? c : 0) + (bodyPart ? t : 0);
+  const topF = c + nBF * t + (bodyPart ? t : 0);
+  const sTop = Math.max(c, topO, topF), T0 = Math.max(0.6, spineWidthMM(N, t, c));
+  o.spine.scale.set(sTop, H, 1); o.spine.position.set(-dir * 0.02, 0, sTop / 2);
+  const st = texFor('S'); if (o.spineMat.map !== st) { o.spineMat.map = st; o.spineMat.needsUpdate = true; }
+  st.repeat.set(Math.min(1, sTop / T0), 1);
+  texEvict();
+  // camera target follows the book centre
+  V.tx = dir * (W / 2) * (1 - Math.min(1, p)); V.tz = Math.min(sTop, T0) / 2;
+}
+
+/* ---- camera ---- */
+function fitDistance(openW) {
+  const f = THREE.MathUtils.degToRad(V.camera.fov) / 2, asp = V.camera.aspect;
+  const halfH = S.set.h * 0.62, halfW = openW * 0.58;
+  return Math.max(halfH / Math.tan(f), halfW / (Math.tan(f) * asp)) * 1.05;
+}
+function applyCamera() {
+  const o = V.objs; if (!o) return;
+  const sph = Math.sin(V.ph), x = V.tx + V.r * sph * Math.sin(V.th), y = V.ty - V.r * sph * Math.cos(V.th), z = V.tz + V.r * Math.cos(V.ph);
+  V.camera.position.set(x, y, z);
+  V.camera.lookAt(V.tx, V.ty, V.tz);
+}
+function fitCamera(animate) {
+  const open = V.p >= 0.5;
+  V.tr = fitDistance(open ? S.set.w * 2 : S.set.w * 1.1);
+  if (!animate) { V.r = V.tr; V.th = V.tth; V.ph = V.tph; } else V.camTween = true;
+  invalidate();
+}
+const CAMS = {
+  oblique: (d) => [-0.42 * d, 0.62, 'auto'], top: () => [0, 0.001, 'auto'],
+  fore: (d) => [d * Math.PI / 2, 1.2, 'auto'], spine: (d) => [-d * Math.PI / 2, 1.2, 'closed'],
+  closed: (d) => [-0.42 * d, 0.62, 'closed'], back: (d) => [-0.3 * d, Math.PI - 0.62, 'closed']
+};
+function setCam(name) {
+  if (!V.ok || !V.objs) return;
+  const dir = V.objs.dir, [th, ph, mode] = CAMS[name](dir);
+  V.tth = th; V.tph = ph;
+  if (mode === 'closed') V.target = 0;
+  else if (name === 'top' && V.target < 1) V.target = 1;
+  V.tr = fitDistance(mode === 'closed' || V.target < 1 ? S.set.w * 1.1 : S.set.w * 2); V.lastOpen = V.target >= 1;
+  V.camTween = true; invalidate(); syncControls();
+}
+
+function bindOrbit(host) {
+  const ptrs = new Map(); let moved = 0, pinch = 0, startX = 0, startY = 0;
+  host.addEventListener('pointerdown', (e) => {
+    host.setPointerCapture(e.pointerId); ptrs.set(e.pointerId, { x: e.clientX, y: e.clientY });
+    if (ptrs.size === 1) { moved = 0; startX = e.clientX; startY = e.clientY; }
+    if (ptrs.size === 2) { const [a, b] = [...ptrs.values()]; pinch = Math.hypot(a.x - b.x, a.y - b.y); }
+  });
+  host.addEventListener('pointermove', (e) => {
+    const pt = ptrs.get(e.pointerId); if (!pt) return;
+    const dx = e.clientX - pt.x, dy = e.clientY - pt.y; pt.x = e.clientX; pt.y = e.clientY;
+    if (ptrs.size === 1) {
+      moved += Math.abs(dx) + Math.abs(dy);
+      V.th -= dx * 0.008; V.ph = Math.max(0.001, Math.min(Math.PI - 0.001, V.ph - dy * 0.008));
+      V.tth = V.th; V.tph = V.ph; V.tr = V.r; V.camTween = false; invalidate();
+    } else if (ptrs.size === 2) {
+      const [a, b] = [...ptrs.values()], d = Math.hypot(a.x - b.x, a.y - b.y);
+      if (pinch > 0) { V.r = Math.max(60, Math.min(6000, V.r * pinch / d)); V.tr = V.r; V.camTween = false; invalidate(); }
+      pinch = d; moved += 10;
+    }
+  });
+  const up = (e) => {
+    const wasSingle = ptrs.size === 1;
+    ptrs.delete(e.pointerId);
+    if (wasSingle && moved < 5 && Math.hypot(e.clientX - startX, e.clientY - startY) < 5) clickTurn(e, host);
+  };
+  host.addEventListener('pointerup', up); host.addEventListener('pointercancel', (e) => ptrs.delete(e.pointerId));
+  host.addEventListener('wheel', (e) => { e.preventDefault(); V.r = Math.max(60, Math.min(6000, V.r * Math.exp(e.deltaY * 0.0012))); V.tr = V.r; V.camTween = false; invalidate(); }, { passive: false });
+}
+function clickTurn(e, host) {
+  if (!V.objs) return;
+  const rect = host.getBoundingClientRect(), nx = ((e.clientX - rect.left) / rect.width) * 2 - 1, ny = -(((e.clientY - rect.top) / rect.height) * 2 - 1);
+  const rc = new THREE.Raycaster(); rc.setFromCamera({ x: nx, y: ny }, V.camera);
+  const pt = new THREE.Vector3();
+  if (!rc.ray.intersectPlane(new THREE.Plane(new THREE.Vector3(0, 0, 1), -S.set.c), pt)) return;
+  const side = pt.x * V.objs.dir;
+  if (Math.abs(pt.x) > S.set.w * 1.1 || Math.abs(pt.y) > S.set.h * 0.6) return;
+  setSpread(Math.round(V.target) + (side >= 0 ? 1 : -1), true);
+}
+
+/* ---- spreads ---- */
+function maxSpread() { return spreadCount(Math.max(NS(), 2)) - 1; }
+function setSpread(s, scroll) {
+  s = Math.max(0, Math.min(maxSpread(), Math.round(s)));
+  V.target = s; markCurrent(s); syncControls();
+  if (scroll) { const w = document.querySelector('.spread-wrap[data-s="' + s + '"]'); if (w && w.scrollIntoView) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
+  if (V.ok) {
+    const open = s >= 1;
+    if (open !== V.lastOpen) { V.lastOpen = open; V.tr = fitDistance(open ? S.set.w * 2 : S.set.w * 1.1); V.camTween = true; }
+    invalidate();
+  }
+}
+function goToKey(k) {
+  const N = NS(); if (!N) return;
+  if (k === 'B') { setCam('back'); markCurrent('back'); return; }
+  if (k === 'S') { setCam('spine'); return; }
+  setSpread(spreadOfKey(k, N), false);
+  if (V.ok && V.tph > 1.5) { V.tth = -0.42 * (S.set.binding === 'R' ? -1 : 1); V.tph = 0.62; V.camTween = true; invalidate(); }
+}
+function syncControls() {
+  const N = NS(), s = Math.round(V.target);
+  const sl = $('spreadSlider'); sl.max = String(maxSpread()); sl.value = String(s);
+  if (!N) { $('spreadLabel').textContent = '—'; return; }
+  const k = spreadKeys(s, N, S.set.binding), part = [k.left, k.right].filter((x) => x !== null).map(keyLabel);
+  $('spreadLabel').textContent = s + '／' + maxSpread() + '　' + part.join(' | ');
+  $('btnPrev').disabled = s <= 0; $('btnNext').disabled = s >= maxSpread();
+}
+
+/* ---- loop ---- */
+function tick(now) {
+  V.raf = 0;
+  if (!V.ok) return;
+  const dt = Math.min(0.05, (now - V.last) / 1000); V.last = now;
+  let busy = false;
+  if (V.p !== V.target) {
+    const diff = V.target - V.p, speed = Math.max(3.2, Math.min(14, Math.abs(diff) * 2.6));
+    const stepv = speed * dt;
+    V.p = Math.abs(diff) <= stepv ? V.target : V.p + Math.sign(diff) * stepv;
+    busy = true;
+  }
+  if (V.camTween) {
+    const k = 1 - Math.exp(-dt * 9);
+    V.th += (V.tth - V.th) * k; V.ph += (V.tph - V.ph) * k; V.r += (V.tr - V.r) * k;
+    if (Math.abs(V.tth - V.th) + Math.abs(V.tph - V.ph) < 0.002 && Math.abs(V.tr - V.r) < 0.5) { V.th = V.tth; V.ph = V.tph; V.r = V.tr; V.camTween = false; }
+    else busy = true;
+  }
+  layout(); applyCamera();
+  V.renderer.render(V.scene, V.camera);
+  V.dirty = false;
+  if (busy) { V.last = now; V.raf = requestAnimationFrame(tick); }
+}
+
+/* ===== project: load through the relay, roles, settings, design PDFs ===== */
+const fileUrl = (id) => 'https://drive.google.com/file/d/' + id + '/view';
+
+function setTop(t, cls) { const e = $('topMsg'); if (!t) { e.hidden = true; return; } e.hidden = false; e.textContent = t; e.className = 'msg banner' + (cls ? ' ' + cls : ''); }
+function setMsg(id, t, cls) { const e = $(id); if (!e) return; e.textContent = t || ''; e.className = 'msg' + (cls ? ' ' + cls : ''); }
+function openPanel(id) { const p = $(id); p.hidden = false; const b = document.querySelector('[data-panel="' + id + '"]'); if (b) b.classList.add('on'); }
+function startFieldText(k) { return typeof k === 'number' ? String(k) : (KEY_LABEL[k] || '1'); }
+function nextKeyAfter(start, count) {
+  const order = orderKeys(Math.max(NS(), 2));
+  const i = order.findIndex((k) => kstr(k) === kstr(start));
+  return i < 0 ? null : (order[i + count] === undefined ? null : order[i + count]);
+}
+function tableObjects(rows) {
+  if (!rows || rows.length < 2) return [];
+  const h = rows[0].map((x) => String(x).trim());
+  return rows.slice(1).filter((r) => r.some((c) => String(c).trim() !== '')).map((r) => { const o = {}; h.forEach((k, i) => { if (k) o[k] = r[i] == null ? '' : String(r[i]); }); return o; });
+}
+
+/* ---- roles ---- */
+const role = () => (S.me && S.me.key) || '';
+const isStaff = () => role() === 'staff';
+const canProgress = () => role() === 'staff' || role() === 'ext';
+const canFigures = canProgress;
+const canSeeExpenses = () => role() === 'staff' || role() === 'client';
+function applyRole() {
+  const k = role();
+  document.body.classList.toggle('editor', k === 'staff');
+  ['staff', 'client', 'ext'].forEach((x) => document.body.classList.toggle('role-' + x, k === x));
+  document.body.classList.toggle('can-fig', canFigures());
+  document.querySelectorAll('.ed').forEach((el) => { el.disabled = k !== 'staff'; });
+  $('tabSelect').disabled = k !== 'staff';
+  $('colHint').textContent = k === 'staff' ? '（変更後「判型・製本」の「設定をシートに保存」で全員に反映）' : '（自動判別）';
+  $('vt-expenses').hidden = !canSeeExpenses();
+  $('vt-members').hidden = k !== 'staff';
+  const u = $('userChip'); u.hidden = !S.me; u.textContent = S.me ? (S.me.name || S.me.email) + '（' + S.me.role + '）' : '';
+}
+
+/* ---- load ---- */
+async function loadProject(opts) {
+  opts = opts || {};
+  if (!S.sheetId) return false;
+  if (!signedIn()) { showLogin(); return false; }
+  const first = !S.loaded;
+  if (first) { S.loading = true; renderBoard(); }
+  setTop('');
+  let r;
+  try { r = await relay('load', { tab: opts.tab || '' }); }
+  catch (e) {
+    S.loading = false; renderBoard();
+    if (e.code === 'not_member') showNotMember(e.message);
+    else if (e.code !== 'auth') setTop(e.message, 'err');
+    return false;
+  }
+  S.loading = false; S.loaded = true;
+  const sig = () => JSON.stringify([S.tabName, S.settingsRows, S.designs.map((d) => [d.id, d.from, d.to, d.startText]), (S.folderFiles || []).map((f) => f.id + ':' + f.v), NS()]);
+  const before = sig();
+  applyLoad(r);
+  const heavy = first || opts.full || before !== sig();
+  document.title = (S.sheetTitle ? S.sheetTitle + ' — ' : '') + '台割ボード';
+  rememberProject();
+  applyRole(); pushSettingsToUI(); renderProjectUI();
+  if (heavy) S.thumbs.clear();
+  texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
+  renderViews();
+  if (heavy) await refreshAssignments(); else renderDesignList();
+  if (first) openPageFromUrl();
+  S.loadedAt = Date.now();
+  return true;
+}
+function applyLoad(r) {
+  S.me = r.me; S.sheetTitle = r.title; S.tabs = (r.tabs || []).map((t) => ({ title: t })); S.tabName = r.tab || '';
+  S.rows = r.daiwari || []; S.settingsRows = r.settings || [];
+  const ps = parseSettingsRows(S.settingsRows);
+  S.set = Object.assign({}, DEFAULTS, { folder: '', tab: '', receiptFolder: '' }, ps.set);
+  const trim = TRIMS.find((x) => x.w === S.set.w && x.h === S.set.h); S.set.trim = trim ? trim.id : 'custom';
+  const paper = PAPERS.find((x) => x.t && Math.abs(x.t - S.set.t) < 1e-6); S.set.paper = paper ? paper.id : 'custom';
+  S.colOverride = ps.cols;
+  rebuildRows();
+  S.designs = parseDesignRows(r.designs || []);
+  S.folderErr = r.folder && r.folder.error ? r.folder.error : '';
+  S.folderFiles = r.folder && !r.folder.error ? naturalSort(r.folder.files || []) : [];
+  S.statusOptions = r.statusOptions || {};
+  S.comments = tableObjects(r.comments); S.figures = tableObjects(r.figures);
+  S.expenses = r.expenses ? tableObjects(r.expenses) : null;
+  S.members = r.members ? tableObjects(r.members) : [];
+}
+function rebuildRows() {
+  const d = detectColumns(S.rows);
+  S.headerRow = d.headerRow;
+  S.map = Object.assign(d.map, S.colOverride);
+  S.model = buildModel(S.rows, S.map, S.headerRow);
+}
+function showNotMember(msg) {
+  showLogin();
+  setMsg('loginMsg', msg, 'err');
+  $('btnSwitch').hidden = false;
+}
+const reloadDesigns = () => loadProject();
+const autoFiles = () => S.folderFiles.filter((f) => !S.designs.some((d) => d.id === f.id));
+function recompute() {
+  const next = computeAssignments(S.designs, NS(), (id) => { const s = S.sources.get(id); return (s && s.numPages) || null; }, autoFiles());
+  applyAssignments(next);
+  renderStats(); renderDesignListSoon();
+  if (V.ok) invalidate();
+}
+async function refreshAssignments() {
+  S.designs.forEach((d) => srcFor(d.id, d.name));
+  autoFiles().forEach((f) => srcFor(f.id, f.name));
+  recompute();
+  const need = S.designs.filter((x) => !x.to).map((d) => d.id).concat(autoFiles().map((f) => f.id));
+  for (const id of need) {
+    const s = S.sources.get(id);
+    if (s.pdf) continue;
+    try { await getPdf(s); } catch (e) { /* shown in the list */ }
+    recompute();
+  }
+  renderDesignList();
+}
+function placedRange(id) {
+  const ks = orderKeys(Math.max(NS(), 2)).filter((k) => { const a = S.assign.get(kstr(k)); return a && a.src === id; });
+  if (!ks.length) return '';
+  return ks.length === 1 ? keyLabel(ks[0]) : keyLabel(ks[0]) + '〜' + keyLabel(ks[ks.length - 1]);
+}
+async function pinAutoFile(f) {
+  const s = S.sources.get(f.id) || {};
+  const ks = orderKeys(Math.max(NS(), 2)).filter((k) => { const a = S.assign.get(kstr(k)); return a && a.src === f.id; });
+  if (!ks.length || !s.numPages) { setMsg('designMsg', 'このPDFはまだ読み込めていません。', 'err'); return; }
+  setMsg('designMsg', '記録中…');
+  try {
+    await relay('designAppend', { rows: [[fileUrl(f.id), f.name, 1, s.numPages, startFieldText(ks[0])]] });
+    await reloadDesigns();
+    setMsg('designMsg', '「デザイン」タブに記録しました。貼る位置を変えられます。', 'ok');
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
+}
+
+/* ---- recent projects (this browser only) ---- */
+function recentList() { try { return JSON.parse(localStorage.getItem('dandori.recent') || '[]'); } catch (e) { return []; } }
+function rememberProject() {
+  try {
+    const l = recentList().filter((r) => r.id !== S.sheetId);
+    l.unshift({ id: S.sheetId, title: S.sheetTitle, t: Date.now() });
+    localStorage.setItem('dandori.recent', JSON.stringify(l.slice(0, 8)));
+  } catch (e) { /* ignore */ }
+}
+function projectUrl(id) { return location.origin + location.pathname + '?sheet=' + encodeURIComponent(id); }
+function renderRecent() {
+  const ul = $('recentList'); ul.textContent = '';
+  recentList().forEach((r) => {
+    const li = document.createElement('li'), a = document.createElement('a');
+    a.href = projectUrl(r.id); a.textContent = r.title || r.id; li.appendChild(a); ul.appendChild(li);
+  });
+}
+function openSheetFromInput(inputId, msgId) {
+  const id = extractSheetId($(inputId).value);
+  if (!id) { setMsg(msgId, 'スプレッドシートのURLを貼ってください。', 'err'); return; }
+  location.href = projectUrl(id);
+}
+
+/* ---- 案件 panel ---- */
+const COLDEFS = [['page', 'ページ列'], ['title', '内容列'], ['kind', '種別列'], ['section', '区分列'], ['note', '備考列'], ['status', '状態列'], ['count', 'ページ数列']];
+function renderProjectUI() {
+  $('projTitle').textContent = S.sheetTitle;
+  const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetTitle || S.sheetId;
+  $('shareUrl').textContent = projectUrl(S.sheetId);
+  const sel = $('tabSelect'); sel.textContent = '';
+  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費'];
+  S.tabs.filter((t) => special.indexOf(t.title) < 0).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
+  sel.value = S.tabName; sel.disabled = !isStaff();
+  renderColMap();
+}
+function renderColMap() {
+  const box = $('colMap'); box.textContent = '';
+  if (!S.rows || !S.rows.length) return;
+  const width = Math.min(26, Math.max(1, ...S.rows.slice(0, 20).map((r) => r.length)));
+  const head = S.rows[S.headerRow >= 0 ? S.headerRow : 0] || [];
+  COLDEFS.forEach(([key, label]) => {
+    const f = document.createElement('label'); f.className = 'field';
+    const sp = document.createElement('span'); sp.textContent = label;
+    const sel = document.createElement('select'); sel.id = 'col_' + key; sel.disabled = !isStaff();
+    const add = (v, t) => { const o = document.createElement('option'); o.value = v; o.textContent = t; sel.appendChild(o); };
+    add('auto', '自動'); add('-1', '使わない');
+    for (let i = 0; i < width; i++) { const h = String(head[i] == null ? '' : head[i]).trim(); add(String(i), colName(i) + (h ? '：' + h.slice(0, 14) : '')); }
+    sel.value = key in S.colOverride ? String(S.colOverride[key]) : 'auto';
+    if (!(key in S.colOverride)) sel.options[0].textContent = '自動（' + (S.map[key] >= 0 ? colName(S.map[key]) : 'なし') + '）';
+    sel.addEventListener('change', () => {
+      if (sel.value === 'auto') delete S.colOverride[key]; else S.colOverride[key] = parseInt(sel.value, 10);
+      rebuildRows(); renderColMap(); renderBoard(); buildBook(); refreshAssignments(); renderViews();
+      setMsg('projMsg', '変更しました。「判型・製本」の「設定をシートに保存」で全員に反映されます。');
+    });
+    f.append(sp, sel); box.appendChild(f);
+  });
+}
+
+/* ---- 判型・製本 panel ---- */
+function initSettingsUI() {
+  const tp = $('trimPreset'); TRIMS.forEach((t) => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; tp.appendChild(o); });
+  const pp = $('paperPreset'); PAPERS.forEach((t) => { const o = document.createElement('option'); o.value = t.id; o.textContent = t.name; pp.appendChild(o); });
+  tp.addEventListener('change', () => { const t = TRIMS.find((x) => x.id === tp.value); if (t && t.w) { $('trimW').value = t.w; $('trimH').value = t.h; } readSettingsFromUI(); onSettingsChanged(); });
+  pp.addEventListener('change', () => { const p = PAPERS.find((x) => x.id === pp.value); if (p && p.t) $('paperT').value = p.t; readSettingsFromUI(); onSettingsChanged(); });
+  ['trimW', 'trimH', 'binding', 'bindType', 'paperT', 'coverT', 'bleed', 'bookTitle', 'coverColor'].forEach((id) => $(id).addEventListener('input', () => { readSettingsFromUI(); onSettingsChanged(); }));
+  $('folderUrl').addEventListener('change', () => { S.set.folder = $('folderUrl').value.trim(); });
+  pushSettingsToUI();
+}
+function pushSettingsToUI() {
+  const s = S.set;
+  $('trimPreset').value = s.trim; $('trimW').value = s.w; $('trimH').value = s.h;
+  $('binding').value = s.binding; $('bindType').value = s.bindType;
+  $('paperPreset').value = s.paper; $('paperT').value = s.t; $('coverT').value = s.c; $('bleed').value = s.bleed;
+  $('bookTitle').value = s.title || ''; $('coverColor').value = s.color || '#27474f'; $('folderUrl').value = s.folder || '';
+  document.querySelectorAll('.ed').forEach((el) => { el.disabled = !isStaff(); });
+}
+function readSettingsFromUI() {
+  const s = S.set, num = (id, d, lo, hi) => { const v = parseFloat($(id).value); return isFinite(v) ? Math.min(hi, Math.max(lo, v)) : d; };
+  s.w = num('trimW', s.w, 40, 600); s.h = num('trimH', s.h, 40, 800);
+  const hit = TRIMS.find((x) => x.w === s.w && x.h === s.h); s.trim = hit ? hit.id : 'custom'; $('trimPreset').value = s.trim;
+  s.binding = $('binding').value; s.bindType = $('bindType').value;
+  s.t = num('paperT', s.t, 0.02, 0.5);
+  const ph = PAPERS.find((x) => x.t && Math.abs(x.t - s.t) < 1e-6); s.paper = ph ? ph.id : 'custom'; $('paperPreset').value = s.paper;
+  s.c = num('coverT', s.c, 0.1, 8); s.bleed = num('bleed', s.bleed, 0, 10);
+  s.title = $('bookTitle').value; s.color = $('coverColor').value; s.folder = $('folderUrl').value.trim();
+}
+let settingsTimer = 0;
+function onSettingsChanged() {
+  setMsg('bookMsg', '未保存の変更があります。', '');
+  clearTimeout(settingsTimer);
+  settingsTimer = setTimeout(() => { S.thumbs.clear(); texClearAll(); renderBoard(); buildBook(); renderStats(); }, 220);
+}
+async function saveSettings() {
+  if (!isStaff()) return false;
+  readSettingsFromUI(); S.set.tab = S.tabName;
+  const rows = settingsToRows(S.set, S.colOverride);
+  setMsg('bookMsg', '保存中…');
+  try {
+    await relay('settingsSave', { rows });
+    setMsg('bookMsg', 'シートの「設定」タブに保存しました。', 'ok');
+    return true;
+  } catch (e) { setMsg('bookMsg', e.message, 'err'); return false; }
+}
+
+/* ---- デザインPDF list ---- */
+let listTimer = 0;
+function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
+function renderDesignList() {
+  const ul = $('designList');
+  if (ul.contains(document.activeElement) && document.activeElement.tagName === 'INPUT') { renderDesignListSoon(); return; }
+  ul.textContent = '';
+  const ed = isStaff();
+  const note = (cls, text) => { const li = document.createElement('li'); const s = document.createElement('span'); s.className = cls; s.textContent = text; li.appendChild(s); ul.appendChild(li); };
+  if (S.folderErr) note('err', S.folderErr);
+  else if (!extractDriveId(S.set.folder)) note('nm muted', 'デザインフォルダが未設定です（初回のアップロード時に自動で作成されます）。');
+  if (!S.designs.length && !autoFiles().length && !S.folderErr && extractDriveId(S.set.folder)) note('nm muted', 'デザインフォルダにPDFがありません');
+  S.designs.forEach((d) => {
+    const src = S.sources.get(d.id) || {};
+    const li = document.createElement('li');
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = d.name || src.name || d.id; nm.title = nm.textContent;
+    li.appendChild(nm);
+    if (ed) {
+      const mk = (val, title, w) => { const i = document.createElement('input'); i.type = 'text'; i.value = val; i.title = title; i.setAttribute('aria-label', title); i.style.width = w; return i; };
+      const f = mk(String(d.from), 'PDFのページ（開始）', '3.5em'), t = mk(d.to ? String(d.to) : '', 'PDFのページ（終了・空欄＝最後まで）', '3.5em'), s = mk(d.startText || startFieldText(d.start), '台割のどのページから貼るか', '4.5em');
+      const lab = (txt) => { const e = document.createElement('span'); e.className = 'meta'; e.textContent = txt; return e; };
+      li.append(lab('PDFの'), f, lab('〜'), t, lab('ページを、台割の'), s, lab('から'));
+      const save = () => {
+        if (f.value === String(d.from) && t.value === (d.to ? String(d.to) : '') && s.value === (d.startText || startFieldText(d.start))) return;
+        editDesignRow(d, f.value, t.value, s.value);
+      };
+      [f, t, s].forEach((i) => { i.addEventListener('change', save); i.addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); i.blur(); } }); });
+      const del = document.createElement('button'); del.className = 'btn sm'; del.textContent = '外す';
+      del.title = '「デザイン」タブからこの行を消します。PDFがデザインフォルダにあれば、名前順の自動配置に戻ります';
+      let armed = 0;
+      del.addEventListener('click', () => {
+        if (!armed) { del.textContent = 'もう一度押すと外します'; armed = setTimeout(() => { armed = 0; del.textContent = '外す'; }, 3000); return; }
+        clearTimeout(armed); deleteDesignRow(d);
+      });
+      li.append(del);
+    } else {
+      const m = document.createElement('span'); m.className = 'meta';
+      m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
+      li.appendChild(m);
+    }
+    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    ul.appendChild(li);
+  });
+  autoFiles().forEach((f) => {
+    const src = S.sources.get(f.id) || {};
+    const li = document.createElement('li');
+    const nm = document.createElement('span'); nm.className = 'nm'; nm.textContent = f.name; nm.title = f.name;
+    const m = document.createElement('span'); m.className = 'meta';
+    const r = placedRange(f.id);
+    m.textContent = 'フォルダから自動' + (src.numPages ? '・' + src.numPages + 'P' : '') + (r ? ' → ' + r : (src.pdf ? ' → 空きページなし' : ' → 読み込み中'));
+    li.append(nm, m);
+    if (ed) {
+      const pin = document.createElement('button'); pin.className = 'btn sm'; pin.textContent = '位置を指定';
+      pin.title = '今の位置で「デザイン」タブに記録し、貼る位置を変えられるようにします';
+      pin.addEventListener('click', () => pinAutoFile(f));
+      li.appendChild(pin);
+    }
+    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    ul.appendChild(li);
+  });
+}
+async function editDesignRow(d, fromTxt, toTxt, startTxt) {
+  const from = parseInt(z2h(fromTxt), 10), to = toTxt.trim() ? parseInt(z2h(toTxt), 10) : '';
+  const start = parseKeyText(startTxt);
+  if (!(from > 0) || (to !== '' && !(to >= from)) || start === null) { setMsg('designMsg', 'PDFのページ範囲か貼る位置が正しくありません（1／表1／表2／表3／表4／背）。', 'err'); return; }
+  setMsg('designMsg', '保存中…');
+  try {
+    await relay('designUpdate', { row: d.row, id: d.id, from, to, start: startFieldText(start) });
+    await reloadDesigns();
+    setMsg('designMsg', (d.name || 'PDF') + 'を' + keyLabel(start) + 'から貼るように保存しました。', 'ok'); goToKey(start);
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
+}
+async function deleteDesignRow(d) {
+  setMsg('designMsg', '外しています…');
+  try {
+    await relay('designDelete', { row: d.row, id: d.id });
+    await reloadDesigns();
+    setMsg('designMsg', '指定を外しました。PDFがデザインフォルダにある場合は、名前順の自動配置に戻ります（台割から消すには、PDFをフォルダの外へ移してください）。', 'ok');
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
+}
+
+/* ---- upload (社内) ---- */
+function dropOnTile(files, key) {
+  if (!isStaff()) { toast('PDFの登録は社内メンバーだけが行えます', 'err'); return; }
+  uploadFiles(files, key);
+}
+let uploading = false;
+async function uploadFiles(files, startKey) {
+  if (uploading) { setMsg('designMsg', '前のアップロードが終わるまでお待ちください。', 'err'); return; }
+  setView('board'); openPanel('panelDesign');
+  if (!isStaff()) { setMsg('designMsg', 'PDFの登録は社内メンバーだけが行えます。', 'err'); return; }
+  if (!NS()) { setMsg('designMsg', '先に台割を読み込んでください。', 'err'); return; }
+  const pdfs = files.filter((f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
+  const skipped = files.length - pdfs.length;
+  if (!pdfs.length) { setMsg('designMsg', 'PDFを選んでください。', 'err'); return; }
+  let cursor = startKey !== undefined && startKey !== null ? startKey : parseKeyText($('upStart').value);
+  if (cursor === null) cursor = 1;
+  const first = cursor, rows = [], notes = [];
+  uploading = true; $('upProg').hidden = false; $('upBar').style.width = '0%';
+  try {
+    for (let i = 0; i < pdfs.length; i++) {
+      const f = pdfs[i];
+      if (cursor === null) { notes.push(f.name + 'は台割の末尾を超えるため登録しませんでした'); continue; }
+      setMsg('designMsg', 'アップロード中（' + (i + 1) + '／' + pdfs.length + '）：' + f.name);
+      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), isEvalSupported: false }).promise;
+      const n = pdf.numPages;
+      const up = await relayUpload(f, 'design', (p) => { $('upBar').style.width = Math.round(((i + p) / pdfs.length) * 100) + '%'; });
+      const s = srcFor(up.id, f.name); s.blob = f; s.pdf = pdf; s.numPages = n; s.err = '';
+      rows.push([fileUrl(up.id), f.name, 1, n, startFieldText(cursor)]);
+      cursor = cursor === 'S' ? null : nextKeyAfter(cursor, n);
+    }
+    if (rows.length) await relay('designAppend', { rows });
+    $('upBar').style.width = '100%';
+    await reloadDesigns();
+    if (cursor !== null && startKey === undefined) $('upStart').value = startFieldText(cursor);
+    const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '');
+    setMsg('designMsg', rows.length + '件を登録し、' + keyLabel(first) + 'から貼りました。' + (cursor !== null ? ' 次の貼り始め：' + startFieldText(cursor) : '') + tail, notes.length ? 'err' : 'ok');
+    if (rows.length) goToKey(first);
+  } catch (e) {
+    setMsg('designMsg', e.message + (rows.length ? '（' + rows.length + '件はドライブに保存済み・シート未記録）' : ''), 'err');
+  } finally {
+    uploading = false; setTimeout(() => { $('upProg').hidden = true; }, 800);
+  }
+}
+
+/* ===== project management: views, page detail, progress, comments, figures, expenses, members ===== */
+const H_COMMENT = ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'];
+const H_FIGURE = ['ID', 'ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ', '更新者', '更新日時'];
+const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', '登録者', '登録日時'];
+const FIG_KINDS = ['写真', 'イラスト', '図', 'ロゴ', 'その他'];
+const FIG_STATES = ['未定', '依頼中', '入稿済', '確定'];
+const EXP_KINDS = ['撮影費', '原稿料', 'デザイン費', '印刷費', '交通費', 'その他'];
+const DEFAULT_STAGE_STATES = ['未／待ち', '未／着手OK', '調整中', '確定'];
+const rowObj = (head, arr) => { const o = {}; head.forEach((k, i) => { o[k] = arr[i] == null ? '' : String(arr[i]); }); return o; };
+
+/* ---- tiny DOM helper ---- */
+function el(tag, attrs, ...kids) {
+  const e = document.createElement(tag);
+  if (attrs) Object.keys(attrs).forEach((k) => {
+    const v = attrs[k];
+    if (v === undefined || v === null || v === false) return;
+    if (k === 'class') e.className = v;
+    else if (k === 'text') e.textContent = v;
+    else if (k.startsWith('on')) e.addEventListener(k.slice(2), v);
+    else if (k in e && typeof v !== 'string') e[k] = v;
+    else e.setAttribute(k, v === true ? '' : v);
+  });
+  kids.flat().forEach((c) => { if (c === null || c === undefined || c === false) return; e.appendChild(typeof c === 'string' || typeof c === 'number' ? document.createTextNode(String(c)) : c); });
+  return e;
+}
+let toastTimer = 0;
+function toast(text, cls) {
+  const t = $('toast'); t.textContent = text; t.className = 'toast' + (cls ? ' ' + cls : ''); t.hidden = false;
+  clearTimeout(toastTimer); toastTimer = setTimeout(() => { t.hidden = true; }, cls === 'err' ? 6000 : 2600);
+}
+function armButton(btn, label, armedLabel, fn) {
+  let armed = 0;
+  btn.textContent = label;
+  btn.addEventListener('click', () => {
+    if (!armed) { btn.textContent = armedLabel; armed = setTimeout(() => { armed = 0; btn.textContent = label; }, 3000); return; }
+    clearTimeout(armed); armed = 0; btn.textContent = label; fn();
+  });
+  return btn;
+}
+async function busy(btn, fn) {
+  if (btn) btn.disabled = true;
+  try { return await fn(); } catch (e) { toast(e.message, 'err'); if (e.code === 'stale') loadProject(); return null; } finally { if (btn) btn.disabled = false; }
+}
+
+/* ---- views ---- */
+const VIEWS = ['board', 'progress', 'comments', 'figures', 'expenses', 'members'];
+let curView = 'board';
+function setView(v) {
+  if (VIEWS.indexOf(v) < 0 || $('vt-' + v).hidden) v = 'board';
+  curView = v;
+  VIEWS.forEach((x) => { $('view-' + x).hidden = x !== v; $('vt-' + x).classList.toggle('on', x === v); });
+  try { sessionStorage.setItem('dandori.view', v); } catch (e) { /* ignore */ }
+  renderView(v);
+  if (v === 'board' && V.ok) { resize(); invalidate(); }
+}
+function renderViews() { renderBadges(); renderView(curView); if (S.detailKey !== undefined && !$('detail').hidden) renderDetail(); }
+function renderView(v) {
+  if (!S.loaded) return;
+  if (v === 'progress') renderProgress();
+  else if (v === 'comments') renderComments();
+  else if (v === 'figures') renderFigures();
+  else if (v === 'expenses') renderExpenses();
+  else if (v === 'members') renderMembers();
+}
+function renderBadges() {
+  const n = S.comments.filter((c) => !c['返信先'] && c['状態'] !== '対応済').length;
+  const b = $('badgeComments'); b.hidden = !n; b.textContent = n;
+}
+
+/* ---- pages ---- */
+const pageLabel = (k) => keyLabel(k);
+const keyOfLabel = (label) => { const k = parseKeyText(label); return k === null ? null : k; };
+function pageKeys() { return orderKeys(Math.max(NS(), 2)).filter((k) => S.model.pages.has(k)); }
+function pageTitle(k) { const i = S.model.pages.get(k); return i ? (i.title || i.kind || '') : ''; }
+function stageCols() {
+  if (S.headerRow < 0) return [];
+  const h = S.rows[S.headerRow] || [];
+  const out = [];
+  h.forEach((name, i) => { if (/校/.test(String(name))) out.push({ col: i, name: String(name).trim() }); });
+  return out;
+}
+function stageOptions(col) {
+  const fromSheet = S.statusOptions[col] || S.statusOptions[String(col)];
+  const base = fromSheet && fromSheet.length ? fromSheet.slice() : DEFAULT_STAGE_STATES.slice();
+  S.rows.slice(S.headerRow + 1).forEach((r) => { const v = String(r[col] || '').trim(); if (v && base.indexOf(v) < 0) base.push(v); });
+  return base;
+}
+function stateClass(v) {
+  v = String(v || '').trim();
+  if (!v) return 'none';
+  if (/確定|完了|校了|済|^ok$|^ＯＫ$/i.test(v)) return 'done';
+  if (/着手ok|着手ＯＫ/i.test(v)) return 'ready';
+  if (/調整|作業|確認|修正|進行|対応中/.test(v)) return 'doing';
+  if (/未|待/.test(v)) return 'todo';
+  return 'other';
+}
+function pageStages(k) {
+  const info = S.model.pages.get(k);
+  if (!info) return [];
+  const row = S.rows[info.row] || [];
+  return stageCols().map((s) => Object.assign({}, s, { value: String(row[s.col] || '').trim() }));
+}
+function currentStage(k) { const st = pageStages(k); for (let i = st.length - 1; i >= 0; i--) if (st[i].value) return st[i]; return null; }
+function stageChip(st, short) {
+  if (!st) return null;
+  return el('span', { class: 'chip st-' + stateClass(st.value), title: st.name + '：' + st.value }, short ? st.name : st.name + ' ' + st.value);
+}
+function openComments(label) { return S.comments.filter((c) => c['ページ'] === label && !c['返信先'] && c['状態'] !== '対応済').length; }
+async function setStage(k, col, value, sel) {
+  const info = S.model.pages.get(k);
+  if (!info || S.map.page < 0) { toast('ページ列がない台割では進捗を変更できません', 'err'); return; }
+  const row = S.rows[info.row];
+  await busy(sel, async () => {
+    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value });
+    row[col] = r.value;
+    toast(pageLabel(k) + '：' + (S.rows[S.headerRow][col]) + 'を「' + r.value + '」にしました');
+    renderBoard(); renderViews();
+  });
+}
+function stageSelect(k, st) {
+  const sel = el('select', { class: 'stsel st-' + stateClass(st.value), 'aria-label': pageLabel(k) + 'の' + st.name, disabled: !canProgress() });
+  sel.appendChild(el('option', { value: '', text: '—' }));
+  stageOptions(st.col).forEach((o) => sel.appendChild(el('option', { value: o, text: o })));
+  sel.value = st.value;
+  sel.addEventListener('change', () => setStage(k, st.col, sel.value, sel));
+  return sel;
+}
+
+/* ---- selecting a page ---- */
+function selectPage(k) {
+  if (k === null || k === undefined) return;
+  goToKey(k);
+  openDetail(k);
+}
+function openPageFromUrl() {
+  const p = new URLSearchParams(location.search).get('page');
+  if (!p) return;
+  const k = keyOfLabel(p);
+  if (k !== null) { setView('board'); selectPage(k); }
+}
+
+/* ---- page detail drawer ---- */
+function openDetail(k) {
+  S.detailKey = k; $('detail').hidden = false; document.body.classList.add('has-detail');
+  renderDetail();
+  if (V.ok) { resize(); }
+}
+function closeDetail() { $('detail').hidden = true; document.body.classList.remove('has-detail'); if (V.ok) resize(); }
+function stepDetail(d) {
+  const keys = orderKeys(Math.max(NS(), 2));
+  let i = keys.findIndex((k) => kstr(k) === kstr(S.detailKey));
+  i = Math.max(0, Math.min(keys.length - 1, i + d));
+  selectPage(keys[i]);
+}
+function renderDetail() {
+  const k = S.detailKey, body = $('dBody'), label = pageLabel(k), info = S.model.pages.get(k);
+  $('dTitle').textContent = label + (pageTitle(k) ? '　' + pageTitle(k) : '');
+  body.textContent = '';
+  // 台割の内容
+  const head = S.rows[S.headerRow >= 0 ? S.headerRow : 0] || [];
+  const stageIdx = stageCols().map((s) => s.col);
+  if (info) {
+    const row = S.rows[info.row] || [];
+    const dl = el('dl', { class: 'kvlist' });
+    head.forEach((h, i) => { if (i === S.map.page || stageIdx.indexOf(i) >= 0) return; const v = String(row[i] || '').trim(); if (!h || !v) return; dl.append(el('dt', { text: h }), el('dd', { text: v })); });
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '台割の内容' }), dl.children.length ? dl : el('p', { class: 'muted', text: '記入がありません' })));
+  } else body.appendChild(el('p', { class: 'muted', text: typeof k === 'number' && k > NS() ? '調整用の白ページです' : '台割にこのページの行がありません' }));
+  // 進捗
+  const st = pageStages(k);
+  if (st.length) {
+    const box = el('div', { class: 'stages' });
+    st.forEach((s) => box.appendChild(el('label', { class: 'stage' }, el('span', { text: s.name }), stageSelect(k, s))));
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内と外部スタッフが行えます' })));
+  }
+  // デザイン
+  const a = S.assign.get(kstr(k));
+  const src = a && S.sources.get(a.src);
+  body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: 'デザイン' }),
+    a ? el('p', null, (src && src.name ? src.name : 'PDF') + ' の ' + a.page + 'ページ目', ' ', el('button', { class: 'btn sm', onclick: () => { setView('board'); goToKey(k); } }, '3Dで見る')) : el('p', { class: 'muted', text: 'まだPDFが貼られていません' })));
+  // コメント
+  body.appendChild(commentSection(label));
+  // 図版
+  body.appendChild(figureSection(label));
+}
+
+/* ---- comments ---- */
+async function addComment(label, text, replyTo, btn) {
+  text = String(text || '').trim();
+  if (!text) { toast('コメントを入力してください', 'err'); return false; }
+  const r = await busy(btn, () => relay('commentAdd', { page: label, text, replyTo: replyTo || '', origin: location.origin + location.pathname }));
+  if (!r) return false;
+  S.comments.push(rowObj(H_COMMENT, r.comment));
+  toast(r.notified ? 'コメントしました（' + r.notified + '人にメールで通知）' : 'コメントしました');
+  renderBoard(); renderViews();
+  return true;
+}
+async function setCommentState(c, state, btn) {
+  const r = await busy(btn, () => relay('commentState', { id: c.ID, state }));
+  if (!r) return;
+  c['状態'] = state; renderBoard(); renderViews();
+}
+async function deleteComment(c) {
+  const r = await busy(null, () => relay('commentDelete', { id: c.ID }));
+  if (!r) return;
+  S.comments = S.comments.filter((x) => x !== c && x['返信先'] !== c.ID);
+  toast('コメントを削除しました'); renderBoard(); renderViews();
+}
+const mineOrStaff = (c) => isStaff() || String(c['投稿者']).toLowerCase() === String(S.me && S.me.email).toLowerCase();
+function commentItem(c, withPage) {
+  const replies = S.comments.filter((x) => x['返信先'] === c.ID);
+  const done = c['状態'] === '対応済';
+  const li = el('li', { class: 'citem' + (done ? ' done' : '') });
+  const k = keyOfLabel(c['ページ']);
+  li.appendChild(el('div', { class: 'cmeta' },
+    withPage ? el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, c['ページ'] + (k !== null && pageTitle(k) ? ' ' + pageTitle(k) : '')) : null,
+    el('b', { text: c['名前'] || c['投稿者'] }), el('span', { class: 'muted', text: c['日時'] }),
+    done ? el('span', { class: 'chip st-done', text: '対応済' }) : el('span', { class: 'chip st-doing', text: '未対応' })));
+  li.appendChild(el('p', { class: 'ctext', text: c['本文'] }));
+  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: rp['名前'] || rp['投稿者'] }), el('span', { class: 'muted', text: rp['日時'] }),
+    mineOrStaff(rp) ? armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(rp)) : null), el('p', { class: 'ctext', text: rp['本文'] }))));
+  const acts = el('div', { class: 'cacts' });
+  const replyBox = el('div', { class: 'replybox', hidden: true });
+  const ta = el('textarea', { rows: 2, placeholder: '返信を書く', 'aria-label': '返信' });
+  const send = el('button', { class: 'btn sm primary' }, '返信する');
+  send.addEventListener('click', async () => { if (await addComment(c['ページ'], ta.value, c.ID, send)) { ta.value = ''; } });
+  replyBox.append(ta, send);
+  acts.appendChild(el('button', { class: 'btn xs', onclick: () => { replyBox.hidden = !replyBox.hidden; if (!replyBox.hidden) ta.focus(); } }, '返信'));
+  if (mineOrStaff(c)) {
+    const t = el('button', { class: 'btn xs' }, done ? '未対応に戻す' : '対応済にする');
+    t.addEventListener('click', () => setCommentState(c, done ? '未対応' : '対応済', t));
+    acts.appendChild(t);
+    acts.appendChild(armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(c)));
+  }
+  li.append(acts, replyBox);
+  return li;
+}
+function commentSection(label) {
+  const list = S.comments.filter((c) => c['ページ'] === label && !c['返信先']);
+  const ul = el('ul', { class: 'clist' }, list.map((c) => commentItem(c, false)));
+  const ta = el('textarea', { rows: 3, placeholder: 'このページへのコメント（投稿すると社内メンバーにメールで通知されます）', 'aria-label': 'コメント' });
+  const send = el('button', { class: 'btn primary' }, 'コメントする');
+  send.addEventListener('click', async () => { if (await addComment(label, ta.value, '', send)) ta.value = ''; });
+  ta.addEventListener('keydown', (e) => { if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) { e.preventDefault(); send.click(); } });
+  return el('section', { class: 'dsec' }, el('h3', { text: 'コメント（' + list.length + '）' }), list.length ? ul : el('p', { class: 'muted', text: 'まだコメントはありません' }), el('div', { class: 'cform' }, ta, send));
+}
+let cFilter = 'open';
+function renderComments() {
+  const q = ($('cSearch').value || '').trim().toLowerCase();
+  const list = S.comments.filter((c) => !c['返信先'])
+    .filter((c) => cFilter === 'all' || c['状態'] !== '対応済')
+    .filter((c) => !q || [c['本文'], c['ページ'], c['名前'], pageTitle(keyOfLabel(c['ページ']))].join(' ').toLowerCase().indexOf(q) >= 0)
+    .slice().reverse();
+  const ul = $('commentList'); ul.textContent = '';
+  if (!list.length) ul.appendChild(el('li', { class: 'muted', text: cFilter === 'open' ? '未対応のコメントはありません' : 'コメントはありません' }));
+  list.forEach((c) => ul.appendChild(commentItem(c, true)));
+}
+
+/* ---- figures ---- */
+function figureForm(f, label, onDone) {
+  f = f || {};
+  const inp = (name, attrs) => el('input', Object.assign({ type: 'text', value: f[name] || '', 'aria-label': name }, attrs || {}));
+  const sel = (name, opts) => { const s = el('select', { 'aria-label': name }); opts.forEach((o) => s.appendChild(el('option', { value: o, text: o }))); s.value = f[name] || opts[0]; return s; };
+  const pageSel = el('select', { 'aria-label': 'ページ' });
+  pageKeys().concat(orderKeys(Math.max(NS(), 2)).filter((k) => !S.model.pages.has(k))).forEach((k) => pageSel.appendChild(el('option', { value: pageLabel(k), text: pageLabel(k) + (pageTitle(k) ? ' ' + pageTitle(k) : '') })));
+  pageSel.value = f['ページ'] || label || pageLabel(pageKeys()[0] || 1);
+  const F = { 'ページ': pageSel, '図版番号': inp('図版番号'), '種別': sel('種別', FIG_KINDS), '内容': el('textarea', { rows: 2, 'aria-label': '内容' }), '手配状況': sel('手配状況', FIG_STATES), '提供元・撮影者': inp('提供元・撮影者'), 'クレジット': inp('クレジット'), 'ファイル': inp('ファイル', { placeholder: 'ドライブなどのURL' }), 'メモ': el('textarea', { rows: 2, 'aria-label': 'メモ' }) };
+  F['内容'].value = f['内容'] || ''; F['メモ'].value = f['メモ'] || '';
+  const save = el('button', { class: 'btn primary' }, f.ID ? '保存' : '追加');
+  const box = el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === '内容' || k === 'メモ' ? ' wide' : '') }, el('span', { text: k }), F[k])),
+    el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => onDone(false) }, 'やめる')));
+  save.addEventListener('click', async () => {
+    const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
+    const r = await busy(save, () => relay('figureSave', { id: f.ID || '', values }));
+    if (!r) return;
+    const obj = rowObj(H_FIGURE, r.row);
+    const i = S.figures.findIndex((x) => x.ID === obj.ID);
+    if (i >= 0) S.figures[i] = obj; else S.figures.push(obj);
+    toast(f.ID ? '図版を更新しました' : '図版を追加しました'); onDone(true);
+  });
+  return box;
+}
+async function deleteFigure(f) {
+  const r = await busy(null, () => relay('figureDelete', { id: f.ID }));
+  if (!r) return;
+  S.figures = S.figures.filter((x) => x !== f); toast('図版を削除しました'); renderViews();
+}
+function figStateChip(v) { const c = v === '確定' ? 'done' : v === '入稿済' ? 'ready' : v === '依頼中' ? 'doing' : 'todo'; return el('span', { class: 'chip st-' + c, text: v || '未定' }); }
+function fileLink(url) { if (!url) return null; return /^https?:\/\//.test(url) ? el('a', { href: url, target: '_blank', rel: 'noopener', text: 'ファイル' }) : el('span', { text: url }); }
+function figureSection(label) {
+  const list = S.figures.filter((f) => f['ページ'] === label);
+  const sec = el('section', { class: 'dsec' }, el('h3', { text: '図版（' + list.length + '）' }));
+  const box = el('div');
+  const draw = () => {
+    box.textContent = '';
+    list.forEach((f) => {
+      const card = el('div', { class: 'fcard' },
+        el('div', { class: 'cmeta' }, el('b', { text: (f['図版番号'] ? f['図版番号'] + ' ' : '') + (f['種別'] || '') }), figStateChip(f['手配状況'])),
+        f['内容'] ? el('p', { text: f['内容'] }) : null,
+        el('p', { class: 'muted' }, [f['提供元・撮影者'], f['クレジット'] ? '© ' + f['クレジット'] : ''].filter(Boolean).join('　'), ' ', fileLink(f['ファイル'])),
+        f['メモ'] ? el('p', { class: 'muted', text: f['メモ'] }) : null);
+      if (canFigures()) {
+        const acts = el('div', { class: 'cacts' }, el('button', { class: 'btn xs', onclick: () => { card.replaceWith(figureForm(f, label, (ch) => { if (ch) renderViews(); else draw(); })); } }, '編集'),
+          armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteFigure(f)));
+        card.appendChild(acts);
+      }
+      box.appendChild(card);
+    });
+    if (!list.length) box.appendChild(el('p', { class: 'muted', text: '図版は登録されていません' }));
+    if (canFigures()) box.appendChild(el('button', { class: 'btn sm', onclick: (e) => { e.target.replaceWith(figureForm(null, label, (ch) => { if (ch) renderViews(); else draw(); })); } }, '図版を追加'));
+  };
+  draw(); sec.appendChild(box);
+  return sec;
+}
+function renderFigures() {
+  const fsel = $('figFilter');
+  if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
+  const want = fsel.value;
+  const order = orderKeys(Math.max(NS(), 2)).map(pageLabel);
+  const list = S.figures.filter((f) => !want || (f['手配状況'] || '未定') === want).slice().sort((a, b) => order.indexOf(a['ページ']) - order.indexOf(b['ページ']) || String(a['図版番号']).localeCompare(String(b['図版番号']), 'ja', { numeric: true }));
+  const t = $('figTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['ページ', '番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', '更新', ''].map((h) => el('th', { text: h })))));
+  const tb = el('tbody');
+  list.forEach((f) => {
+    const k = keyOfLabel(f['ページ']);
+    const tr = el('tr', null,
+      el('td', null, el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, f['ページ'])),
+      el('td', { text: f['図版番号'] }), el('td', { text: f['種別'] }), el('td', { class: 'wrap', text: f['内容'] }), el('td', null, figStateChip(f['手配状況'])),
+      el('td', { text: f['提供元・撮影者'] }), el('td', { text: f['クレジット'] }), el('td', null, fileLink(f['ファイル'])), el('td', { class: 'muted', text: [f['更新者'], f['更新日時']].filter(Boolean).join(' ') }),
+      el('td', null, canFigures() ? el('button', { class: 'btn xs', onclick: () => showFigForm(f) }, '編集') : null));
+    tb.appendChild(tr);
+  });
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 10, class: 'muted', text: '図版は登録されていません' })));
+  t.appendChild(tb);
+  $('btnFigAdd').hidden = !canFigures();
+}
+function showFigForm(f) {
+  const box = $('figFormBox'); box.textContent = '';
+  box.appendChild(figureForm(f, f ? f['ページ'] : '', (ch) => { box.textContent = ''; if (ch) renderViews(); }));
+  if (f && canFigures()) box.firstChild.querySelector('.formacts').appendChild(armButton(el('button', { class: 'btn' }), '削除', 'もう一度押すと削除', () => { box.textContent = ''; deleteFigure(f); }));
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---- progress view ---- */
+function renderProgress() {
+  const stages = stageCols(), keys = pageKeys();
+  const sum = $('progSummary'); sum.textContent = '';
+  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内と外部スタッフが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
+  if (!stages.length) sum.appendChild(el('p', { class: 'muted', text: '工程の列が見つかりません（台割の見出しに「初校」などの列を追加してください）' }));
+  const classes = ['done', 'doing', 'ready', 'todo', 'other', 'none'], names = { done: '確定', doing: '調整中', ready: '着手OK', todo: '未・待ち', other: 'その他', none: '空欄' };
+  stages.forEach((s) => {
+    const cnt = {}; classes.forEach((c) => { cnt[c] = 0; });
+    keys.forEach((k) => { cnt[stateClass(pageStages(k).find((x) => x.col === s.col).value)]++; });
+    const bar = el('div', { class: 'sbar', role: 'img', 'aria-label': s.name + '：' + classes.map((c) => names[c] + cnt[c]).join('、') }, classes.filter((c) => cnt[c]).map((c) => el('i', { class: 'st-' + c, style: 'flex:' + cnt[c], title: names[c] + ' ' + cnt[c] + 'P' })));
+    sum.appendChild(el('div', { class: 'srow' }, el('b', { text: s.name }), bar, el('span', { class: 'muted', text: classes.filter((c) => cnt[c]).map((c) => names[c] + ' ' + cnt[c]).join('　') })));
+  });
+  if (stages.length) sum.appendChild(el('div', { class: 'legend2' }, classes.slice(0, 5).map((c) => el('span', null, el('i', { class: 'st-' + c }), names[c]))));
+  // table
+  const ssel = $('progSection');
+  const cur = ssel.value;
+  ssel.textContent = ''; ssel.appendChild(el('option', { value: '', text: 'すべて' }));
+  S.model.sections.forEach((s) => ssel.appendChild(el('option', { value: s, text: s })));
+  ssel.value = S.model.sections.indexOf(cur) >= 0 ? cur : '';
+  const onlyOpen = $('progOpen').checked;
+  const t = $('progTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, el('th', { text: 'ページ' }), el('th', { text: '内容' }), el('th', { text: 'セクション' }), stages.map((s) => el('th', { text: s.name })), el('th', { text: 'コメント' }), el('th', { text: '図版' }))));
+  const tb = el('tbody');
+  keys.forEach((k) => {
+    const info = S.model.pages.get(k);
+    if (ssel.value && info.section !== ssel.value) return;
+    const st = pageStages(k);
+    if (onlyOpen && st.length && stateClass(st[st.length - 1].value) === 'done') return;
+    const label = pageLabel(k), nC = openComments(label), nF = S.figures.filter((f) => f['ページ'] === label).length;
+    tb.appendChild(el('tr', null,
+      el('td', null, el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, label)),
+      el('td', { class: 'wrap', text: pageTitle(k) }), el('td', { class: 'muted', text: info.section || '' }),
+      st.map((s) => el('td', null, stageSelect(k, s))),
+      el('td', null, nC ? el('span', { class: 'chip st-doing', text: '未対応 ' + nC }) : ''), el('td', { class: 'muted', text: nF || '' })));
+  });
+  t.appendChild(tb);
+}
+
+/* ---- expenses ---- */
+const yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
+const amount = (e) => { const n = Number(String(e['金額（税込）'] || '').replace(/[^\d.-]/g, '')); return isFinite(n) ? n : 0; };
+function renderExpenses() {
+  const list = (S.expenses || []).slice();
+  const sum = $('expSummary'); sum.textContent = '';
+  const total = list.reduce((a, e) => a + amount(e), 0);
+  const approved = list.filter((e) => /済|承認/.test(e['承認'])).reduce((a, e) => a + amount(e), 0);
+  sum.appendChild(el('div', { class: 'kpis' },
+    el('div', { class: 'kpi' }, el('span', { text: '合計' }), el('b', { text: yen(total) })),
+    el('div', { class: 'kpi' }, el('span', { text: '承認済' }), el('b', { text: yen(approved) })),
+    el('div', { class: 'kpi' }, el('span', { text: '件数' }), el('b', { text: list.length + '件' }))));
+  const byKind = {}; list.forEach((e) => { const k = e['区分'] || '未分類'; byKind[k] = (byKind[k] || 0) + amount(e); });
+  const max = Math.max(1, ...Object.values(byKind));
+  sum.appendChild(el('div', { class: 'bars' }, Object.keys(byKind).sort((a, b) => byKind[b] - byKind[a]).map((k) => el('div', { class: 'brow' }, el('span', { text: k }), el('div', { class: 'btrack' }, el('i', { style: 'width:' + (byKind[k] / max * 100).toFixed(1) + '%' })), el('b', { text: yen(byKind[k]) })))));
+  const t = $('expTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
+  const tb = el('tbody');
+  list.sort((a, b) => String(b['日付']).localeCompare(String(a['日付']))).forEach((e) => {
+    tb.appendChild(el('tr', null, el('td', { text: e['日付'] }), el('td', { text: e['区分'] }), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num', text: e['金額（税込）'] ? yen(amount(e)) : '' }), el('td', { text: e['担当'] }),
+      el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
+      el('td', null, e['承認'] ? el('span', { class: 'chip st-' + (/済|承認/.test(e['承認']) ? 'done' : 'todo'), text: e['承認'] }) : ''),
+      el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
+  });
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 9, class: 'muted', text: '経費は登録されていません' })));
+  t.appendChild(tb);
+}
+async function openReceipt(url, btn) {
+  const id = extractDriveId(url);
+  if (!id) { window.open(url, '_blank', 'noopener'); return; }
+  const w = window.open('', '_blank');
+  await busy(btn, async () => {
+    const meta = await relayFileMeta(id);
+    const blob = await relayDownload(meta);
+    const u = URL.createObjectURL(blob);
+    if (w) w.location = u; else window.open(u, '_blank');
+  });
+}
+function showExpForm(e) {
+  e = e || {};
+  const box = $('expFormBox'); box.textContent = '';
+  const today = new Date(); const ymd = today.getFullYear() + '/' + String(today.getMonth() + 1).padStart(2, '0') + '/' + String(today.getDate()).padStart(2, '0');
+  const F = {
+    '日付': el('input', { type: 'text', value: e['日付'] || ymd, 'aria-label': '日付' }),
+    '区分': (() => { const s = el('select', { 'aria-label': '区分' }); EXP_KINDS.forEach((k) => s.appendChild(el('option', { value: k, text: k }))); s.value = e['区分'] || EXP_KINDS[0]; return s; })(),
+    '内容': el('input', { type: 'text', value: e['内容'] || '', 'aria-label': '内容' }),
+    '支払先': el('input', { type: 'text', value: e['支払先'] || '', 'aria-label': '支払先' }),
+    '金額（税込）': el('input', { type: 'text', inputmode: 'numeric', value: e['金額（税込）'] ? String(amount(e)) : '', 'aria-label': '金額（税込）' }),
+    '担当': el('input', { type: 'text', value: e['担当'] || (S.me ? S.me.name : ''), 'aria-label': '担当' }),
+    '領収書': el('input', { type: 'text', value: e['領収書'] || '', placeholder: 'URL、または右のボタンでアップロード', 'aria-label': '領収書' }),
+    '承認': (() => { const s = el('select', { 'aria-label': '承認' }); ['未承認', '承認済'].forEach((k) => s.appendChild(el('option', { value: k, text: k }))); s.value = e['承認'] || '未承認'; return s; })()
+  };
+  const file = el('input', { type: 'file', accept: 'application/pdf,image/*', hidden: true });
+  const upBtn = el('button', { class: 'btn sm', onclick: () => file.click() }, '領収書をアップロード');
+  file.addEventListener('change', async () => {
+    const f = file.files[0]; if (!f) return;
+    const done = await busy(upBtn, () => relayUpload(f, 'receipt', (p) => { upBtn.textContent = 'アップロード中 ' + Math.round(p * 100) + '%'; }));
+    upBtn.textContent = '領収書をアップロード';
+    if (done) { F['領収書'].value = fileUrl(done.id); toast('領収書をアップロードしました'); }
+  });
+  const save = el('button', { class: 'btn primary' }, e.ID ? '保存' : '追加');
+  save.addEventListener('click', async () => {
+    const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
+    if (!values['内容'] && !values['金額（税込）']) { toast('内容か金額を入力してください', 'err'); return; }
+    const r = await busy(save, () => relay('expenseSave', { id: e.ID || '', values }));
+    if (!r) return;
+    const obj = rowObj(H_EXPENSE, r.row);
+    const i = S.expenses.findIndex((x) => x.ID === obj.ID);
+    if (i >= 0) S.expenses[i] = obj; else S.expenses.push(obj);
+    box.textContent = ''; toast(e.ID ? '経費を更新しました' : '経費を追加しました'); renderExpenses();
+  });
+  const acts = el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => { box.textContent = ''; } }, 'やめる'));
+  if (e.ID) acts.appendChild(armButton(el('button', { class: 'btn' }), '削除', 'もう一度押すと削除', async () => {
+    const r = await busy(null, () => relay('expenseDelete', { id: e.ID }));
+    if (!r) return;
+    S.expenses = S.expenses.filter((x) => x.ID !== e.ID); box.textContent = ''; toast('経費を削除しました'); renderExpenses();
+  }));
+  box.appendChild(el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === '内容' || k === '領収書' ? ' wide' : '') }, el('span', { text: k }), F[k], k === '領収書' ? upBtn : null)), file, acts));
+  box.scrollIntoView({ block: 'nearest' });
+}
+
+/* ---- members ---- */
+function renderMembers() {
+  const t = $('memTable'); t.textContent = '';
+  t.appendChild(el('thead', null, el('tr', null, ['メールアドレス', '名前', '役割', 'メモ', ''].map((h) => el('th', { text: h })))));
+  const tb = el('tbody');
+  S.members.forEach((m) => {
+    const name = el('input', { type: 'text', value: m['名前'] || '', 'aria-label': '名前' });
+    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', '外部スタッフ'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = m['役割'] || '外部スタッフ';
+    const memo = el('input', { type: 'text', value: m['メモ'] || '', 'aria-label': 'メモ' });
+    const save = el('button', { class: 'btn xs' }, '保存');
+    save.addEventListener('click', async () => {
+      const r = await busy(save, () => relay('memberSave', { orig: m['メール'], email: m['メール'], name: name.value, role: roleSel.value, memo: memo.value }));
+      if (r) { m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value; toast('保存しました'); }
+    });
+    const del = armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', async () => {
+      const r = await busy(del, () => relay('memberDelete', { email: m['メール'] }));
+      if (r) { S.members = S.members.filter((x) => x !== m); toast('削除しました'); renderMembers(); }
+    });
+    const me = S.me && String(m['メール']).toLowerCase() === S.me.email;
+    if (me) { roleSel.disabled = true; del.disabled = true; }
+    tb.appendChild(el('tr', null, el('td', { text: m['メール'] + (me ? '（あなた）' : '') }), el('td', null, name), el('td', null, roleSel), el('td', null, memo), el('td', null, save, ' ', del)));
+  });
+  t.appendChild(tb);
+}
+async function addMember(btn) {
+  const email = $('mEmail').value.trim();
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('メールアドレスを確認してください', 'err'); return; }
+  const r = await busy(btn, () => relay('memberSave', { email, name: $('mName').value.trim(), role: $('mRole').value, memo: $('mMemo').value.trim() }));
+  if (!r) return;
+  S.members.push({ 'メール': email.toLowerCase(), '名前': $('mName').value.trim(), '役割': $('mRole').value, 'メモ': $('mMemo').value.trim() });
+  ['mEmail', 'mName', 'mMemo'].forEach((id) => { $(id).value = ''; });
+  toast(email + ' を追加しました。このアドレスのGoogleアカウントでログインできます'); renderMembers();
+}
+
+/* ---- wiring for this module ---- */
+function wirePM() {
+  document.querySelectorAll('[data-view]').forEach((b) => b.addEventListener('click', () => setView(b.dataset.view)));
+  $('dClose').addEventListener('click', closeDetail);
+  $('dPrev').addEventListener('click', () => stepDetail(-1));
+  $('dNext').addEventListener('click', () => stepDetail(1));
+  document.querySelectorAll('[data-cfilter]').forEach((b) => b.addEventListener('click', () => {
+    cFilter = b.dataset.cfilter; document.querySelectorAll('[data-cfilter]').forEach((x) => x.classList.toggle('on', x === b)); renderComments();
+  }));
+  $('cSearch').addEventListener('input', renderComments);
+  $('figFilter').addEventListener('change', renderFigures);
+  $('btnFigAdd').addEventListener('click', () => showFigForm(null));
+  $('progSection').addEventListener('change', renderProgress);
+  $('progOpen').addEventListener('change', renderProgress);
+  $('btnExpAdd').addEventListener('click', () => showExpForm(null));
+  $('btnMemAdd').addEventListener('click', (e) => addMember(e.target));
+  $('btnSwitch').addEventListener('click', signOut);
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('detail').hidden) closeDetail(); });
+  // others' changes: refresh quietly when coming back to the tab after a while
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && S.loaded && Date.now() - (S.loadedAt || 0) > 120000) loadProject(); });
+}
+
+/* ===== self-check, wiring, startup ===== */
+function makeSamplePdf(n) {
+  const W = (S.set.w * 72 / 25.4).toFixed(2), H = (S.set.h * 72 / 25.4).toFixed(2);
+  const cols = ['0.75 0.22 0.17', '0.16 0.50 0.73', '0.15 0.68 0.38', '0.56 0.27 0.68'];
+  const kids = [], pages = [];
+  let id = 4;
+  for (let i = 0; i < n; i++) {
+    const fs = Math.round(W / 5);
+    const stream = cols[i % cols.length] + ' rg 0 0 ' + W + ' ' + H + ' re f 1 1 1 rg BT /F1 ' + fs + ' Tf ' + (W * 0.12).toFixed(2) + ' ' + (H * 0.5).toFixed(2) + ' Td (TEST ' + (i + 1) + ') Tj ET';
+    pages.push({ page: id, content: id + 1, stream }); kids.push(id + ' 0 R'); id += 2;
+  }
+  let pdf = '%PDF-1.4\n';
+  const offs = [];
+  const add = (num, body) => { offs[num] = pdf.length; pdf += num + ' 0 obj\n' + body + '\nendobj\n'; };
+  add(1, '<< /Type /Catalog /Pages 2 0 R >>');
+  add(2, '<< /Type /Pages /Kids [' + kids.join(' ') + '] /Count ' + n + ' >>');
+  add(3, '<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>');
+  pages.forEach((p) => {
+    add(p.page, '<< /Type /Page /Parent 2 0 R /MediaBox [0 0 ' + W + ' ' + H + '] /Resources << /Font << /F1 3 0 R >> >> /Contents ' + p.content + ' 0 R >>');
+    add(p.content, '<< /Length ' + p.stream.length + ' >>\nstream\n' + p.stream + '\nendstream');
+  });
+  const xref = pdf.length;
+  pdf += 'xref\n0 ' + id + '\n0000000000 65535 f \n' + offs.slice(1).map((o) => String(o).padStart(10, '0') + ' 00000 n \n').join('');
+  pdf += 'trailer\n<< /Size ' + id + ' /Root 1 0 R >>\nstartxref\n' + xref + '\n%%EOF';
+  return new Blob([pdf], { type: 'application/pdf' });
+}
+async function runDiagnosis() {
+  const box = $('diagBox'), out = $('diagOut'), cv = $('diagCanvas');
+  box.hidden = false;
+  const lines = [];
+  const t0 = performance.now();
+  lines.push('3D表示: ' + (V.ok ? 'OK' : 'NG（WebGLを開始できません）'));
+  lines.push('PDFライブラリ: ' + (window.pdfjsLib ? 'OK ' + (pdfjsLib.version || '') : 'NG（読み込めていません）'));
+  lines.push('ログイン: ' + (S.me ? S.me.email + '（' + S.me.role + '）' : 'なし'));
+  lines.push('台割: ' + (S.tabName || '—') + '・本文 ' + NS() + 'P');
+  lines.push('デザイン登録: ' + S.designs.length + '件 ／ 割当: ' + S.assign.size + '枠');
+  S.designs.forEach((d) => { const s = S.sources.get(d.id) || {}; lines.push('  ・' + (d.name || d.id) + '：' + (s.err ? 'NG ' + s.err : (s.pdf ? 'OK ' + s.numPages + 'P' : '未読込'))); });
+  let hi = 0; texCache.forEach((e) => { if (e.hi) hi++; });
+  lines.push('3Dに貼られたページ: ' + hi + '枚（現在の見開き ' + Math.round(V.target) + '）');
+  out.textContent = lines.join('\n') + '\nPDF描画テスト: 実行中…';
+  try {
+    const tmp = srcFor('__diag', 'test'); tmp.blob = makeSamplePdf(2);
+    let c;
+    try { c = await queueRender(() => renderAssigned({ src: '__diag', page: 2, half: null }, 168), true); }
+    finally { if (tmp.pdf && tmp.pdf.destroy) try { tmp.pdf.destroy(); } catch (e) { /* ignore */ } S.sources.delete('__diag'); }
+    if (!c) throw new Error('描画結果が空でした');
+    const px = c.getContext('2d').getImageData(Math.round(c.width / 2), 4, 1, 1).data;
+    cv.width = 84; cv.height = Math.round(84 * c.height / c.width);
+    cv.getContext('2d').drawImage(c, 0, 0, cv.width, cv.height);
+    lines.push('PDF描画テスト: ' + (px[2] > 120 && px[0] < 120 ? 'OK' : '要確認（rgb ' + px[0] + ',' + px[1] + ',' + px[2] + '）') + '（' + Math.round(performance.now() - t0) + 'ms）');
+  } catch (e) { lines.push('PDF描画テスト: NG — ' + (e && e.message ? e.message : String(e))); }
+  if (S.lastRenderErr) lines.push('直近の描画エラー: ' + S.lastRenderErr);
+  out.textContent = lines.join('\n');
+}
+
+function wire() {
+  document.querySelectorAll('[data-panel]').forEach((b) => b.addEventListener('click', () => {
+    const p = $(b.dataset.panel); p.hidden = !p.hidden; b.classList.toggle('on', !p.hidden);
+  }));
+  $('btnReload').addEventListener('click', async () => {
+    const b = $('btnReload'); b.disabled = true;
+    S.sources.forEach((s) => { if (!s.blob || !s.pdf) s.err = ''; });
+    blobLoads.clear();
+    await loadProject({ tab: S.tabName });
+    b.disabled = false;
+  });
+  let logoutArmed = 0;
+  $('userChip').addEventListener('click', () => {
+    const u = $('userChip');
+    if (!logoutArmed) { u.dataset.label = u.textContent; u.textContent = 'ログアウトする'; logoutArmed = setTimeout(() => { logoutArmed = 0; u.textContent = u.dataset.label; }, 3000); return; }
+    clearTimeout(logoutArmed); signOut();
+  });
+  $('btnOpen').addEventListener('click', () => openSheetFromInput('openUrl', 'landingMsg'));
+  $('openUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') openSheetFromInput('openUrl', 'landingMsg'); });
+  $('btnOpen2').addEventListener('click', () => openSheetFromInput('openUrl2', 'projMsg'));
+  $('btnCopyUrl').addEventListener('click', () => {
+    const t = $('shareUrl').textContent;
+    const done = () => setMsg('projMsg', '共有用URLをコピーしました。', 'ok');
+    try { navigator.clipboard.writeText(t).then(done, () => { selectText($('shareUrl')); setMsg('projMsg', '選択しました。コピーしてください。'); }); }
+    catch (e) { selectText($('shareUrl')); }
+  });
+  $('tabSelect').addEventListener('change', () => loadProject({ tab: $('tabSelect').value }).then(() => setMsg('projMsg', '台割のタブを切り替えました。「設定をシートに保存」で全員に反映されます。')));
+  $('tileSize').addEventListener('input', () => { $('board').style.setProperty('--tw', $('tileSize').value + 'px'); });
+  $('btnSaveSet').addEventListener('click', saveSettings);
+  $('btnPick').addEventListener('click', () => $('designFile').click());
+  $('designFile').addEventListener('change', (e) => { uploadFiles([...e.target.files]); e.target.value = ''; });
+  const dz = $('dropZone');
+  dz.addEventListener('dragover', (e) => { if (hasFiles(e)) { e.preventDefault(); dz.classList.add('over'); } });
+  dz.addEventListener('dragleave', () => dz.classList.remove('over'));
+  dz.addEventListener('drop', (e) => { if (!hasFiles(e)) return; e.preventDefault(); dz.classList.remove('over'); uploadFiles([...e.dataTransfer.files]); });
+  window.addEventListener('dragover', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  window.addEventListener('drop', (e) => { if (hasFiles(e)) e.preventDefault(); });
+  $('btnDiag').addEventListener('click', runDiagnosis);
+  const setWide = (on) => {
+    document.body.classList.toggle('wide', on);
+    $('btnWide').textContent = on ? '台割と並べて表示' : '3Dだけを表示'; $('btnWide').setAttribute('aria-pressed', String(on));
+    try { localStorage.setItem('dandori.wide', on ? '1' : ''); } catch (e) { /* ignore */ }
+    if (V.ok) { resize(); fitCamera(true); }
+  };
+  $('btnWide').addEventListener('click', () => setWide(!document.body.classList.contains('wide')));
+  try { if (localStorage.getItem('dandori.wide')) setWide(true); } catch (e) { /* ignore */ }
+  $('btnPrev').addEventListener('click', () => setSpread(Math.round(V.target) - 1, true));
+  $('btnNext').addEventListener('click', () => setSpread(Math.round(V.target) + 1, true));
+  $('spreadSlider').addEventListener('input', (e) => setSpread(parseInt(e.target.value, 10), true));
+  document.querySelectorAll('[data-cam]').forEach((b) => b.addEventListener('click', () => setCam(b.dataset.cam)));
+  document.addEventListener('keydown', (e) => {
+    const t = e.target && e.target.tagName;
+    if (t === 'INPUT' || t === 'TEXTAREA' || t === 'SELECT') return;
+    if (e.key !== 'ArrowLeft' && e.key !== 'ArrowRight') return;
+    const fwd = (e.key === 'ArrowRight') === (S.set.binding !== 'R');
+    setSpread(Math.round(V.target) + (fwd ? 1 : -1), true); e.preventDefault();
+  });
+  S.onRenderError = (k, err) => {
+    S.lastRenderErr = keyLabel(isNaN(+k) ? k : +k) + '：' + (err && err.message ? err.message : String(err));
+    renderDesignListSoon();
+  };
+}
+function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
+
+async function start() {
+  initSettingsUI(); wire(); wirePM(); initThree(); syncControls(); applyRole();
+  await idb.open();
+  loadSession();
+  if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
+  const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
+  if (!id) {
+    document.body.classList.add('locked');
+    $('landing').hidden = false;
+    renderRecent(); return;
+  }
+  S.sheetId = id;
+  let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
+  if (!signedIn()) { showLogin(); return; }
+  if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }
+}
+start();
+
+</script>
+</body>
+</html>
