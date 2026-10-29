@@ -12,7 +12,7 @@ const HTML = fs.readFileSync(path.join(__dirname, 'test_index.html'), 'utf8'), P
     const href2 = await p.locator('#login a[href="privacy.html"]').isVisible();
     await p.click('#login a[href="privacy.html"]'); await p.waitForTimeout(400);
     const t = await p.title(), sw = await p.evaluate(() => document.documentElement.scrollWidth);
-    const good = href === 1 && href2 && t === 'プライバシーポリシー — 台割ボード' && sw <= w;
+    const good = href === 1 && href2 && t === 'プライバシーポリシー — エディトリアルPM' && sw <= w;
     console.log((good ? 'PASS ' : 'FAIL ') + w + 'px ' + scheme + ': links on landing and sign-in, page opens, no horizontal scroll (' + sw + ')');
     if (!good) process.exitCode = 1;
     await p.screenshot({ path: path.join(__dirname, 'out', 'priv_' + w + '.png'), fullPage: false });

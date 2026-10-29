@@ -235,6 +235,14 @@ r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(r.ok && r.tasks.l
   r = W.call({ action: 'scheduleSave', session: S_OWNER, sheet: SID, row: 2, name: 'x', start: '2026-10-01', end: '2026-10-03' }); ok(!r.ok && fs2.getSheetByName('s').cells[1][2] === '2026/10/02', 'and not written');
   W.call({ action: 'settingsSave', session: S_OWNER, sheet: SID, rows: setRows() });
 }
+/* ---- role name: チームメンバー (former 外部スタッフ still accepted) ---- */
+r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(r.ok && r.me.key === 'ext' && r.me.role === 'チームメンバー', 'a member stored as 外部スタッフ is shown as チームメンバー');
+r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'writer@example.com', name: 'ライター', role: 'チームメンバー' });
+ok(r.ok && ss.getSheetByName('メンバー').cells.some((c) => c[0] === 'writer@example.com' && c[2] === 'チームメンバー'), 'new members saved as チームメンバー');
+r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'x@example.com', role: 'メンバー' }); ok(!r.ok && /チームメンバー/.test(r.message), 'unknown role refused, message names チームメンバー');
+W.mails.length = 0;
+W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P9', text: '確認', origin: 'https://studio-pastel.github.io/editorial_pm/' });
+ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディトリアルPMで開く/.test(W.mails[0].body) && !/台割ボード/.test(W.mails[0].body), 'mail sent as エディトリアルPM');
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
 ok(!W.formulas.length, 'no value was ever written as a formula');

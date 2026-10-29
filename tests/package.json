@@ -1,7 +1,7 @@
 {
   "name": "editorial-pm-tests",
   "private": true,
-  "description": "Tests for the 台割ボード: relay (Apps Script) in a Node mock, and the board in headless Chromium",
+  "description": "Tests for the エディトリアルPM: relay (Apps Script) in a Node mock, and the board in headless Chromium",
   "scripts": {
     "test": "sh run.sh"
   },

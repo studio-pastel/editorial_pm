@@ -1,6 +1,6 @@
 /**
- * 台割ボード 中継スクリプト
- * 台割ボード（GitHub Pages）からの読み書きを、このスクリプトの所有者の権限で行います。
+ * エディトリアルPM 中継スクリプト
+ * エディトリアルPM（GitHub Pages）からの読み書きを、このスクリプトの所有者の権限で行います。
  * ログインしたGoogleアカウントが、そのスプレッドシートの「メンバー」タブに登録されているかを毎回確かめます。
  *
  * デプロイ：「デプロイ」→「新しいデプロイ」→ 種類「ウェブアプリ」
@@ -10,7 +10,7 @@
  * ・扱うスプレッドシートは、このスクリプトの所有者が「オーナー」のものだけ（スケジュールのシートも同じ）
  * ・ログインはスプレッドシートごと。ある案件でのログインは、ほかの案件では使えません
  */
-const VERSION = '2026-10-29';
+const VERSION = '2026-10-29b';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -29,7 +29,7 @@ const HEAD = {
   task: ['ID', 'タスク', '担当', '担当メール', '期限', '状態', 'メモ', '作成者', '作成者メール', '作成日時', '更新者', '更新日時']
 };
 const TASK_STATES = ['未着手', '進行中', '確認待ち', '完了'];
-const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: '外部スタッフ' };
+const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: 'チームメンバー' };
 const CAN = {
   load: ['staff', 'client', 'ext'],
   file: ['staff', 'client', 'ext'],
@@ -162,7 +162,7 @@ function roleKey_(v) {
   v = String(v || '');
   if (/社内/.test(v)) return 'staff';
   if (/クライアント/.test(v)) return 'client';
-  if (/外部/.test(v)) return 'ext';
+  if (/チーム|外部/.test(v)) return 'ext';            // 「外部スタッフ」 is the former name of チームメンバー
   return '';
 }
 function memberOf_(ss, email, nameHint) {
@@ -173,7 +173,7 @@ function memberOf_(ss, email, nameHint) {
   for (let i = 1; i < rows.length; i++) {
     if (String(rows[i][0]).trim().toLowerCase() !== email) continue;
     const key = roleKey_(rows[i][2]);
-    if (!key) fail_('not_member', '役割が設定されていません（社内／クライアント／外部スタッフのいずれかを「メンバー」タブに入れてください）');
+    if (!key) fail_('not_member', '役割が設定されていません（社内／クライアント／チームメンバーのいずれかを「メンバー」タブに入れてください）');
     return { email, name: rows[i][1] || nameHint || email, role: ROLE_LABEL[key], key, row: i + 1 };
   }
   if (email === owner) return { email, name: nameHint || email, role: ROLE_LABEL.staff, key: 'staff' };
@@ -412,11 +412,11 @@ function notify_(ss, me, page, text, origin) {
   const okOrigin = ALLOWED_ORIGINS.some((o) => origin.indexOf(o + '/') === 0);
   const link = okOrigin ? origin.split('?')[0] + '?sheet=' + ss.getId() + '&page=' + encodeURIComponent(page) : '';
   const subject = '［' + projectName_(ss) + '］' + page + ' に ' + me.name + ' さんからコメント';
-  const body = me.name + ' さんが ' + page + ' にコメントしました。\n\n' + text + '\n\n' + (link ? '台割ボードで開く：\n' + link + '\n' : '') + '\n—\nこのメールは台割ボードから自動で送信されています。';
+  const body = me.name + ' さんが ' + page + ' にコメントしました。\n\n' + text + '\n\n' + (link ? 'エディトリアルPMで開く：\n' + link + '\n' : '') + '\n—\nこのメールはエディトリアルPMから自動で送信されています。';
   let sent = 0;
   for (const addr of to) {
     if (MailApp.getRemainingDailyQuota() < 1) break;
-    MailApp.sendEmail({ to: addr, subject, body, name: '台割ボード' });
+    MailApp.sendEmail({ to: addr, subject, body, name: 'エディトリアルPM' });
     sent++;
   }
   return sent;
@@ -467,7 +467,7 @@ function memberSave_(ss, me, req) {
   const email = String(req.email || '').trim().toLowerCase();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) fail_('bad_request', 'メールアドレスが正しくありません');
   const key = roleKey_(req.role);
-  if (!key) fail_('bad_request', '役割は 社内／クライアント／外部スタッフ から選んでください');
+  if (!key) fail_('bad_request', '役割は 社内／クライアント／チームメンバー から選んでください');
   const sh = ensureTab_(ss, 'member');
   const rows = sh.getDataRange().getDisplayValues();
   const orig = String(req.orig || email).toLowerCase();

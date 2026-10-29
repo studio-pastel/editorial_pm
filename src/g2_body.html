@@ -1,6 +1,6 @@
 <div class="wrap">
   <header class="top">
-    <h1 class="brand" id="brandTitle">台割ボード</h1>
+    <h1 class="brand" id="brandTitle">エディトリアルPM</h1>
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
@@ -23,7 +23,7 @@
   <section class="panel" id="login" hidden>
     <h2>ログイン</h2>
     <p class="lead" id="loginTitle"></p>
-    <p>この台割ボードは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
+    <p>このエディトリアルPMは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
     <div id="gsiBtn" class="gsi"></div>
     <p class="msg" id="loginMsg"></p>
     <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
@@ -255,11 +255,11 @@
   <div class="view" id="view-members" hidden>
     <section class="panel">
       <h2>メンバー</h2>
-      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／外部スタッフ：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
+      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／チームメンバー：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
       <div class="memadd">
         <label class="field"><span>メールアドレス（Googleアカウント）</span><input id="mEmail" type="email" autocomplete="off"></label>
         <label class="field"><span>名前</span><input id="mName" type="text" autocomplete="off"></label>
-        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>外部スタッフ</option></select></label>
+        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>チームメンバー</option></select></label>
         <label class="field"><span>メモ</span><input id="mMemo" type="text" autocomplete="off"></label>
         <button class="btn primary" id="btnMemAdd">追加</button>
       </div>

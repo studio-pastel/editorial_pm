@@ -60,7 +60,7 @@ async function loadProject(opts) {
   const before = sig();
   applyLoad(r);
   const heavy = first || opts.full || before !== sig();
-  document.title = S.sheetTitle || '台割ボード';
+  document.title = S.sheetTitle || 'エディトリアルPM';
   rememberProject();
   applyRole(); pushSettingsToUI(); renderProjectUI();
   if (heavy) S.thumbs.clear();
@@ -167,8 +167,8 @@ function openSheetFromInput(inputId, msgId) {
 /* ---- 案件 panel ---- */
 const COLDEFS = [['page', 'ページ列'], ['title', '内容列'], ['kind', '種別列'], ['section', '区分列'], ['note', '備考列'], ['status', '状態列'], ['count', 'ページ数列']];
 function renderProjectUI() {
-  $('brandTitle').textContent = S.sheetTitle || '台割ボード';
-  $('projTitle').textContent = S.sheetTitle ? '台割ボード' : '';
+  $('brandTitle').textContent = S.sheetTitle || 'エディトリアルPM';
+  $('projTitle').textContent = S.sheetTitle ? 'エディトリアルPM' : '';
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetName || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';

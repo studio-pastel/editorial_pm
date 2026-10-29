@@ -144,6 +144,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const cExt = await mkctx('T_EXT');
   p = await open(cExt); await login(p);
   ok(!(await vis(p, '#vt-schedule')) && await vis(p, '#vt-tasks') && await vis(p, '#vt-minutes'), 'external: no スケジュール tab; タスク and 議事録 visible');
+  ok(await p.textContent('#userChip') === 'デザイナーA（チームメンバー）', 'role shown as チームメンバー (stored as 外部スタッフ): ' + await p.textContent('#userChip'));
   await p.click('#vt-minutes'); await p.waitForTimeout(300);
   ok(!(await vis(p, '#btnMinAdd')), 'external cannot write minutes');
   await p.click('#minList .mitem >> nth=0'); await p.waitForTimeout(600);

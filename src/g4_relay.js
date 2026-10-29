@@ -47,9 +47,9 @@ async function showLogin(msg) {
   document.body.classList.add('locked');
   $('login').hidden = false; $('landing').hidden = true;
   // the project's name is never shown before sign-in
-  S.sheetTitle = ''; document.title = '台割ボード';
-  $('brandTitle').textContent = '台割ボード'; $('projTitle').textContent = '';
-  $('loginTitle').textContent = '台割ボード';
+  S.sheetTitle = ''; document.title = 'エディトリアルPM';
+  $('brandTitle').textContent = 'エディトリアルPM'; $('projTitle').textContent = '';
+  $('loginTitle').textContent = 'エディトリアルPM';
   setMsg('loginMsg', msg || '', msg ? 'err' : '');
   try {
     await loadGis();

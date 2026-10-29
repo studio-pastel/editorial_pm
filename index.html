@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
-<title>台割ボード</title>
+<title>エディトリアルPM</title>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600;800&display=swap">
 <style>
 /* Layout: left = 台割 spreads board (scrolls), right = sticky 3D book stage; panels fold open above the board. */
@@ -379,7 +379,7 @@ body.editor .viewonly { display: none !important; }
 <body>
 <div class="wrap">
   <header class="top">
-    <h1 class="brand" id="brandTitle">台割ボード</h1>
+    <h1 class="brand" id="brandTitle">エディトリアルPM</h1>
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
@@ -402,7 +402,7 @@ body.editor .viewonly { display: none !important; }
   <section class="panel" id="login" hidden>
     <h2>ログイン</h2>
     <p class="lead" id="loginTitle"></p>
-    <p>この台割ボードは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
+    <p>このエディトリアルPMは、登録されたメンバーだけが見られます。Googleアカウントでログインしてください。</p>
     <div id="gsiBtn" class="gsi"></div>
     <p class="msg" id="loginMsg"></p>
     <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
@@ -634,11 +634,11 @@ body.editor .viewonly { display: none !important; }
   <div class="view" id="view-members" hidden>
     <section class="panel">
       <h2>メンバー</h2>
-      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／外部スタッフ：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
+      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／チームメンバー：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
       <div class="memadd">
         <label class="field"><span>メールアドレス（Googleアカウント）</span><input id="mEmail" type="email" autocomplete="off"></label>
         <label class="field"><span>名前</span><input id="mName" type="text" autocomplete="off"></label>
-        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>外部スタッフ</option></select></label>
+        <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>チームメンバー</option></select></label>
         <label class="field"><span>メモ</span><input id="mMemo" type="text" autocomplete="off"></label>
         <button class="btn primary" id="btnMemAdd">追加</button>
       </div>
@@ -1040,9 +1040,9 @@ async function showLogin(msg) {
   document.body.classList.add('locked');
   $('login').hidden = false; $('landing').hidden = true;
   // the project's name is never shown before sign-in
-  S.sheetTitle = ''; document.title = '台割ボード';
-  $('brandTitle').textContent = '台割ボード'; $('projTitle').textContent = '';
-  $('loginTitle').textContent = '台割ボード';
+  S.sheetTitle = ''; document.title = 'エディトリアルPM';
+  $('brandTitle').textContent = 'エディトリアルPM'; $('projTitle').textContent = '';
+  $('loginTitle').textContent = 'エディトリアルPM';
   setMsg('loginMsg', msg || '', msg ? 'err' : '');
   try {
     await loadGis();
@@ -1626,7 +1626,7 @@ function bindMat(mat, key) {
 }
 
 function initThree() {
-  if (!window.THREE) { $('stagePh').textContent = '3Dライブラリを読み込めませんでした。台割ボードはそのまま使えます。'; return; }
+  if (!window.THREE) { $('stagePh').textContent = '3Dライブラリを読み込めませんでした。エディトリアルPMはそのまま使えます。'; return; }
   try {
     const host = $('view3d');
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: false });
@@ -1953,7 +1953,7 @@ async function loadProject(opts) {
   const before = sig();
   applyLoad(r);
   const heavy = first || opts.full || before !== sig();
-  document.title = S.sheetTitle || '台割ボード';
+  document.title = S.sheetTitle || 'エディトリアルPM';
   rememberProject();
   applyRole(); pushSettingsToUI(); renderProjectUI();
   if (heavy) S.thumbs.clear();
@@ -2060,8 +2060,8 @@ function openSheetFromInput(inputId, msgId) {
 /* ---- 案件 panel ---- */
 const COLDEFS = [['page', 'ページ列'], ['title', '内容列'], ['kind', '種別列'], ['section', '区分列'], ['note', '備考列'], ['status', '状態列'], ['count', 'ページ数列']];
 function renderProjectUI() {
-  $('brandTitle').textContent = S.sheetTitle || '台割ボード';
-  $('projTitle').textContent = S.sheetTitle ? '台割ボード' : '';
+  $('brandTitle').textContent = S.sheetTitle || 'エディトリアルPM';
+  $('projTitle').textContent = S.sheetTitle ? 'エディトリアルPM' : '';
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetName || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';
@@ -2445,7 +2445,7 @@ function renderDetail() {
   if (st.length) {
     const box = el('div', { class: 'stages' });
     st.forEach((s) => box.appendChild(el('label', { class: 'stage' }, el('span', { text: s.name }), stageSelect(k, s))));
-    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内と外部スタッフが行えます' })));
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内とチームメンバーが行えます' })));
   }
   // デザイン
   const a = S.assign.get(kstr(k));
@@ -2619,7 +2619,7 @@ function showFigForm(f) {
 function renderProgress() {
   const stages = stageCols(), keys = pageKeys();
   const sum = $('progSummary'); sum.textContent = '';
-  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内と外部スタッフが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
+  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内とチームメンバーが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
   if (!stages.length) sum.appendChild(el('p', { class: 'muted', text: '工程の列が見つかりません（台割の見出しに「初校」などの列を追加してください）' }));
   const classes = ['done', 'doing', 'ready', 'todo', 'other', 'none'], names = { done: '確定', doing: '調整中', ready: '着手OK', todo: '未・待ち', other: 'その他', none: '空欄' };
   stages.forEach((s) => {
@@ -2742,7 +2742,7 @@ function renderMembers() {
   const tb = el('tbody');
   S.members.forEach((m) => {
     const name = el('input', { type: 'text', value: m['名前'] || '', 'aria-label': '名前' });
-    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', '外部スタッフ'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = m['役割'] || '外部スタッフ';
+    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', 'チームメンバー'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = /社内/.test(m['役割']) ? '社内' : /クライアント/.test(m['役割']) ? 'クライアント' : 'チームメンバー';
     const memo = el('input', { type: 'text', value: m['メモ'] || '', 'aria-label': 'メモ' });
     const save = el('button', { class: 'btn xs' }, '保存');
     save.addEventListener('click', async () => {

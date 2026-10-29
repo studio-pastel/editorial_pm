@@ -21,7 +21,7 @@ function bindMat(mat, key) {
 }
 
 function initThree() {
-  if (!window.THREE) { $('stagePh').textContent = '3Dライブラリを読み込めませんでした。台割ボードはそのまま使えます。'; return; }
+  if (!window.THREE) { $('stagePh').textContent = '3Dライブラリを読み込めませんでした。エディトリアルPMはそのまま使えます。'; return; }
   try {
     const host = $('view3d');
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, preserveDrawingBuffer: false });

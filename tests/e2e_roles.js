@@ -58,7 +58,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await p.evaluate(() => [...S.assign].filter(([, v]) => v.src.startsWith('PDF')).length === 10), 'folder PDFs downloaded via relay and placed (10 pages)');
   // members
   await p.click('#vt-members');
-  for (const [e, n, r] of [['client@example.ac.jp', '大学 担当', 'クライアント'], ['designer@example.com', 'デザイナーA', '外部スタッフ']]) {
+  for (const [e, n, r] of [['client@example.ac.jp', '大学 担当', 'クライアント'], ['designer@example.com', 'デザイナーA', 'チームメンバー']]) {
     await p.fill('#mEmail', e); await p.fill('#mName', n); await p.selectOption('#mRole', r); await p.click('#btnMemAdd'); await p.waitForTimeout(400);
   }
   ok(ss.getSheetByName('メンバー').cells.length === 4, 'two members added to メンバー tab (header + owner + 2)');

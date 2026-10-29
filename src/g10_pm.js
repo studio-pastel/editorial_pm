@@ -173,7 +173,7 @@ function renderDetail() {
   if (st.length) {
     const box = el('div', { class: 'stages' });
     st.forEach((s) => box.appendChild(el('label', { class: 'stage' }, el('span', { text: s.name }), stageSelect(k, s))));
-    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内と外部スタッフが行えます' })));
+    body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: '進捗' }), box, canProgress() ? null : el('p', { class: 'hint', text: '進捗の変更は社内とチームメンバーが行えます' })));
   }
   // デザイン
   const a = S.assign.get(kstr(k));
@@ -347,7 +347,7 @@ function showFigForm(f) {
 function renderProgress() {
   const stages = stageCols(), keys = pageKeys();
   const sum = $('progSummary'); sum.textContent = '';
-  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内と外部スタッフが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
+  $('progHint').textContent = stages.length ? (canProgress() ? '状態を選ぶと、すぐにシートへ保存されます。' : '進捗の変更は社内とチームメンバーが行えます。') : '台割に「初校」「再校」など「〜校」で終わる列があると、工程として表示されます。';
   if (!stages.length) sum.appendChild(el('p', { class: 'muted', text: '工程の列が見つかりません（台割の見出しに「初校」などの列を追加してください）' }));
   const classes = ['done', 'doing', 'ready', 'todo', 'other', 'none'], names = { done: '確定', doing: '調整中', ready: '着手OK', todo: '未・待ち', other: 'その他', none: '空欄' };
   stages.forEach((s) => {
@@ -470,7 +470,7 @@ function renderMembers() {
   const tb = el('tbody');
   S.members.forEach((m) => {
     const name = el('input', { type: 'text', value: m['名前'] || '', 'aria-label': '名前' });
-    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', '外部スタッフ'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = m['役割'] || '外部スタッフ';
+    const roleSel = el('select', { 'aria-label': '役割' }); ['社内', 'クライアント', 'チームメンバー'].forEach((r) => roleSel.appendChild(el('option', { value: r, text: r }))); roleSel.value = /社内/.test(m['役割']) ? '社内' : /クライアント/.test(m['役割']) ? 'クライアント' : 'チームメンバー';
     const memo = el('input', { type: 'text', value: m['メモ'] || '', 'aria-label': 'メモ' });
     const save = el('button', { class: 'btn xs' }, '保存');
     save.addEventListener('click', async () => {

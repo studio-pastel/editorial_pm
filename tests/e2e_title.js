@@ -49,6 +49,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   let p = await open(c);
   const body0 = await p.evaluate(() => document.body.innerText + document.title);
   ok(!/サンプル冊子|2028/.test(body0), 'nothing about the project before sign-in (first visit)');
+  ok(await p.title() === 'エディトリアルPM' && await p.textContent('#brandTitle') === 'エディトリアルPM' && !/台割ボード/.test(await p.evaluate(() => document.body.innerText)), 'product name is エディトリアルPM before sign-in');
   await login(p);
   ok(await p.title() === 'サンプル冊子2028', 'name shown after sign-in');
   // sign out → login screen on a browser that has visited
