@@ -1,0 +1,25 @@
+const c = require('../src/g3_core.js'); const assert = require('assert');
+const rows = [['頁','左右','セクション','種別','内容','備考','初校'],['表1','単','','表紙','','x','調整中'],['001','右','','扉','','',''],['002','左','SEC0','イントロ','メイン','','']];
+const d = c.detectColumns(rows);
+assert.deepStrictEqual(d.map, {page:0,title:4,kind:3,section:2,note:5,status:6,count:-1});
+const m = c.buildModel(rows, d.map, d.headerRow);
+assert.strictEqual(m.pages.get('F').kind, '表紙'); assert.strictEqual(m.n, 2);
+assert.strictEqual(c.colIndex('A'),0); assert.strictEqual(c.colIndex('AA'),26); assert.strictEqual(c.colName(26),'AA');
+assert.strictEqual(c.extractDriveId('https://drive.google.com/file/d/1AbCdEfGhIjKlMnOp_q-rs/view?usp=sharing'),'1AbCdEfGhIjKlMnOp_q-rs');
+assert.strictEqual(c.extractDriveId('https://drive.google.com/drive/folders/1ZZZZZZZZZZZZZZZZZZZZZ'),'1ZZZZZZZZZZZZZZZZZZZZZ');
+assert.strictEqual(c.extractDriveId('https://drive.google.com/open?id=1YYYYYYYYYYYY'),'1YYYYYYYYYYYY');
+assert.strictEqual(c.extractDriveId('ファイル'),'');
+const set = {w:182,h:257,binding:'R',bindType:'saddle',t:0.1,c:0.3,bleed:3,title:'本',color:'#112233',folder:'https://drive.google.com/drive/folders/1ZZ',tab:'台割'};
+const r = c.settingsToRows(set, {page:0,title:4,kind:-1});
+assert.strictEqual(r.find(x=>x[0]==='種別列')[1], 'なし');
+const back = c.parseSettingsRows(r);
+assert.deepStrictEqual(back.set, {w:182,h:257,binding:'R',bindType:'saddle',t:0.1,c:0.3,bleed:3,title:'本',color:'#112233',folder:'https://drive.google.com/drive/folders/1ZZ',tab:'台割'});
+assert.deepStrictEqual(back.cols, {page:0,title:4,kind:-1});
+const des = c.parseDesignRows([c.DESIGN_HEADER||['ファイル'],['https://drive.google.com/file/d/AAAAAAAAAAAAAAAAAAAAAA/view','a.pdf','1','4','1',''],['BBBBBBBBBBBBBBBBBBBBBBBB','b.pdf','2','','表1',''],['https://drive.google.com/file/d/CCCCCCCCCCCCCCCCCCCCCC/view','c.pdf','','','背','']]);
+assert.strictEqual(des.length, 3); assert.strictEqual(des[1].start, 'F'); assert.strictEqual(des[1].to, null); assert.strictEqual(des[0].row, 2);
+const as = c.computeAssignments(des, 8, (id)=> id.startsWith('B') ? 3 : null);
+assert.deepStrictEqual([...as].map(([k,v])=>k+':'+v.src[0]+v.page).join(' '), '1:A1 2:A2 3:A3 4:A4 F:B2 IF:B3 S:C1');
+// later row overrides
+const des2 = c.parseDesignRows([['AAAAAAAAAAAAAAAAAAAAAA','a','1','4','1'],['DDDDDDDDDDDDDDDDDDDDDD','d','1','1','3']]);
+assert.strictEqual(c.computeAssignments(des2, 8, ()=>null).get('3').src[0], 'D');
+console.log('g3 ok');
