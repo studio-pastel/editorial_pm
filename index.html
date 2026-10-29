@@ -1033,9 +1033,10 @@ let gisReady = false;
 async function showLogin(msg) {
   document.body.classList.add('locked');
   $('login').hidden = false; $('landing').hidden = true;
-  let t = S.sheetTitle;
-  if (!t) { try { const hit = JSON.parse(localStorage.getItem('dandori.recent') || '[]').filter((x) => x.id === S.sheetId)[0]; t = hit ? hit.title : ''; } catch (e) { /* ignore */ } }
-  $('loginTitle').textContent = t ? '「' + t + '」' : '台割ボード';
+  // the project's name is never shown before sign-in
+  S.sheetTitle = ''; document.title = '台割ボード';
+  $('brandTitle').textContent = '台割ボード'; $('projTitle').textContent = '';
+  $('loginTitle').textContent = '台割ボード';
   setMsg('loginMsg', msg || '', msg ? 'err' : '');
   try {
     await loadGis();
