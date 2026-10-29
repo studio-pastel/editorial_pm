@@ -990,9 +990,16 @@ const CONFIG = { relayUrl: 'https://script.google.com/macros/s/AKfycbxMrLbqXxx3q
 
 class RelayError extends Error { constructor(code, message) { super(message); this.code = code; } }
 const AUTH = { session: '', email: '', name: '' };
-function loadSession() { try { const j = JSON.parse(localStorage.getItem('dandori.session') || 'null'); if (j && j.session) Object.assign(AUTH, j); } catch (e) { /* none */ } }
-function saveSession() { try { localStorage.setItem('dandori.session', JSON.stringify(AUTH)); } catch (e) { /* this browser keeps no memory */ } }
-function clearSession() { AUTH.session = ''; AUTH.email = ''; AUTH.name = ''; try { localStorage.removeItem('dandori.session'); } catch (e) { /* ignore */ } }
+/* one sign-in per spreadsheet: the relay binds each session to the sheet it was issued for */
+const sessionKey = () => 'dandori.session.' + (S.sheetId || '');
+function loadSession() {
+  try {
+    localStorage.removeItem('dandori.session');   // sessions from before 2026-10-29 are no longer accepted
+    const j = JSON.parse(localStorage.getItem(sessionKey()) || 'null'); if (j && j.session) Object.assign(AUTH, j);
+  } catch (e) { /* none */ }
+}
+function saveSession() { try { localStorage.setItem(sessionKey(), JSON.stringify(AUTH)); } catch (e) { /* this browser keeps no memory */ } }
+function clearSession() { AUTH.session = ''; AUTH.email = ''; AUTH.name = ''; try { localStorage.removeItem(sessionKey()); } catch (e) { /* ignore */ } }
 const signedIn = () => !!AUTH.session;
 
 async function relay(action, params, opts) {
@@ -3314,7 +3321,6 @@ function selectText(el) { try { const r = document.createRange(); r.selectNodeCo
 async function start() {
   initSettingsUI(); wire(); wirePM(); wireWork(); initThree(); syncControls(); applyRole();
   await idb.open();
-  loadSession();
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
   if (!id) {
@@ -3323,6 +3329,7 @@ async function start() {
     renderRecent(); return;
   }
   S.sheetId = id;
+  loadSession();
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
   if (!signedIn()) { showLogin(); return; }
   if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }
