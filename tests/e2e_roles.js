@@ -57,7 +57,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.waitForTimeout(5000);
   ok(await p.evaluate(() => [...S.assign].filter(([, v]) => v.src.startsWith('PDF')).length === 10), 'folder PDFs downloaded via relay and placed (10 pages)');
   // members
-  await p.click('#vt-members');
+  await p.click('#vt-members'); await p.uncheck('#mInvite');
   for (const [e, n, r] of [['client@example.ac.jp', '大学 担当', 'クライアント'], ['designer@example.com', 'デザイナーA', 'チームメンバー']]) {
     await p.fill('#mEmail', e); await p.fill('#mName', n); await p.selectOption('#mRole', r); await p.click('#btnMemAdd'); await p.waitForTimeout(400);
   }

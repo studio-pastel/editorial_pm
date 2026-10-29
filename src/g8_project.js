@@ -36,6 +36,7 @@ function applyRole() {
   $('vt-expenses').hidden = !canSeeExpenses();
   $('vt-members').hidden = k !== 'staff';
   $('vt-schedule').hidden = !canSeeSchedule();
+  $('btnProjects').hidden = !S.me || !(k === 'staff' || projectCount() > 1);
   const u = $('userChip'); u.hidden = !S.me; u.textContent = S.me ? (S.me.name || S.me.email) + '（' + S.me.role + '）' : '';
 }
 
@@ -61,7 +62,6 @@ async function loadProject(opts) {
   applyLoad(r);
   const heavy = first || opts.full || before !== sig();
   document.title = S.sheetTitle || 'エディトリアルPM';
-  rememberProject();
   applyRole(); pushSettingsToUI(); renderProjectUI();
   if (heavy) S.thumbs.clear();
   texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
@@ -141,22 +141,55 @@ async function pinAutoFile(f) {
   } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
 
-/* ---- recent projects (this browser only) ---- */
-function recentList() { try { return JSON.parse(localStorage.getItem('dandori.recent') || '[]'); } catch (e) { return []; } }
-function rememberProject() {
-  try {
-    const l = recentList().filter((r) => r.id !== S.sheetId);
-    l.unshift({ id: S.sheetId, title: S.sheetTitle, t: Date.now() });
-    localStorage.setItem('dandori.recent', JSON.stringify(l.slice(0, 8)));
-  } catch (e) { /* ignore */ }
+/* ---- entry page: sign in once, then the projects I belong to ---- */
+const entryUrl = () => location.origin + location.pathname;
+function projectUrl(id) { return entryUrl() + '?sheet=' + encodeURIComponent(id); }
+function rememberProjectCount(n) { try { localStorage.setItem('dandori.projects', String(n)); } catch (e) { /* ignore */ } }
+function projectCount() { try { return parseInt(localStorage.getItem('dandori.projects') || '0', 10) || 0; } catch (e) { return 0; } }
+function storeProjectSession(p) {
+  try { localStorage.setItem('dandori.session.' + p.id, JSON.stringify({ session: p.session, email: AUTH.email, name: p.name || AUTH.name })); } catch (e) { /* ignore */ }
 }
-function projectUrl(id) { return location.origin + location.pathname + '?sheet=' + encodeURIComponent(id); }
-function renderRecent() {
-  const ul = $('recentList'); ul.textContent = '';
-  recentList().forEach((r) => {
+function renderProjectList(r) {
+  const ul = $('projList'); ul.textContent = '';
+  r.projects.forEach((p) => {
     const li = document.createElement('li'), a = document.createElement('a');
-    a.href = projectUrl(r.id); a.textContent = r.title || r.id; li.appendChild(a); ul.appendChild(li);
+    a.href = projectUrl(p.id); a.className = 'projitem';
+    const t = document.createElement('b'); t.textContent = p.title;
+    const m = document.createElement('span'); m.className = 'muted'; m.textContent = p.role;
+    a.append(t, m); li.appendChild(a); ul.appendChild(li);
   });
+  $('projAdd').hidden = !r.canAdd;
+  if (!r.projects.length) setMsg('landingMsg', r.canAdd ? 'まだ案件がありません。下の「案件を追加」から台割のスプレッドシートを登録してください。' : 'このアカウント（' + r.email + '）は、どの案件のメンバーにも登録されていません。案件の社内担当者に追加を依頼してください。', r.canAdd ? '' : 'err');
+  else setMsg('landingMsg', '');
+}
+async function showDirectory() {
+  document.body.classList.add('locked');
+  $('login').hidden = true; $('landing').hidden = false;
+  document.title = 'エディトリアルPM';
+  $('dirUser').textContent = AUTH.email;
+  setMsg('landingMsg', '読み込み中…');
+  let r;
+  try { r = await relay('projects', {}); }
+  catch (e) { if (e.code !== 'auth') setMsg('landingMsg', e.message, 'err'); return; }
+  r.projects.forEach(storeProjectSession);
+  rememberProjectCount(r.projects.length + (r.canAdd ? 1 : 0));
+  const listAsked = new URLSearchParams(location.search).get('list');
+  if (r.projects.length === 1 && !listAsked) { location.replace(projectUrl(r.projects[0].id)); return; }
+  renderProjectList(r);
+}
+async function addProjectFromInput() {
+  const url = $('openUrl').value.trim();
+  if (!extractSheetId(url)) { setMsg('landingMsg', 'スプレッドシートのURLを貼ってください。', 'err'); return; }
+  const b = $('btnOpen'); b.disabled = true; setMsg('landingMsg', '追加しています…');
+  try {
+    const r = await relay('projectAdd', { url });
+    r.projects.forEach(storeProjectSession);
+    rememberProjectCount(r.projects.length + 1);
+    $('openUrl').value = '';
+    renderProjectList(r);
+    setMsg('landingMsg', '案件を追加しました。', 'ok');
+  } catch (e) { setMsg('landingMsg', e.message, 'err'); }
+  finally { b.disabled = false; }
 }
 function openSheetFromInput(inputId, msgId) {
   const id = extractSheetId($(inputId).value);

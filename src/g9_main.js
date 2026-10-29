@@ -70,8 +70,9 @@ function wire() {
     if (!logoutArmed) { u.dataset.label = u.textContent; u.textContent = 'ログアウトする'; logoutArmed = setTimeout(() => { logoutArmed = 0; u.textContent = u.dataset.label; }, 3000); return; }
     clearTimeout(logoutArmed); signOut();
   });
-  $('btnOpen').addEventListener('click', () => openSheetFromInput('openUrl', 'landingMsg'));
-  $('openUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') openSheetFromInput('openUrl', 'landingMsg'); });
+  $('btnOpen').addEventListener('click', addProjectFromInput);
+  $('openUrl').addEventListener('keydown', (e) => { if (e.key === 'Enter') addProjectFromInput(); });
+  $('btnDirOut').addEventListener('click', signOut);
   $('btnOpen2').addEventListener('click', () => openSheetFromInput('openUrl2', 'projMsg'));
   $('btnCopyUrl').addEventListener('click', () => {
     const t = $('shareUrl').textContent;
@@ -123,13 +124,13 @@ async function start() {
   await idb.open();
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
+  S.sheetId = id || '';
+  loadSession();                 // the entry page has a sign-in of its own (S.sheetId is empty there)
   if (!id) {
-    document.body.classList.add('locked');
-    $('landing').hidden = false;
-    renderRecent(); return;
+    if (!signedIn()) { showLogin(); return; }
+    await showDirectory(); return;
   }
-  S.sheetId = id;
-  loadSession();
+  if (!signedIn()) await sessionFromDirectory(id);
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
   if (!signedIn()) { showLogin(); return; }
   if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }

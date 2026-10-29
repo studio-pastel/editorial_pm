@@ -8,6 +8,7 @@ const sessionKey = () => 'dandori.session.' + (S.sheetId || '');
 function loadSession() {
   try {
     localStorage.removeItem('dandori.session');   // sessions from before 2026-10-29 are no longer accepted
+    AUTH.session = ''; AUTH.email = ''; AUTH.name = '';
     const j = JSON.parse(localStorage.getItem(sessionKey()) || 'null'); if (j && j.session) Object.assign(AUTH, j);
   } catch (e) { /* none */ }
 }
@@ -67,7 +68,10 @@ async function onCredential(resp) {
     const r = await relay('auth', { idToken: resp && resp.credential }, { quiet: true });
     Object.assign(AUTH, { session: r.session, email: r.email, name: r.name });
     saveSession();
-    $('login').hidden = true; document.body.classList.remove('locked');
+    if (S.sheetId && r.directory) { try { localStorage.setItem('dandori.session.', JSON.stringify({ session: r.directory, email: r.email, name: r.name })); } catch (e) { /* ignore */ } }
+    $('login').hidden = true;
+    if (!S.sheetId) { await showDirectory(); return; }
+    document.body.classList.remove('locked');
     await loadProject();
   } catch (e) {
     setMsg('loginMsg', e.message, 'err');
@@ -76,8 +80,26 @@ async function onCredential(resp) {
 }
 function signOut() {
   clearSession();
+  try { Object.keys(localStorage).filter((k) => k.indexOf('dandori.session.') === 0).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
   try { google.accounts.id.disableAutoSelect(); } catch (e) { /* not loaded */ }
   location.reload();
+}
+
+/** opening a project link with only the entry-page sign-in: get that project's sign-in without asking again */
+async function sessionFromDirectory(id) {
+  let dir = null;
+  try { dir = JSON.parse(localStorage.getItem('dandori.session.') || 'null'); } catch (e) { /* none */ }
+  if (!dir || !dir.session) return false;
+  try {
+    const res = await fetch(CONFIG.relayUrl, { method: 'POST', headers: { 'Content-Type': 'text/plain;charset=utf-8' }, body: JSON.stringify({ action: 'projects', sheet: '', session: dir.session }), redirect: 'follow' });
+    const r = await res.json();
+    if (!r || !r.ok) return false;
+    const p = (r.projects || []).filter((x) => x.id === id)[0];
+    if (!p) return false;
+    Object.assign(AUTH, { session: p.session, email: dir.email, name: p.name || dir.name });
+    saveSession();
+    return true;
+  } catch (e) { return false; }
 }
 
 /* ---- files through the relay ---- */

@@ -243,6 +243,56 @@ r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'x@examp
 W.mails.length = 0;
 W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P9', text: '確認', origin: 'https://studio-pastel.github.io/editorial_pm/' });
 ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディトリアルPMで開く/.test(W.mails[0].body) && !/台割ボード/.test(W.mails[0].body), 'mail sent as エディトリアルPM');
+/* ---- entry page: sign-in without a project and the list of my projects ---- */
+{
+  const ORIGIN = 'https://studio-pastel.github.io/editorial_pm/';
+  let d = W.call({ action: 'auth', idToken: 'T_CLIENT', sheet: '' });
+  ok(d.ok && d.directory && d.session, 'sign-in on the entry page works without a project');
+  const D_CLIENT = d.session;
+  r = W.call({ action: 'load', session: D_CLIENT, sheet: SID }); ok(!r.ok && r.code === 'auth', 'the entry-page sign-in cannot open a project by itself');
+  r = W.call({ action: 'projects', session: D_CLIENT, sheet: '' });
+  const ids = r.projects.map((p) => p.id).sort();
+  ok(r.ok && ids.length === 2 && ids.indexOf(SID) >= 0 && ids.indexOf('OWNERSHEET2000000000000000000000000000000000') >= 0 && ids.indexOf('EVILSHEET0000000000000000000000000000000000') < 0, 'lists only projects (opened before, owned by the owner) where the person is a member: ' + ids.join(','));
+  const pS = r.projects.find((p) => p.id === SID);
+  ok(pS.title === 'サンプル冊子2028' && pS.role === 'クライアント' && r.canAdd === true, 'title from 案件名, role per project; 社内 somewhere → can add projects');
+  r = W.call({ action: 'load', session: pS.session, sheet: SID }); ok(r.ok && r.me.key === 'client', 'the session handed out for a project opens it');
+  r = W.call({ action: 'projects', session: pS.session, sheet: '' }); ok(!r.ok && r.code === 'auth', 'a project session cannot list projects');
+  d = W.call({ action: 'auth', idToken: 'T_STRANGER', sheet: '' });
+  r = W.call({ action: 'projects', session: d.session, sheet: '' }); ok(r.ok && r.projects.length === 0 && r.canAdd === false, 'someone with no membership sees no project');
+  r = W.call({ action: 'projectAdd', session: d.session, sheet: '', url: 'https://docs.google.com/spreadsheets/d/' + SID + '/edit' }); ok(!r.ok && (r.code === 'not_member' || r.code === 'forbidden'), 'non-members cannot add a project');
+  const NEWP = 'OWNERSHEET3000000000000000000000000000000000';
+  W.addSheet(NEWP, '新しい案件', [{ title: 'メンバー', cells: [['メール', '名前', '役割'], ['client@example.ac.jp', '大学 担当', 'クライアント']] }], 'PARENTFOLDER');
+  r = W.call({ action: 'projectAdd', session: D_CLIENT, sheet: '', url: 'https://docs.google.com/spreadsheets/d/' + NEWP + '/edit' }); ok(!r.ok && r.code === 'forbidden', 'a クライアント cannot add a project');
+  const dOwner = W.call({ action: 'auth', idToken: 'T_OWNER', sheet: '' }).session;
+  r = W.call({ action: 'projectAdd', session: dOwner, sheet: '', url: 'https://docs.google.com/spreadsheets/d/' + NEWP + '/edit' });
+  ok(r.ok && r.projects.some((p) => p.id === NEWP) && r.canAdd, 'owner adds a project by URL');
+  r = W.call({ action: 'projectAdd', session: dOwner, sheet: '', url: 'https://docs.google.com/spreadsheets/d/EVILSHEET0000000000000000000000000000000000/edit' }); ok(!r.ok && r.code === 'not_found', 'a sheet owned by someone else cannot be added');
+  ok(W.props.PROJECTS.indexOf('EVIL') < 0, 'registry holds only owned sheets');
+  r = W.call({ action: 'auth', idToken: 'T_CLIENT', sheet: SID }); ok(r.ok && r.directory && W.call({ action: 'projects', session: r.directory, sheet: '' }).ok, 'project sign-in also gives an entry-page sign-in');
+
+  /* ---- invitation mail ---- */
+  W.mails.length = 0;
+  r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'Photo@Example.com', name: '写真 花子', role: 'チームメンバー', invite: true, origin: ORIGIN });
+  const m = W.mails[0];
+  ok(r.ok && r.invited && W.mails.length === 1 && m.to === 'photo@example.com' && m.replyTo === 'owner@example.com' && m.name === 'エディトリアルPM', 'invite sent to the new member, reply-to the inviter');
+  ok(m.subject === '［サンプル冊子2028］エディトリアルPMへのご招待', 'invite subject: ' + m.subject);
+  ok(m.body.indexOf('写真 花子様') === 0 && /制作 太郎さんから、「サンプル冊子2028」/.test(m.body) && m.body.indexOf('   ' + ORIGIN + '\n') > 0 && /（photo@example.com）/.test(m.body) && /チームメンバー：閲覧、コメント、進捗と図版の更新、タスク/.test(m.body) && !/【/.test(m.body), 'invite body filled in (template A)');
+  W.mails.length = 0;
+  r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'noinvite@example.com', name: 'x', role: 'クライアント', invite: false, origin: ORIGIN }); ok(r.ok && !r.invited && W.mails.length === 0, 'no mail when the box is unchecked');
+  r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'badorigin@example.com', name: 'x', role: 'クライアント', invite: true, origin: 'https://evil.example/' });
+  ok(r.ok && !r.invited && /入口のURL/.test(r.inviteError) && W.mails.length === 0 && ss.getSheetByName('メンバー').cells.some((c) => c[0] === 'badorigin@example.com'), 'foreign origin: member saved, no mail, reason returned');
+  r = W.call({ action: 'memberInvite', session: S_OWNER, sheet: SID, email: 'noinvite@example.com', origin: ORIGIN });
+  ok(r.ok && W.mails.length === 1 && W.mails[0].to === 'noinvite@example.com' && /クライアント：/.test(W.mails[0].body), 're-send / later invite from the list');
+  r = W.call({ action: 'memberInvite', session: S_CLIENT, sheet: SID, email: 'noinvite@example.com', origin: ORIGIN }); ok(!r.ok && r.code === 'forbidden', 'only 社内 can send invites');
+  // custom template in 設定 survives saving settings from the board, and is used
+  const set = ss.getSheetByName('設定');
+  set.cells.push(['招待メール件名', '【案件名】のご案内'], ['招待メール本文', '【名前】さん\n入口：【入口URL】\n=注意']);
+  W.call({ action: 'settingsSave', session: S_OWNER, sheet: SID, rows: setRows() });
+  ok(set.cells.some((c) => c[0] === '招待メール本文') && set.cells.some((c) => c[0] === '招待メール件名'), 'rows written by hand in 設定 are kept when the board saves settings');
+  W.mails.length = 0;
+  W.call({ action: 'memberInvite', session: S_OWNER, sheet: SID, email: 'noinvite@example.com', origin: ORIGIN });
+  ok(W.mails[0].subject === 'サンプル冊子2028のご案内' && W.mails[0].body === 'xさん\n入口：' + ORIGIN + '\n=注意', 'custom template used: ' + JSON.stringify(W.mails[0].body));
+}
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
 ok(!W.formulas.length, 'no value was ever written as a formula');

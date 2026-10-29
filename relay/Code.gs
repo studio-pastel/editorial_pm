@@ -9,9 +9,13 @@
  * 安全のための決まり
  * ・扱うスプレッドシートは、このスクリプトの所有者が「オーナー」のものだけ（スケジュールのシートも同じ）
  * ・ログインはスプレッドシートごと。ある案件でのログインは、ほかの案件では使えません
+ *   （入口でのログインは「所属する案件の一覧」を見るためだけに使えます）
+ *
+ * 招待メールの文面は、各案件の「設定」タブに「招待メール件名」「招待メール本文」の行を作ると、その内容で上書きできます。
+ * 使える差し込み：【名前】【メール】【招待者】【案件名】【役割】【できること】【入口URL】
  */
-const VERSION = '2026-10-29b';
-const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks'];
+const VERSION = '2026-10-29c';
+const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
 const SESSION_DAYS = 30;
@@ -30,6 +34,34 @@ const HEAD = {
 };
 const TASK_STATES = ['未着手', '進行中', '確認待ち', '完了'];
 const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: 'チームメンバー' };
+const ROLE_CAN = {
+  staff: 'すべての操作（設定・デザインPDF・メンバー・経費の登録を含む）',
+  client: '閲覧、コメント、タスク、議事録の作成・編集、スケジュールと経費の閲覧',
+  ext: '閲覧、コメント、進捗と図版の更新、タスク'
+};
+const DIR = '@directory';                         // scope of the sign-in made on the entry page
+const INVITE_SUBJECT = '［【案件名】］エディトリアルPMへのご招待';
+const INVITE_BODY = [
+  '【名前】様',
+  '',
+  '【招待者】さんから、「【案件名】」の制作管理ツール「エディトリアルPM」に招待されました。',
+  'ページごとの進捗やコメント、スケジュールなどを確認できます。',
+  '',
+  '■ 開き方',
+  '1. 次のURLを開きます',
+  '   【入口URL】',
+  '2. 「Googleでログイン」を押し、このメールの宛先（【メール】）のGoogleアカウントでログインしてください',
+  '',
+  '■ あなたの役割',
+  '【役割】：【できること】',
+  '',
+  '■ ご注意',
+  '・このメールアドレスのGoogleアカウントでのみログインできます。Gmail以外のアドレスでもGoogleアカウントは作成できます（https://accounts.google.com/signup）',
+  '・ご不明な点は、このメールに返信してください',
+  '',
+  '—',
+  'このメールはエディトリアルPMから自動で送信されています。'
+].join('\n');
 const CAN = {
   load: ['staff', 'client', 'ext'],
   file: ['staff', 'client', 'ext'],
@@ -63,7 +95,11 @@ function fail_(code, message) { const e = new Error(message); e.code = code; thr
 
 function handle_(req) {
   if (!req || typeof req.action !== 'string') fail_('bad_request', '要求が正しくありません');
-  if (req.action === 'auth') return auth_(req);
+  if (req.action === 'auth') return req.sheet ? auth_(req) : authDirectory_(req);
+  if (req.action === 'projects' || req.action === 'projectAdd') {
+    const du = checkSession_(req.session, DIR);
+    return req.action === 'projects' ? projects_(du) : withLock_(() => projectAdd_(du, req));
+  }
   const user = checkSession_(req.session, req.sheet);
   const ss = openSheet_(req.sheet);
   const me = memberOf_(ss, user.email, '');
@@ -82,6 +118,7 @@ function handle_(req) {
     case 'expenseDelete': need('expenseWrite'); return withLock_(() => recordDelete_(ss, 'expense', req.id));
     case 'memberSave': need('manage'); return withLock_(() => memberSave_(ss, me, req));
     case 'memberDelete': need('manage'); return withLock_(() => memberDelete_(ss, me, req));
+    case 'memberInvite': need('manage'); return memberInvite_(ss, me, req);
     case 'settingsSave': need('manage'); return withLock_(() => settingsSave_(ss, req));
     case 'designAppend': need('manage'); return withLock_(() => designAppend_(ss, req));
     case 'designUpdate': need('manage'); return withLock_(() => designUpdate_(ss, req));
@@ -104,7 +141,7 @@ function auth_(req) {
   const tok = verifyIdToken_(req.idToken);
   const ss = openSheet_(req.sheet);
   const me = memberOf_(ss, tok.email, tok.name);
-  return { ok: true, session: makeSession_(tok.email, ss.getId()), email: tok.email, name: me.name, role: me.role, key: me.key };
+  return { ok: true, session: makeSession_(tok.email, ss.getId()), directory: makeSession_(tok.email, DIR), email: tok.email, name: me.name, role: me.role, key: me.key };
 }
 function verifyIdToken_(t) {
   if (!t) fail_('auth', 'ログインが必要です');
@@ -245,6 +282,7 @@ function load_(ss, me, req) {
   if (CAN.expenseRead.indexOf(me.key) >= 0) res.expenses = readTab_(ss, TAB.expense);
   if (me.key === 'staff') res.members = readTab_(ss, TAB.member);
   res.people = memberList_(ss);
+  registerProject_(ss.getId());
   res.minutes = readTab_(ss, TAB.minute);
   res.tasks = readTab_(ss, TAB.task);
   if (CAN.schedule.indexOf(me.key) >= 0) {
@@ -476,7 +514,9 @@ function memberSave_(ss, me, req) {
   for (let i = 1; i < rows.length; i++) if (String(rows[i][0]).trim().toLowerCase() === email && i + 1 !== r) fail_('bad_request', 'このメールアドレスはすでに登録されています');
   if (orig === me.email && key !== 'staff') fail_('bad_request', '自分の役割は社内から変更できません');
   writeRow_(sh, r > 0 ? r : sh.getLastRow() + 1, [email, String(req.name || ''), ROLE_LABEL[key], String(req.memo || '')]);
-  return { ok: true };
+  if (!req.invite) return { ok: true, invited: false };
+  try { invite_(ss, me, { email, name: String(req.name || '').trim(), key }, req.origin); return { ok: true, invited: true }; }
+  catch (e) { return { ok: true, invited: false, inviteError: e && e.message ? e.message : String(e) }; }
 }
 function memberDelete_(ss, me, req) {
   const email = String(req.email || '').trim().toLowerCase();
@@ -499,8 +539,11 @@ function settingsSave_(ss, req) {
     const i = rows.findIndex((r) => String(r[0]).trim() === k);
     if (i < 0) rows.push([k, keep[k]]); else if (!String(rows[i][1] || '').trim()) rows[i][1] = keep[k];
   });
+  // rows written by hand in the sheet (e.g. 招待メール本文) are kept as they are
+  const full = sh.getDataRange().getValues();
+  full.forEach((r) => { const k = String(r[0] || '').trim(); if (k && !rows.some((x) => String(x[0]).trim() === k)) rows.push([k, r[1]]); });
   sh.getRange(1, 1, Math.max(sh.getLastRow(), 1), 2).clearContent();
-  sh.getRange(1, 1, rows.length, 2).setValues(rows.map((r) => [clean_(r[0], 60), clean_(r[1], 500)]));
+  sh.getRange(1, 1, rows.length, 2).setValues(rows.map((r) => [clean_(r[0], 60), clean_(r[1], 5000)]));
   return { ok: true };
 }
 function designAppend_(ss, req) {
@@ -768,6 +811,70 @@ function taskDelete_(ss, me, req) {
   if (!mineOrStaff_(sh, r, me)) fail_('forbidden', 'タスクを削除できるのは、作成した人と社内メンバーです');
   sh.deleteRow(r);
   return { ok: true };
+}
+
+/* ================= entry page: sign-in without a project, list of my projects ================= */
+function authDirectory_(req) {
+  const tok = verifyIdToken_(req.idToken);
+  return { ok: true, session: makeSession_(tok.email, DIR), email: tok.email, name: tok.name, directory: true };
+}
+function registry_() { try { return JSON.parse(PropertiesService.getScriptProperties().getProperty('PROJECTS') || '[]'); } catch (e) { return []; } }
+/** every project that has been opened through this relay; only the IDs are kept (in the script's properties) */
+function registerProject_(id) {
+  const list = registry_();
+  if (list.indexOf(id) >= 0) return;
+  list.push(id);
+  PropertiesService.getScriptProperties().setProperty('PROJECTS', JSON.stringify(list.slice(-300)));
+}
+function projects_(user) {
+  const out = [];
+  let canAdd = user.email === ownerEmail_();
+  registry_().forEach((id) => {
+    let ss, me;
+    try { ss = openSheet_(id); me = memberOf_(ss, user.email, ''); } catch (e) { return; }
+    if (me.key === 'staff') canAdd = true;
+    out.push({ id, title: projectName_(ss), role: me.role, key: me.key, name: me.name, session: makeSession_(user.email, id) });
+  });
+  out.sort((a, b) => a.title.localeCompare(b.title, 'ja'));
+  return { ok: true, email: user.email, projects: out, canAdd };
+}
+function projectAdd_(user, req) {
+  const id = sheetIdOf_(req.url);
+  if (!id) fail_('bad_request', 'スプレッドシートのURLが正しくありません');
+  const ss = openSheet_(id);
+  const me = memberOf_(ss, user.email, '');
+  if (me.key !== 'staff') fail_('forbidden', '案件を追加できるのは、その案件の社内メンバーです');
+  registerProject_(id);
+  return projects_(user);
+}
+
+/* ================= invitation mail ================= */
+function entryUrl_(origin) {
+  origin = String(origin || '');
+  if (!ALLOWED_ORIGINS.some((o) => origin.indexOf(o + '/') === 0)) fail_('bad_request', '招待メールに入れる入口のURLを確認できませんでした');
+  return origin.split('?')[0].split('#')[0];
+}
+function invite_(ss, me, who, origin) {
+  const url = entryUrl_(origin);
+  if (MailApp.getRemainingDailyQuota() < 1) fail_('quota', '今日送れるメールの上限に達しました。明日もう一度「招待を送る」を押してください');
+  const set = settingsMap_(readTab_(ss, TAB.setting));
+  const fill = (t) => String(t)
+    .replace(/【名前】/g, who.name || who.email).replace(/【メール】/g, who.email).replace(/【招待者】/g, me.name)
+    .replace(/【案件名】/g, set['案件名'] || ss.getName()).replace(/【役割】/g, ROLE_LABEL[who.key]).replace(/【できること】/g, ROLE_CAN[who.key])
+    .replace(/【入口URL】/g, url);
+  const subject = fill(set['招待メール件名'] || INVITE_SUBJECT).replace(/[\r\n]+/g, ' ').slice(0, 200);
+  const body = fill(set['招待メール本文'] || INVITE_BODY);
+  const opt = { to: who.email, subject, body, name: 'エディトリアルPM' };
+  if (me.email && me.email !== who.email) opt.replyTo = me.email;
+  MailApp.sendEmail(opt);
+  return true;
+}
+function memberInvite_(ss, me, req) {
+  const email = String(req.email || '').trim().toLowerCase();
+  const m = memberList_(ss).filter((x) => x.email === email)[0];
+  if (!m) fail_('not_found', 'メンバーが見つかりません');
+  invite_(ss, me, { email, name: m.name === m.email ? '' : m.name, key: roleKey_(m.role) }, req.origin);
+  return { ok: true, invited: true };
 }
 
 /** 初回だけ手動で実行して、Googleの権限を許可するための関数 */

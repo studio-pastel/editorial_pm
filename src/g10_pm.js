@@ -483,18 +483,28 @@ function renderMembers() {
     });
     const me = S.me && String(m['メール']).toLowerCase() === S.me.email;
     if (me) { roleSel.disabled = true; del.disabled = true; }
-    tb.appendChild(el('tr', null, el('td', { text: m['メール'] + (me ? '（あなた）' : '') }), el('td', null, name), el('td', null, roleSel), el('td', null, memo), el('td', null, save, ' ', del)));
+    const inv = el('button', { class: 'btn xs', title: '入口のURLと開き方を、このメールアドレスに送ります' }, '招待を送る');
+    inv.addEventListener('click', async () => {
+      const r = await busy(inv, () => relay('memberInvite', { email: m['メール'], origin: entryUrl() }));
+      if (r) toast(m['メール'] + ' に招待メールを送りました');
+    });
+    tb.appendChild(el('tr', null, el('td', { text: m['メール'] + (me ? '（あなた）' : '') }), el('td', null, name), el('td', null, roleSel), el('td', null, memo), el('td', null, save, ' ', me ? null : inv, me ? null : ' ', del)));
   });
   t.appendChild(tb);
 }
 async function addMember(btn) {
   const email = $('mEmail').value.trim();
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) { toast('メールアドレスを確認してください', 'err'); return; }
-  const r = await busy(btn, () => relay('memberSave', { email, name: $('mName').value.trim(), role: $('mRole').value, memo: $('mMemo').value.trim() }));
+  const invite = $('mInvite').checked;
+  const r = await busy(btn, () => relay('memberSave', { email, name: $('mName').value.trim(), role: $('mRole').value, memo: $('mMemo').value.trim(), invite, origin: entryUrl() }));
   if (!r) return;
   S.members.push({ 'メール': email.toLowerCase(), '名前': $('mName').value.trim(), '役割': $('mRole').value, 'メモ': $('mMemo').value.trim() });
   ['mEmail', 'mName', 'mMemo'].forEach((id) => { $(id).value = ''; });
-  toast(email + ' を追加しました。このアドレスのGoogleアカウントでログインできます'); renderMembers();
+  $('mInvite').checked = true;
+  if (r.invited) toast(email + ' を追加し、招待メールを送りました');
+  else if (invite && r.inviteError) toast(email + ' を追加しましたが、招待メールを送れませんでした：' + r.inviteError + '（一覧の「招待を送る」で送り直せます）', 'err');
+  else toast(email + ' を追加しました。このアドレスのGoogleアカウントでログインできます');
+  renderMembers();
 }
 
 /* ---- wiring for this module ---- */

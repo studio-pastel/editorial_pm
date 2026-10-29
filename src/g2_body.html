@@ -4,6 +4,7 @@
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
+    <a class="btn" id="btnProjects" href="./?list=1" hidden title="所属している案件の一覧に戻ります">案件一覧</a>
     <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
     <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
   </header>
@@ -27,18 +28,22 @@
     <div id="gsiBtn" class="gsi"></div>
     <p class="msg" id="loginMsg"></p>
     <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
-    <p class="hint">Googleアカウントは、Gmail以外のメールアドレス（大学や会社のアドレス）でも作成できます。ログインに使うアドレスを、この案件の社内担当者に伝えてください。</p>
+    <p class="hint">Googleアカウントは、Gmail以外のメールアドレス（大学や会社のアドレス）でも作成できます。ログインに使うアドレスを、案件の社内担当者に伝えてください。</p>
     <p class="hint"><a href="privacy.html">プライバシーポリシー</a></p>
   </section>
 
   <section class="panel" id="landing" hidden>
-    <h2>案件を開く</h2>
-    <div class="row">
-      <label class="field" style="flex:3 1 320px"><span>台割のスプレッドシートのURL</span><input id="openUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
-      <button class="btn primary" id="btnOpen">開く</button>
-    </div>
+    <h2>案件を選ぶ</h2>
+    <p class="kv"><span>ログイン中</span><b id="dirUser"></b><button class="btn sm" id="btnDirOut">ログアウト</button></p>
+    <ul class="projlist" id="projList"></ul>
     <p class="msg" id="landingMsg"></p>
-    <ul class="recent" id="recentList"></ul>
+    <div id="projAdd" hidden>
+      <h3>案件を追加（社内のみ）</h3>
+      <div class="row">
+        <label class="field" style="flex:3 1 320px"><span>台割のスプレッドシートのURL（あなたがオーナーのもの）</span><input id="openUrl" type="text" placeholder="https://docs.google.com/spreadsheets/d/…" autocomplete="off"></label>
+        <button class="btn primary" id="btnOpen">追加</button>
+      </div>
+    </div>
     <p class="hint"><a href="privacy.html">プライバシーポリシー</a></p>
   </section>
 
@@ -255,12 +260,13 @@
   <div class="view" id="view-members" hidden>
     <section class="panel">
       <h2>メンバー</h2>
-      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／チームメンバー：閲覧・コメント・進捗と図版の更新（経費は表示されません）。</p>
+      <p class="hint">ここに登録したGoogleアカウントだけがログインできます。社内：すべて操作できる／クライアント：閲覧・コメント・経費の閲覧／チームメンバー：閲覧・コメント・進捗と図版の更新（経費は表示されません）。招待メールは入口のURLと開き方を案内し、返信はあなたに届きます。</p>
       <div class="memadd">
         <label class="field"><span>メールアドレス（Googleアカウント）</span><input id="mEmail" type="email" autocomplete="off"></label>
         <label class="field"><span>名前</span><input id="mName" type="text" autocomplete="off"></label>
         <label class="field"><span>役割</span><select id="mRole"><option>社内</option><option>クライアント</option><option selected>チームメンバー</option></select></label>
         <label class="field"><span>メモ</span><input id="mMemo" type="text" autocomplete="off"></label>
+        <label class="check"><input type="checkbox" id="mInvite" checked> 招待メールを送る</label>
         <button class="btn primary" id="btnMemAdd">追加</button>
       </div>
       <div class="tablewrap"><table class="grid" id="memTable"></table></div>

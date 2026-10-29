@@ -53,7 +53,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await login(p);
   ok(await p.title() === 'サンプル冊子2028', 'name shown after sign-in');
   // sign out → login screen on a browser that has visited
-  await p.evaluate(() => { clearSession(); }); await p.reload(); await p.waitForTimeout(900);
+  await p.evaluate(() => { Object.keys(localStorage).filter((k) => k.indexOf('dandori.session.') === 0).forEach((k) => localStorage.removeItem(k)); }); await p.reload(); await p.waitForTimeout(900);
   const body1 = await p.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.offsetParent !== null && e.children.length === 0).map((e) => e.textContent).join(' ') + document.title);
   ok(await p.isVisible('#login') && !/サンプル冊子|2028/.test(body1), 'nothing about the project on the sign-in screen of a returning browser');
   // session expiry while open → login screen hides the name too
