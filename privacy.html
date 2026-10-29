@@ -1,0 +1,74 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex">
+<title>プライバシーポリシー — 台割ボード</title>
+<style>
+:root { --bg: #eef1f2; --panel: #ffffff; --line: #cdd6d9; --fg: #172226; --mute: #5b6b70; --accent: #0d6a78; }
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --bg: #111719; --panel: #182024; --line: #2e3c42; --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; color-scheme: dark; }
+}
+:root[data-theme="dark"] { --bg: #111719; --panel: #182024; --line: #2e3c42; --fg: #e4eaec; --mute: #93a3a9; --accent: #4fc0cf; color-scheme: dark; }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font-family: "Hiragino Kaku Gothic ProN", "Yu Gothic", "Noto Sans JP", sans-serif; font-size: 15px; line-height: 1.85; padding: 0 16px; }
+main { max-width: 760px; margin: 32px auto 56px; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 28px clamp(18px, 4vw, 40px) 36px; }
+h1 { font-size: 22px; margin: 0 0 4px; letter-spacing: .04em; }
+h2 { font-size: 16px; margin: 28px 0 6px; padding-bottom: 4px; border-bottom: 1px solid var(--line); }
+p, ul { margin: 8px 0; }
+ul { padding-left: 1.4em; }
+.meta { color: var(--mute); font-size: 13px; margin: 0 0 18px; }
+a { color: var(--accent); overflow-wrap: anywhere; }
+</style>
+</head>
+<body>
+<main>
+  <h1>プライバシーポリシー</h1>
+  <p class="meta">台割ボード（冊子制作の台割・進捗・コメント・図版・スケジュール・タスク・議事録・経費を関係者で共有するためのウェブツール）　制定日：2026年10月29日</p>
+
+  <p>台割ボード（以下「本ツール」）は、冊子などの制作案件の関係者が情報を共有するためのツールです。本ツールでの個人情報とGoogleユーザーデータの扱いを、次のとおり定めます。</p>
+
+  <h2>1. 受け取る情報</h2>
+  <ul>
+    <li>Googleアカウントでのログイン時に、Googleから<strong>メールアドレス</strong>と<strong>名前（アカウントの表示名）</strong>を受け取ります。</li>
+    <li>Googleドライブ、Gmail、カレンダーなど、ログインした人のGoogleアカウント内のデータへのアクセス権は求めません。</li>
+    <li>ログインした人が本ツールに入力・アップロードした内容（コメント、進捗、図版の情報、タスク、議事録、経費、PDFや領収書のファイルなど）を受け取ります。</li>
+  </ul>
+
+  <h2>2. 利用目的</h2>
+  <ul>
+    <li>ログインした人が、その案件のメンバーとして登録されているかを確かめるため。</li>
+    <li>コメントや更新の記録に、投稿・更新した人の名前を表示するため。</li>
+    <li>コメントが投稿されたときに、その案件のメンバーへ通知メールを送るため。</li>
+  </ul>
+  <p>これ以外の目的には使いません。広告や分析、機械学習の学習には使いません。</p>
+
+  <h2>3. 保存場所</h2>
+  <ul>
+    <li>入力・アップロードされた内容は、その案件の運営者（案件のスプレッドシートのオーナー）のGoogleドライブとGoogleスプレッドシートに保存されます。読み書きは、運営者のGoogle Apps Scriptを通して行います。</li>
+    <li>本ツールのページ（GitHub Pages）自体には、入力された内容を保存しません。</li>
+    <li>ログイン状態（最長30日）、最近開いた案件の一覧、表示の設定、PDFの表示用キャッシュは、利用している人のブラウザ内に保存します。ログアウトするか、ブラウザのサイトデータを削除すると消えます。</li>
+  </ul>
+
+  <h2>4. 第三者への提供</h2>
+  <p>受け取った情報を第三者に提供・販売することはありません。ただし、本ツールは次のサービスの上で動いており、各サービスはそれぞれの規約に従って通信の記録（IPアドレスなど）を扱います。</p>
+  <ul>
+    <li>Google（ログイン、Apps Script、ドライブ、スプレッドシート、通知メールの送信）</li>
+    <li>GitHub（本ツールのページの配信）</li>
+    <li>cdnjs、jsDelivr、Google Fonts（表示に使うプログラムと書体の配信）</li>
+  </ul>
+
+  <h2>5. Googleユーザーデータの扱い</h2>
+  <p>本ツールがGoogleのAPIから受け取る情報の利用と他システムへの転送は、<a href="https://developers.google.com/terms/api-services-user-data-policy" target="_blank" rel="noopener">Google API サービスのユーザーデータに関するポリシー</a>（限定使用の要件を含む）に従います。</p>
+
+  <h2>6. 情報の確認・削除</h2>
+  <p>メンバー登録の解除や、入力した内容の確認・削除を希望する場合は、その案件の運営者（社内の担当者）に連絡してください。運営者は、メンバーの登録解除と、スプレッドシート・ドライブ上の内容の削除を行えます。ログインの記録（ブラウザ内の情報）は、ブラウザのサイトデータを削除すると消えます。</p>
+
+  <h2>7. 改定</h2>
+  <p>内容を改定する場合は、このページを更新し、制定日の横に改定日を記載します。</p>
+
+  <p class="meta" style="margin-top:28px"><a href="./">台割ボードに戻る</a></p>
+</main>
+</body>
+</html>

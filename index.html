@@ -369,6 +369,9 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 .md-raw { white-space: pre-wrap; font-family: var(--font-mono); font-size: 13px; }
 @media (max-width: 1100px) { .mdedit { grid-template-columns: minmax(0, 1fr); } .mdedit textarea.md-src, .md-preview { min-height: 34vh; } }
 @media (max-width: 900px) { .mgrid { grid-template-columns: minmax(0, 1fr); } .mside { position: static; max-height: none; } .mlist { max-height: 46vh; } }
+.hint a, .foot a { color: var(--accent); }
+.foot { max-width: 2200px; margin: 0 auto; padding: 0 0 24px; font-size: 12px; color: var(--mute); }
+body.locked .foot { display: none; }
 body:not(.editor) .edonly { display: none !important; }
 body.editor .viewonly { display: none !important; }
 </style>
@@ -404,6 +407,7 @@ body.editor .viewonly { display: none !important; }
     <p class="msg" id="loginMsg"></p>
     <button class="btn" id="btnSwitch" hidden>別のアカウントでログインし直す</button>
     <p class="hint">Googleアカウントは、Gmail以外のメールアドレス（大学や会社のアドレス）でも作成できます。ログインに使うアドレスを、この案件の社内担当者に伝えてください。</p>
+    <p class="hint"><a href="privacy.html">プライバシーポリシー</a></p>
   </section>
 
   <section class="panel" id="landing" hidden>
@@ -414,6 +418,7 @@ body.editor .viewonly { display: none !important; }
     </div>
     <p class="msg" id="landingMsg"></p>
     <ul class="recent" id="recentList"></ul>
+    <p class="hint"><a href="privacy.html">プライバシーポリシー</a></p>
   </section>
 
   <!-- ============ 台割・3D ============ -->
@@ -651,6 +656,7 @@ body.editor .viewonly { display: none !important; }
   </header>
   <div class="dbody" id="dBody"></div>
 </aside>
+<footer class="foot"><a href="privacy.html">プライバシーポリシー</a></footer>
 <div class="toast" id="toast" hidden role="status"></div>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
