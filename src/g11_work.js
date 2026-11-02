@@ -416,7 +416,7 @@ function wireWork() {
 const NOTICE_VIEW = { 'タスク': 'tasks', '議事録': 'minutes' };
 function renderBell() {
   const ok = hasFeature('notices');
-  $('btnBell').hidden = !ok || !S.me;
+  $('btnBell').hidden = !ok || !S.me || role() === 'client';
   const n = (S.notices || []).filter((x) => !x.read).length;
   const b = $('badgeBell'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
   $('btnBell').setAttribute('aria-label', '通知' + (n ? '（未読 ' + n + '件）' : ''));
@@ -454,6 +454,7 @@ async function refreshNotices() {
 function wireBell() {
   $('btnBell').addEventListener('click', () => {
     const p = $('bellPanel'); p.hidden = !p.hidden; $('btnBell').setAttribute('aria-expanded', String(!p.hidden));
+    p.style.top = window.innerWidth <= 700 ? Math.round($('btnBell').getBoundingClientRect().bottom + 6) + 'px' : '';   // on a phone the panel is fixed just under the button
     if (!p.hidden) { renderBellList(); refreshNotices(); }
   });
   $('btnBellAll').addEventListener('click', () => markNotices(null));

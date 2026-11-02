@@ -121,7 +121,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(W.mails.length === 1, 'status change by チームメンバー: nothing mailed at once');
   await p.fill('#dBody .cform textarea', '再校の修正を入れました'); await p.click('#dBody .cform button'); await p.waitForTimeout(800);
   W.G.flushAll_(Date.now() + 11 * 60000);
-  ok(W.mails.length === 3 && W.mails.slice(1).map((m) => m.to).sort().join(',') === 'client@example.ac.jp,owner@example.com' && /初校|再校/.test(W.mails.find((m) => m.to === 'owner@example.com' && m !== W.mails[0]).body), '社内 gets comment + progress in one mail; the earlier commenter gets the comment');
+  ok(W.mails.length === 2 && W.mails[1].to === 'owner@example.com' && /初校|再校/.test(W.mails[1].body) && /再校の修正/.test(W.mails[1].body), '社内 gets comment + progress in one mail; the クライアント who commented earlier gets nothing');
   await p.click('#vt-comments'); await p.waitForTimeout(300);
   ok((await p.locator('#commentList > li').count()) === 3, 'comments view lists the 3 open comments');
 
