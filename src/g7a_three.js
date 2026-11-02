@@ -126,7 +126,7 @@ function texFor(k) {
   const a = S.assign.get(key);
   if (a && !ent.hiReq) {
     ent.hiReq = true;
-    queueRender(async () => {
+    renderWhenReady(a.src, async () => {
       try {
         if (texCache.get(key) !== ent) return;
         let out;

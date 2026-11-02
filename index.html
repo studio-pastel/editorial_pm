@@ -171,6 +171,9 @@ body.wide .main > section { display: none; }
 .dlist .nm { flex: 1 1 200px; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .dlist .meta { font-family: var(--font-mono); font-size: 12px; color: var(--mute); }
 .dlist .err { color: var(--bad); font-size: 12px; flex-basis: 100%; }
+.dlist .warn { color: var(--warn); font-size: 12px; flex-basis: 100%; }
+.tile .ld { position: absolute; left: 4px; right: 4px; top: 22px; z-index: 3; font-size: 9.5px; line-height: 1.4; padding: 1px 4px; border-radius: 4px; background: color-mix(in srgb, var(--accent) 18%, var(--panel)); color: var(--fg); text-align: center; }
+.tile .ld.bad { background: color-mix(in srgb, var(--bad) 18%, var(--panel)); }
 .dlist input { width: 5.5em; border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 2px 6px; }
 .dlist a { font-size: 12px; color: var(--accent); }
 .progress { height: 6px; background: var(--panel-2); border-radius: 3px; overflow: hidden; margin-top: 8px; }
@@ -1138,13 +1141,20 @@ async function relayFileMeta(id) { return relay('fileMeta', { id }); }
 async function relayDownload(meta, onProgress) {
   const parts = []; let off = 0;
   while (off < meta.size) {
-    const r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 });
+    let r = null;
+    for (let i = 0; ; i++) {
+      try { r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 }); break; }
+      catch (e) {
+        if (i >= 3 || e.code === 'auth' || e.code === 'forbidden' || e.code === 'not_found') throw e;
+        await new Promise((res) => setTimeout(res, 1500 * (i + 1)));     // network hiccup or busy relay: wait and try the same piece again
+      }
+    }
     const b = b64ToBytes(r.data);
     if (!b.length) break;
     parts.push(b); off += b.length;
     if (onProgress) onProgress(off / meta.size);
   }
-  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした');
+  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした（' + Math.round(off / meta.size * 100) + '%で中断）');
   return new Blob(parts, { type: meta.mime || 'application/pdf' });
 }
 async function relayUpload(file, target, onProgress) {
@@ -1225,7 +1235,24 @@ function srcFor(id, name) {
   if (name && !s.name) s.name = name;
   return s;
 }
+/* ---- downloads: outside the render queue, 2 at a time, smallest first, so one big PDF never holds up the others ---- */
+const BIG_PDF = 30 * 1024 * 1024;
+const DL = { active: 0, max: 2, wait: [] };
+function dlSlot(size) {
+  return new Promise((res) => { DL.wait.push({ size, res }); DL.wait.sort((a, b) => a.size - b.size); dlPump(); });
+}
+function dlPump() { while (DL.active < DL.max && DL.wait.length) { DL.active++; DL.wait.shift().res(); } }
+function dlDone() { DL.active--; dlPump(); }
 const blobLoads = new Map();
+function srcProgress(src, p) {
+  src.progress = p;
+  const now = Date.now();
+  if (p === null || !src.progShown || now - src.progShown > 400) {
+    src.progShown = now;
+    S.assign.forEach((a, k) => { if (a.src === src.id) refreshTile(k); });
+    renderDesignListSoon();
+  }
+}
 /** bytes from this browser's cache (same version) or through the relay */
 function loadBlob(src) {
   if (src.blob) return Promise.resolve(src.blob);
@@ -1234,10 +1261,16 @@ function loadBlob(src) {
     let meta;
     try { meta = await relayFileMeta(src.id); } catch (e) { src.err = e.message; throw new Error(src.err); }
     if (meta.name && !src.name) src.name = meta.name;
+    src.size = meta.size;
     const k = src.id + ':' + meta.v;
     const hit = await idb.get(k);
     if (hit && hit.blob) { src.blob = hit.blob; idb.put(Object.assign({}, hit, { t: Date.now() })); return src.blob; }
-    try { src.blob = await relayDownload(meta); } catch (e) { src.err = e.message; throw new Error(src.err); }
+    await dlSlot(meta.size);
+    try {
+      srcProgress(src, 0);
+      src.blob = await relayDownload(meta, (x) => srcProgress(src, x));
+    } catch (e) { src.err = e.message; throw new Error(src.err); }
+    finally { dlDone(); srcProgress(src, null); }
     await idb.put({ k, id: src.id, blob: src.blob, t: Date.now() });
     cachePrune(40);
     return src.blob;
@@ -1246,14 +1279,37 @@ function loadBlob(src) {
   p.catch(() => blobLoads.delete(src.id));
   return p;
 }
-async function getPdf(src) {
-  if (src.pdf) return src.pdf;
-  if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
-  const blob = await loadBlob(src);
-  if (src.pdf) return src.pdf;
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise;
-  src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
-  return pdf;
+const pdfLoads = new Map();
+/** a PDF failed before is not fetched again on its own: 「再試行」 clears src.err */
+function getPdf(src) {
+  if (src.pdf) return Promise.resolve(src.pdf);
+  if (src.err) return Promise.reject(new Error(src.err));
+  if (pdfLoads.has(src.id)) return pdfLoads.get(src.id);
+  const p = (async () => {
+    if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+    const blob = await loadBlob(src);
+    if (src.pdf) return src.pdf;
+    let pdf;
+    try { pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise; }
+    catch (e) { src.err = 'PDFを開けませんでした（' + (e && e.message ? e.message : e) + '）'; throw new Error(src.err); }
+    src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
+    return pdf;
+  })();
+  pdfLoads.set(src.id, p);
+  p.then(() => { renderDesignListSoon(); }, () => { pdfLoads.delete(src.id); renderDesignListSoon(); S.assign.forEach((a, k) => { if (a.src === src.id) refreshTile(k); }); });
+  return p;
+}
+function retrySource(src) {
+  src.err = ''; src.blob = null; src.pdf = null;
+  blobLoads.delete(src.id); pdfLoads.delete(src.id);
+  S.assign.forEach((a, k) => { if (a.src === src.id) { dropThumb(k); texDrop(k); makeThumb(k); } });
+  renderDesignListSoon(); if (V.ok) invalidate();
+}
+/** render job that first waits (outside the queue) for its PDF */
+function renderWhenReady(srcId, fn, hi) {
+  const src = S.sources.get(srcId);
+  const ready = src && src.kind === 'pdf' && !src.pdf ? getPdf(src) : Promise.resolve();
+  return ready.then(() => queueRender(fn, hi), () => undefined);
 }
 async function getBitmap(src) { throw new Error('画像には対応していません'); }
 
@@ -1341,7 +1397,7 @@ function makeThumb(k) {
   if (!a || thumbBusy.has(k)) return;
   if (k === 'S') { refreshTile(k); return; }
   thumbBusy.add(k);
-  queueRender(async () => {
+  renderWhenReady(a.src, async () => {
     try {
       const cur = S.assign.get(k);
       if (!cur) return;
@@ -1355,7 +1411,7 @@ function makeThumb(k) {
       S.thumbErr = (S.thumbErr || 0) + 1;
       if (S.onRenderError) S.onRenderError(k, e);
     } finally { thumbBusy.delete(k); }
-  });
+  }).then(() => { thumbBusy.delete(k); });
 }
 
 
@@ -1409,7 +1465,16 @@ function makeTile(k) {
   return el;
 }
 function hasFiles(e) { return e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'); }
+function tileLoadState(el, key) {
+  const a = S.assign.get(key), src = a && S.sources.get(a.src);
+  let tag = el.querySelector('.ld');
+  const text = !src || S.thumbs.get(key) ? '' : src.err ? 'PDFを読み込めません' : (typeof src.progress === 'number' ? 'PDF読み込み中 ' + Math.round(src.progress * 100) + '%' : '');
+  if (!text) { if (tag) tag.remove(); return; }
+  if (!tag) { tag = document.createElement('span'); tag.className = 'ld'; el.appendChild(tag); }
+  tag.textContent = text; tag.classList.toggle('bad', !!src.err);
+}
 function applyTileImage(el, key) {
+  tileLoadState(el, key);
   if (key === 'S') { const tt = el.querySelector('.tt'); if (tt) tt.textContent = S.assign.has('S') ? '割当済' : ''; return; }
   const url = S.thumbs.get(key);
   let img = el.querySelector('img');
@@ -1628,7 +1693,7 @@ function texFor(k) {
   const a = S.assign.get(key);
   if (a && !ent.hiReq) {
     ent.hiReq = true;
-    queueRender(async () => {
+    renderWhenReady(a.src, async () => {
       try {
         if (texCache.get(key) !== ent) return;
         let out;
@@ -2066,12 +2131,12 @@ async function refreshAssignments() {
   autoFiles().forEach((f) => srcFor(f.id, f.name));
   recompute();
   const need = S.designs.filter((x) => !x.to).map((d) => d.id).concat(autoFiles().map((f) => f.id));
-  for (const id of need) {
+  // page counts are needed to place these; they load side by side (small ones first) and each one places itself when ready
+  await Promise.all(need.map((id) => {
     const s = S.sources.get(id);
-    if (s.pdf) continue;
-    try { await getPdf(s); } catch (e) { /* shown in the list */ }
-    recompute();
-  }
+    if (s.pdf) return null;
+    return getPdf(s).then(recompute, () => { /* shown in the list */ });
+  }));
   renderDesignList();
 }
 function placedRange(id) {
@@ -2236,6 +2301,17 @@ async function saveSettings(msgId) {
 }
 
 /* ---- デザインPDF list ---- */
+const mb = (n) => (n / 1024 / 1024).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1) + 'MB';
+function srcStatus(li, src) {
+  const add = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; li.appendChild(e); return e; };
+  if (typeof src.progress === 'number') add('meta', '読み込み中 ' + Math.round(src.progress * 100) + '%' + (src.size ? '（' + mb(src.size) + '）' : ''));
+  if (src.size > BIG_PDF) add('warn', '⚠ ' + mb(src.size) + 'と大きいため、表示に時間がかかります。確認用には「最小ファイルサイズ」などで軽くしたPDFをおすすめします');
+  if (src.err) {
+    add('err', src.err);
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = '再試行';
+    b.addEventListener('click', () => retrySource(src)); li.appendChild(b);
+  }
+}
 let listTimer = 0;
 function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
 function renderDesignList() {
@@ -2275,7 +2351,7 @@ function renderDesignList() {
       m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
       li.appendChild(m);
     }
-    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    srcStatus(li, src);
     ul.appendChild(li);
   });
   autoFiles().forEach((f) => {
@@ -2292,7 +2368,7 @@ function renderDesignList() {
       pin.addEventListener('click', () => pinAutoFile(f));
       li.appendChild(pin);
     }
-    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    srcStatus(li, src);
     ul.appendChild(li);
   });
 }
@@ -2329,6 +2405,7 @@ async function uploadFiles(files, startKey) {
   if (!NS()) { setMsg('designMsg', '先に台割を読み込んでください。', 'err'); return; }
   const pdfs = files.filter((f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
   const skipped = files.length - pdfs.length;
+  const big = pdfs.filter((f) => f.size > BIG_PDF);
   if (!pdfs.length) { setMsg('designMsg', 'PDFを選んでください。', 'err'); return; }
   let cursor = startKey !== undefined && startKey !== null ? startKey : parseKeyText($('upStart').value);
   if (cursor === null) cursor = 1;
@@ -2350,7 +2427,8 @@ async function uploadFiles(files, startKey) {
     $('upBar').style.width = '100%';
     await reloadDesigns();
     if (cursor !== null && startKey === undefined) $('upStart').value = startFieldText(cursor);
-    const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '');
+    const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '') +
+      (big.length ? ' ⚠ ' + big.map((f) => f.name + '（' + mb(f.size) + '）').join('、') + 'は大きいため、ほかの人の画面では表示に時間がかかります。確認用には軽くしたPDFをおすすめします。' : '');
     setMsg('designMsg', rows.length + '件を登録し、' + keyLabel(first) + 'から貼りました。' + (cursor !== null ? ' 次の貼り始め：' + startFieldText(cursor) : '') + tail, notes.length ? 'err' : 'ok');
     if (rows.length) goToKey(first);
   } catch (e) {
@@ -3420,7 +3498,7 @@ function wire() {
   $('btnReload').addEventListener('click', async () => {
     const b = $('btnReload'); b.disabled = true;
     S.sources.forEach((s) => { if (!s.blob || !s.pdf) s.err = ''; });
-    blobLoads.clear();
+    blobLoads.clear(); pdfLoads.clear();
     await loadProject({ tab: S.tabName });
     b.disabled = false;
   });

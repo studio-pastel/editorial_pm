@@ -38,7 +38,16 @@ function makeTile(k) {
   return el;
 }
 function hasFiles(e) { return e.dataTransfer && [...(e.dataTransfer.types || [])].includes('Files'); }
+function tileLoadState(el, key) {
+  const a = S.assign.get(key), src = a && S.sources.get(a.src);
+  let tag = el.querySelector('.ld');
+  const text = !src || S.thumbs.get(key) ? '' : src.err ? 'PDFを読み込めません' : (typeof src.progress === 'number' ? 'PDF読み込み中 ' + Math.round(src.progress * 100) + '%' : '');
+  if (!text) { if (tag) tag.remove(); return; }
+  if (!tag) { tag = document.createElement('span'); tag.className = 'ld'; el.appendChild(tag); }
+  tag.textContent = text; tag.classList.toggle('bad', !!src.err);
+}
 function applyTileImage(el, key) {
+  tileLoadState(el, key);
   if (key === 'S') { const tt = el.querySelector('.tt'); if (tt) tt.textContent = S.assign.has('S') ? '割当済' : ''; return; }
   const url = S.thumbs.get(key);
   let img = el.querySelector('img');

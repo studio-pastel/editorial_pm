@@ -111,13 +111,20 @@ async function relayFileMeta(id) { return relay('fileMeta', { id }); }
 async function relayDownload(meta, onProgress) {
   const parts = []; let off = 0;
   while (off < meta.size) {
-    const r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 });
+    let r = null;
+    for (let i = 0; ; i++) {
+      try { r = await relay('fileChunk', { id: meta.id, offset: off, length: 4 * 1024 * 1024 }); break; }
+      catch (e) {
+        if (i >= 3 || e.code === 'auth' || e.code === 'forbidden' || e.code === 'not_found') throw e;
+        await new Promise((res) => setTimeout(res, 1500 * (i + 1)));     // network hiccup or busy relay: wait and try the same piece again
+      }
+    }
     const b = b64ToBytes(r.data);
     if (!b.length) break;
     parts.push(b); off += b.length;
     if (onProgress) onProgress(off / meta.size);
   }
-  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした');
+  if (off < meta.size) throw new RelayError('drive', 'ファイルを最後まで読み込めませんでした（' + Math.round(off / meta.size * 100) + '%で中断）');
   return new Blob(parts, { type: meta.mime || 'application/pdf' });
 }
 async function relayUpload(file, target, onProgress) {

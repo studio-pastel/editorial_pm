@@ -60,7 +60,7 @@ function wire() {
   $('btnReload').addEventListener('click', async () => {
     const b = $('btnReload'); b.disabled = true;
     S.sources.forEach((s) => { if (!s.blob || !s.pdf) s.err = ''; });
-    blobLoads.clear();
+    blobLoads.clear(); pdfLoads.clear();
     await loadProject({ tab: S.tabName });
     b.disabled = false;
   });

@@ -117,12 +117,12 @@ async function refreshAssignments() {
   autoFiles().forEach((f) => srcFor(f.id, f.name));
   recompute();
   const need = S.designs.filter((x) => !x.to).map((d) => d.id).concat(autoFiles().map((f) => f.id));
-  for (const id of need) {
+  // page counts are needed to place these; they load side by side (small ones first) and each one places itself when ready
+  await Promise.all(need.map((id) => {
     const s = S.sources.get(id);
-    if (s.pdf) continue;
-    try { await getPdf(s); } catch (e) { /* shown in the list */ }
-    recompute();
-  }
+    if (s.pdf) return null;
+    return getPdf(s).then(recompute, () => { /* shown in the list */ });
+  }));
   renderDesignList();
 }
 function placedRange(id) {
@@ -287,6 +287,17 @@ async function saveSettings(msgId) {
 }
 
 /* ---- デザインPDF list ---- */
+const mb = (n) => (n / 1024 / 1024).toFixed(n >= 100 * 1024 * 1024 ? 0 : 1) + 'MB';
+function srcStatus(li, src) {
+  const add = (cls, text) => { const e = document.createElement('span'); e.className = cls; e.textContent = text; li.appendChild(e); return e; };
+  if (typeof src.progress === 'number') add('meta', '読み込み中 ' + Math.round(src.progress * 100) + '%' + (src.size ? '（' + mb(src.size) + '）' : ''));
+  if (src.size > BIG_PDF) add('warn', '⚠ ' + mb(src.size) + 'と大きいため、表示に時間がかかります。確認用には「最小ファイルサイズ」などで軽くしたPDFをおすすめします');
+  if (src.err) {
+    add('err', src.err);
+    const b = document.createElement('button'); b.className = 'btn sm'; b.textContent = '再試行';
+    b.addEventListener('click', () => retrySource(src)); li.appendChild(b);
+  }
+}
 let listTimer = 0;
 function renderDesignListSoon() { clearTimeout(listTimer); listTimer = setTimeout(renderDesignList, 300); }
 function renderDesignList() {
@@ -326,7 +337,7 @@ function renderDesignList() {
       m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
       li.appendChild(m);
     }
-    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    srcStatus(li, src);
     ul.appendChild(li);
   });
   autoFiles().forEach((f) => {
@@ -343,7 +354,7 @@ function renderDesignList() {
       pin.addEventListener('click', () => pinAutoFile(f));
       li.appendChild(pin);
     }
-    if (src.err) { const er = document.createElement('span'); er.className = 'err'; er.textContent = src.err; li.appendChild(er); }
+    srcStatus(li, src);
     ul.appendChild(li);
   });
 }
@@ -380,6 +391,7 @@ async function uploadFiles(files, startKey) {
   if (!NS()) { setMsg('designMsg', '先に台割を読み込んでください。', 'err'); return; }
   const pdfs = files.filter((f) => f && (f.type === 'application/pdf' || /\.pdf$/i.test(f.name)));
   const skipped = files.length - pdfs.length;
+  const big = pdfs.filter((f) => f.size > BIG_PDF);
   if (!pdfs.length) { setMsg('designMsg', 'PDFを選んでください。', 'err'); return; }
   let cursor = startKey !== undefined && startKey !== null ? startKey : parseKeyText($('upStart').value);
   if (cursor === null) cursor = 1;
@@ -401,7 +413,8 @@ async function uploadFiles(files, startKey) {
     $('upBar').style.width = '100%';
     await reloadDesigns();
     if (cursor !== null && startKey === undefined) $('upStart').value = startFieldText(cursor);
-    const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '');
+    const tail = (skipped ? ' PDF以外の' + skipped + 'ファイルは除外しました。' : '') + (notes.length ? ' ' + notes.join(' ／ ') : '') +
+      (big.length ? ' ⚠ ' + big.map((f) => f.name + '（' + mb(f.size) + '）').join('、') + 'は大きいため、ほかの人の画面では表示に時間がかかります。確認用には軽くしたPDFをおすすめします。' : '');
     setMsg('designMsg', rows.length + '件を登録し、' + keyLabel(first) + 'から貼りました。' + (cursor !== null ? ' 次の貼り始め：' + startFieldText(cursor) : '') + tail, notes.length ? 'err' : 'ok');
     if (rows.length) goToKey(first);
   } catch (e) {

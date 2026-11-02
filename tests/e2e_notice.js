@@ -64,7 +64,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await po.click('#dClose');
   await po.click('#vt-tasks'); await po.click('#btnTaskAdd');
   await po.fill('#taskFormBox input[aria-label="タスク"]', '撮影リストの確認'); await po.fill('#taskFormBox input[aria-label="担当"]', '大学 担当');
-  await po.click('#taskFormBox button:has-text("追加")'); await po.waitForTimeout(700);
+  await po.click('#taskFormBox button:has-text("追加")'); await po.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await po.waitForTimeout(300);
   // client: bell refresh on opening
   await p.click('#dClose');
   await p.click('#btnBell'); await p.waitForTimeout(900);
@@ -81,7 +81,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // mark all read
   await po.click('#vt-tasks'); await po.click('#btnTaskAdd');
   await po.fill('#taskFormBox input[aria-label="タスク"]', '原稿の確認'); await po.fill('#taskFormBox input[aria-label="担当"]', '大学 担当');
-  await po.click('#taskFormBox button:has-text("追加")'); await po.waitForTimeout(700);
+  await po.click('#taskFormBox button:has-text("追加")'); await po.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await po.waitForTimeout(300);
   await p.click('#btnBell'); await p.waitForTimeout(900);
   ok(await p.locator('#bellList .bellitem.unread').count() === 1, 'new unread appears on opening the bell');
   await p.click('#btnBellAll'); await p.waitForTimeout(500);

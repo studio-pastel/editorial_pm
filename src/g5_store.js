@@ -62,7 +62,24 @@ function srcFor(id, name) {
   if (name && !s.name) s.name = name;
   return s;
 }
+/* ---- downloads: outside the render queue, 2 at a time, smallest first, so one big PDF never holds up the others ---- */
+const BIG_PDF = 30 * 1024 * 1024;
+const DL = { active: 0, max: 2, wait: [] };
+function dlSlot(size) {
+  return new Promise((res) => { DL.wait.push({ size, res }); DL.wait.sort((a, b) => a.size - b.size); dlPump(); });
+}
+function dlPump() { while (DL.active < DL.max && DL.wait.length) { DL.active++; DL.wait.shift().res(); } }
+function dlDone() { DL.active--; dlPump(); }
 const blobLoads = new Map();
+function srcProgress(src, p) {
+  src.progress = p;
+  const now = Date.now();
+  if (p === null || !src.progShown || now - src.progShown > 400) {
+    src.progShown = now;
+    S.assign.forEach((a, k) => { if (a.src === src.id) refreshTile(k); });
+    renderDesignListSoon();
+  }
+}
 /** bytes from this browser's cache (same version) or through the relay */
 function loadBlob(src) {
   if (src.blob) return Promise.resolve(src.blob);
@@ -71,10 +88,16 @@ function loadBlob(src) {
     let meta;
     try { meta = await relayFileMeta(src.id); } catch (e) { src.err = e.message; throw new Error(src.err); }
     if (meta.name && !src.name) src.name = meta.name;
+    src.size = meta.size;
     const k = src.id + ':' + meta.v;
     const hit = await idb.get(k);
     if (hit && hit.blob) { src.blob = hit.blob; idb.put(Object.assign({}, hit, { t: Date.now() })); return src.blob; }
-    try { src.blob = await relayDownload(meta); } catch (e) { src.err = e.message; throw new Error(src.err); }
+    await dlSlot(meta.size);
+    try {
+      srcProgress(src, 0);
+      src.blob = await relayDownload(meta, (x) => srcProgress(src, x));
+    } catch (e) { src.err = e.message; throw new Error(src.err); }
+    finally { dlDone(); srcProgress(src, null); }
     await idb.put({ k, id: src.id, blob: src.blob, t: Date.now() });
     cachePrune(40);
     return src.blob;
@@ -83,14 +106,37 @@ function loadBlob(src) {
   p.catch(() => blobLoads.delete(src.id));
   return p;
 }
-async function getPdf(src) {
-  if (src.pdf) return src.pdf;
-  if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
-  const blob = await loadBlob(src);
-  if (src.pdf) return src.pdf;
-  const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise;
-  src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
-  return pdf;
+const pdfLoads = new Map();
+/** a PDF failed before is not fetched again on its own: 「再試行」 clears src.err */
+function getPdf(src) {
+  if (src.pdf) return Promise.resolve(src.pdf);
+  if (src.err) return Promise.reject(new Error(src.err));
+  if (pdfLoads.has(src.id)) return pdfLoads.get(src.id);
+  const p = (async () => {
+    if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+    const blob = await loadBlob(src);
+    if (src.pdf) return src.pdf;
+    let pdf;
+    try { pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise; }
+    catch (e) { src.err = 'PDFを開けませんでした（' + (e && e.message ? e.message : e) + '）'; throw new Error(src.err); }
+    src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
+    return pdf;
+  })();
+  pdfLoads.set(src.id, p);
+  p.then(() => { renderDesignListSoon(); }, () => { pdfLoads.delete(src.id); renderDesignListSoon(); S.assign.forEach((a, k) => { if (a.src === src.id) refreshTile(k); }); });
+  return p;
+}
+function retrySource(src) {
+  src.err = ''; src.blob = null; src.pdf = null;
+  blobLoads.delete(src.id); pdfLoads.delete(src.id);
+  S.assign.forEach((a, k) => { if (a.src === src.id) { dropThumb(k); texDrop(k); makeThumb(k); } });
+  renderDesignListSoon(); if (V.ok) invalidate();
+}
+/** render job that first waits (outside the queue) for its PDF */
+function renderWhenReady(srcId, fn, hi) {
+  const src = S.sources.get(srcId);
+  const ready = src && src.kind === 'pdf' && !src.pdf ? getPdf(src) : Promise.resolve();
+  return ready.then(() => queueRender(fn, hi), () => undefined);
 }
 async function getBitmap(src) { throw new Error('画像には対応していません'); }
 
@@ -178,7 +224,7 @@ function makeThumb(k) {
   if (!a || thumbBusy.has(k)) return;
   if (k === 'S') { refreshTile(k); return; }
   thumbBusy.add(k);
-  queueRender(async () => {
+  renderWhenReady(a.src, async () => {
     try {
       const cur = S.assign.get(k);
       if (!cur) return;
@@ -192,7 +238,7 @@ function makeThumb(k) {
       S.thumbErr = (S.thumbErr || 0) + 1;
       if (S.onRenderError) S.onRenderError(k, e);
     } finally { thumbBusy.delete(k); }
-  });
+  }).then(() => { thumbBusy.delete(k); });
 }
 
 
