@@ -95,7 +95,7 @@ async function drawSpine(cv, withDesign) {
   if (withDesign && a && S.sources.has(a.src)) {
     const src = S.sources.get(a.src);
     if (src.kind === 'img') { g.drawImage(await getBitmap(src), 0, 0, w, h); return true; }
-    const pdf = await getPdf(src), page = await pdf.getPage(a.page || 1), v1 = page.getViewport({ scale: 1 });
+    const page = await pdfPage(src, a.page || 1), v1 = page.getViewport({ scale: 1 });
     const sc = Math.min(3000 / v1.width, 3000 / v1.height, Math.max(w / v1.width, h / v1.height) * 1.5);
     const vp = page.getViewport({ scale: sc }), tmp = document.createElement('canvas');
     tmp.width = Math.ceil(vp.width); tmp.height = Math.ceil(vp.height);

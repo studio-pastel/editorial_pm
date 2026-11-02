@@ -57,7 +57,29 @@ async function cachePrune(keep) {
 /* Japanese text in PDFs is usually set with CID fonts whose character maps (CMap) are not inside the file:
    without these tables pdf.js draws nothing for those characters (kanji vanish while Latin text shows). */
 const PDF_ASSETS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/';
-const pdfOpen = (bytes) => pdfjsLib.getDocument({ data: bytes, isEvalSupported: false, cMapUrl: PDF_ASSETS + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDF_ASSETS + 'standard_fonts/' }).promise;
+/* Fonts embedded in the PDF are drawn as outlines by PDF.js itself (disableFontFace) instead of being handed to the browser
+   as web fonts: some browsers render the converted Japanese CID fonts of InDesign PDFs blank, so kanji vanish while kana and
+   Latin text from other fonts still show. A page that uses a font NOT embedded in the file has no outlines to draw, so it is
+   drawn from a second copy of the document that uses the browser's fonts (pdfPage below). */
+const pdfOpen = (bytes, useBrowserFonts) => pdfjsLib.getDocument({ data: bytes, isEvalSupported: false, disableFontFace: !useBrowserFonts, cMapUrl: PDF_ASSETS + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDF_ASSETS + 'standard_fonts/' }).promise;
+async function pageUsesMissingFont(page) {
+  const ops = await page.getOperatorList();
+  for (let i = 0; i < ops.fnArray.length; i++) {
+    if (ops.fnArray[i] !== pdfjsLib.OPS.setFont) continue;
+    const id = ops.argsArray[i][0];
+    try { const f = page.commonObjs.has(id) ? page.commonObjs.get(id) : null; if (f && f.missingFile) return true; } catch (e) { /* not a loaded font */ }
+  }
+  return false;
+}
+/** page n of a source, from the copy whose font handling suits that page */
+async function pdfPage(src, n) {
+  const pdf = await getPdf(src), page = await pdf.getPage(n);
+  src.fontMode = src.fontMode || new Map();
+  if (!src.fontMode.has(n)) src.fontMode.set(n, await pageUsesMissingFont(page));
+  if (!src.fontMode.get(n)) return page;
+  if (!src.pdfFF) src.pdfFF = pdfOpen(new Uint8Array(await (src.blob || (await loadBlob(src))).arrayBuffer()), true);
+  return (await src.pdfFF).getPage(n);
+}
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 function srcFor(id, name) {
@@ -131,7 +153,7 @@ function getPdf(src) {
   return p;
 }
 function retrySource(src) {
-  src.err = ''; src.blob = null; src.pdf = null;
+  src.err = ''; src.blob = null; src.pdf = null; src.pdfFF = null; src.fontMode = null;
   blobLoads.delete(src.id); pdfLoads.delete(src.id);
   S.assign.forEach((a, k) => { if (a.src === src.id) { dropThumb(k); texDrop(k); makeThumb(k); } });
   renderDesignListSoon(); if (V.ok) invalidate();
@@ -204,8 +226,7 @@ async function renderAssigned(a, widthPx) {
     g.drawImage(bmp, r.x, r.y, r.w, r.h, 0, 0, outW, outH);
     return out;
   }
-  const pdf = await getPdf(src);
-  const page = await pdf.getPage(a.page || 1);
+  const page = await pdfPage(src, a.page || 1);
   const v1 = page.getViewport({ scale: 1 });
   const r = regionFor(v1.width, v1.height, a.half, true);
   let scale = outW / r.w;
