@@ -388,6 +388,24 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 .bellitem { position: relative; padding-left: 14px; }
 body.locked .bellwrap { display: none !important; }
 @media (max-width: 700px) { .bellpanel { position: fixed; left: 16px; right: 16px; top: 64px; width: auto; max-height: calc(100vh - 96px); } }
+.qadd { display: grid; grid-template-columns: minmax(0, 1fr) 11em 10em auto; gap: 8px 10px; align-items: end; margin: 4px 0 0; }
+.qadd .btn { min-height: 34px; }
+.linklike { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font: inherit; cursor: pointer; }
+.tlist { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.trow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.trow:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.ttitle { display: block; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.tmeta { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12.5px; margin-top: 2px; }
+.tmemo { margin: 4px 0 0; font-size: 12.5px; color: var(--mute); white-space: pre-wrap; overflow-wrap: anywhere; }
+.trow.is-done .ttitle { color: var(--mute); font-weight: 500; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mute) 60%, transparent); }
+.tempty { padding: 12px 4px; }
+@media (max-width: 760px) {
+  .qadd { grid-template-columns: 1fr 1fr; }
+  .qadd .qa-text { grid-column: 1 / -1; }
+  .qadd .btn { grid-column: 1 / -1; }
+  .trow { grid-template-columns: minmax(0, 1fr) auto; }
+  .trow .tstate { grid-column: 1 / -1; grid-row: 1; }
+}
 .projlist { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .projitem { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); text-decoration: none; }
 .projitem:hover { border-color: var(--accent); }
@@ -600,12 +618,17 @@ body.editor .viewonly { display: none !important; }
         <label class="field inline"><span>担当</span><select id="tAssignee"></select></label>
         <label class="field inline"><span>状態</span><select id="tState"></select></label>
         <label class="field inline grow"><span>検索</span><input id="tSearch" type="search" autocomplete="off" placeholder="タスク・担当・メモ"></label>
-        <button class="btn primary" id="btnTaskAdd">タスクを追加</button>
       </div>
-      <p class="hint">状態はだれでも一覧から直接変えられます。担当はメンバーから選ぶか、名前を自由に入力できます（メンバー以外にはメールは届きません）。</p>
+      <form class="qadd" id="qaForm" autocomplete="off">
+        <label class="field qa-text"><span>タスクを追加（Enterで登録）</span><input id="qaText" type="text" placeholder="例：表紙案の作成 @デザイナーA 11/20"></label>
+        <label class="field qa-who"><span>担当</span><select id="qaWho"></select></label>
+        <label class="field qa-due"><span>期限</span><input id="qaDue" type="date"></label>
+        <button class="btn primary" id="qaAdd" type="submit">追加</button>
+      </form>
+      <p class="hint">「@名前」で担当、「11/20」「明日」「来週金曜」で期限を一緒に入力できます（右の欄で選んでも同じです）。メモを付けるときは <button class="linklike" id="btnTaskAdd" type="button">詳しく入力</button>。状態は一覧からだれでも直接変えられます。</p>
       <div id="taskFormBox"></div>
       <datalist id="peopleList"></datalist>
-      <div class="tablewrap"><table class="grid" id="taskTable"></table></div>
+      <ul class="tlist" id="taskTable"></ul>
     </section>
   </div>
 
@@ -3175,8 +3198,8 @@ function taskForm(t) {
 function renderTasks() {
   const t = $('taskTable'), pc = $('taskPeople');
   t.textContent = ''; pc.textContent = ''; $('taskFormBox').textContent = '';
-  if (!hasFeature('tasks')) { t.appendChild(el('tbody', null, el('tr', null, el('td', { class: 'muted', text: RELAY_OLD })))); $('btnTaskAdd').hidden = true; return; }
-  $('btnTaskAdd').hidden = false;
+  if (!hasFeature('tasks')) { t.appendChild(el('li', { class: 'muted', text: RELAY_OLD })); $('qaForm').hidden = true; return; }
+  $('qaForm').hidden = false;
   const dl = $('peopleList'); dl.textContent = '';
   (S.people || []).forEach((p) => dl.appendChild(el('option', { value: p.name, label: p.role || '' })));
   // filters
@@ -3223,21 +3246,70 @@ function renderTasks() {
     if (St !== 'open' && St !== 'all' && (x['状態'] || '未着手') !== St) return false;
     return !q || [x['タスク'], x['担当'], x['メモ']].join(' ').toLowerCase().indexOf(q) >= 0;
   }).sort((a, b) => (a['状態'] === '完了') - (b['状態'] === '完了') || (isoOf(a['期限']) || '9999') .localeCompare(isoOf(b['期限']) || '9999') || String(a['作成日時']).localeCompare(String(b['作成日時'])));
-  t.appendChild(el('thead', null, el('tr', null, ['状態', 'タスク', '担当', '期限', 'メモ', '更新', ''].map((h) => el('th', { text: h })))));
-  const tb = el('tbody');
+  // one row per task: state | title + who/when/memo | edit — wraps cleanly at any width
   list.forEach((x) => {
-    const due = isoOf(x['期限']), over = taskOverdue(x);
-    tb.appendChild(el('tr', { class: x['状態'] === '完了' ? 'is-done' : '' },
-      el('td', null, taskStateSelect(x)),
-      el('td', { class: 'wrap' }, el('b', { text: x['タスク'] })),
-      el('td', { text: taskWho(x) || '—', class: taskWho(x) ? '' : 'muted' }),
-      el('td', { class: over ? 'bad' : '' }, due ? fmtMD(due) : el('span', { class: 'muted', text: '—' }), over ? el('span', { class: 'overdue', text: ' 期限切れ' }) : null),
-      el('td', { class: 'wrap muted', text: x['メモ'] }),
-      el('td', { class: 'muted small', text: [x['更新者'], x['更新日時']].filter(Boolean).join(' ') }),
-      el('td', null, el('button', { class: 'btn xs', onclick: () => { taskEditing = x.ID; renderTasks(); $('taskFormBox').scrollIntoView({ block: 'nearest' }); } }, '編集'))));
+    const due = isoOf(x['期限']), over = taskOverdue(x), who = taskWho(x);
+    t.appendChild(el('li', { class: 'trow' + (x['状態'] === '完了' ? ' is-done' : '') },
+      el('div', { class: 'tstate' }, taskStateSelect(x)),
+      el('div', { class: 'tmain' },
+        el('b', { class: 'ttitle', text: x['タスク'] }),
+        el('div', { class: 'tmeta' },
+          el('span', { class: who ? '' : 'muted' }, el('span', { class: 'muted', text: '担当 ' }), who || 'なし'),
+          el('span', { class: over ? 'bad' : '' }, el('span', { class: 'muted', text: '期限 ' }), due ? fmtMD(due) : 'なし', over ? el('b', { class: 'overdue', text: ' 期限切れ' }) : null),
+          el('span', { class: 'muted small', text: '更新 ' + [x['更新者'], String(x['更新日時'] || '').replace(/^\d{4}\//, '').replace(/:\d{2}$/, '')].filter(Boolean).join(' ') })),
+        x['メモ'] ? el('p', { class: 'tmemo', text: x['メモ'] }) : null),
+      el('div', { class: 'tacts' }, el('button', { class: 'btn xs', onclick: () => { taskEditing = x.ID; renderTasks(); $('taskFormBox').scrollIntoView({ block: 'nearest' }); } }, '編集'))));
   });
-  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 7, class: 'muted', text: S.tasks.length ? '条件に合うタスクはありません' : 'タスクはまだありません。「タスクを追加」から登録できます' })));
-  t.appendChild(tb);
+  if (!list.length) t.appendChild(el('li', { class: 'muted tempty', text: S.tasks.length ? '条件に合うタスクはありません' : 'タスクはまだありません。上の欄に入力して Enter で登録できます' }));
+  // quick add: assignee choices
+  const qw = $('qaWho'), cur = qw.value;
+  qw.textContent = ''; qw.appendChild(el('option', { value: '', text: '（なし）' }));
+  (S.people || []).forEach((p) => qw.appendChild(el('option', { value: p.email, text: p.name })));
+  qw.value = [...qw.options].some((o) => o.value === cur) ? cur : '';
+}
+
+/* ---- quick add: 「表紙案の作成 @デザイナーA 11/20」 ---- */
+const WDAYS = { '日': 0, '月': 1, '火': 2, '水': 3, '木': 4, '金': 5, '土': 6 };
+const z2hNum = (s) => String(s).replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/／/g, '/').replace(/＠/g, '@');
+function parseQuickTask(raw, today) {
+  let text = ' ' + z2hNum(raw) + ' ', due = '', who = '';
+  const t0 = today || new Date(), base = new Date(t0.getFullYear(), t0.getMonth(), t0.getDate());
+  const iso = (d) => ymdLocal(d);
+  const add = (n) => { const d = new Date(base); d.setDate(d.getDate() + n); return d; };
+  const take = (re, fn) => { const m = text.match(re); if (m) { const v = fn(m); if (v) { text = text.replace(m[0], ' '); return v; } } return ''; };
+  due = take(/\s(?:(\d{4})[\/\-年])?(\d{1,2})[\/月](\d{1,2})日?(?=\s)/, (m) => {
+    let y = m[1] ? +m[1] : base.getFullYear(); const mo = +m[2], d = +m[3];
+    let dt = new Date(y, mo - 1, d);
+    if (dt.getMonth() !== mo - 1) return '';
+    if (!m[1] && dt < add(-60)) dt = new Date(y + 1, mo - 1, d);   // 1/10 written in November means next January
+    return iso(dt);
+  }) || take(/\s(今日|きょう|明日|あした|明後日|あさって)(?=\s)/, (m) => iso(add(/今日|きょう/.test(m[1]) ? 0 : /明後日|あさって/.test(m[1]) ? 2 : 1)))
+    || take(/\s(今週|来週)?([日月火水木金土])曜日?(?=\s)/, (m) => {
+      const w = WDAYS[m[2]], cur = base.getDay();
+      const mon = add(-((cur + 6) % 7));                                  // Monday of this week
+      const d = new Date(mon); d.setDate(mon.getDate() + ((w + 6) % 7) + (m[1] === '来週' ? 7 : 0));
+      if (!m[1] && d < base) d.setDate(d.getDate() + 7);                  // 「金曜」 = the next Friday
+      return iso(d);
+    });
+  who = take(/\s@(\S+)(?=\s)/, (m) => m[1]);
+  return { title: text.replace(/\s+/g, ' ').trim(), due, who };
+}
+function matchPerson(token) {
+  if (!token) return null;
+  const key = (s) => String(s || '').replace(/\s+/g, '').toLowerCase(), k = key(token), ps = S.people || [];
+  return ps.find((p) => key(p.name) === k) || ps.find((p) => key(p.email).split('@')[0] === k) || ps.find((p) => key(p.name).indexOf(k) === 0) || null;
+}
+async function quickAdd(e) {
+  if (e) e.preventDefault();
+  const inp = $('qaText'), q = parseQuickTask(inp.value);
+  if (!q.title) { toast('タスクの内容を入力してください', 'err'); inp.focus(); return; }
+  const sel = $('qaWho').value, person = sel ? (S.people || []).find((p) => p.email === sel) : matchPerson(q.who);
+  const values = { 'タスク': q.title, '担当': person ? person.name : (q.who || ''), '担当メール': person ? person.email : '', '期限': $('qaDue').value || q.due, '状態': '未着手' };
+  if (await saveTask(null, values, $('qaAdd'))) {
+    inp.value = ''; $('qaDue').value = ''; $('qaWho').value = '';
+    toast('タスクを追加しました' + (values['担当'] ? '（担当：' + values['担当'] + '）' : '') + (values['期限'] ? '（期限：' + fmtMD(isoOf(values['期限'])) + '）' : ''));
+    inp.focus();
+  }
 }
 
 /* ================= minutes ================= */
@@ -3396,6 +3468,7 @@ function wireWork() {
   $('tState').addEventListener('change', renderTasks);
   $('tSearch').addEventListener('input', renderTasks);
   $('btnTaskAdd').addEventListener('click', () => { taskEditing = 'new'; renderTasks(); });
+  $('qaForm').addEventListener('submit', quickAdd);
   $('btnMinAdd').addEventListener('click', () => { if (minEditing) { toast('編集中です。保存するか「やめる」を押してください', 'err'); return; } editMinute(null); });
   let sTimer = 0;
   $('mSearch').addEventListener('input', () => {

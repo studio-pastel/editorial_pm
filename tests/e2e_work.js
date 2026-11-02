@@ -80,22 +80,22 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const c = W.sheets[SCHED].getSheetByName('制作スケジュール').cells[13];
   ok(c[0] === '初校提出' && c[1] instanceof Date && c[1].disp === '12/21' && !(await vis(p, '#schEdit .schform')), 'date saved to the schedule sheet (shown as ' + (c[1] && c[1].disp) + ')');
   // tasks
-  await p.click('#vt-tasks'); await p.click('#btnTaskAdd');
-  await p.fill('#taskFormBox input[aria-label="タスク"]', '撮影リストを大学に共有');
-  await p.fill('#taskFormBox input[aria-label="担当"]', '大学 担当');
-  await p.fill('#taskFormBox input[aria-label="期限"]', '2026-10-23');
-  await p.click('#taskFormBox button:has-text("追加")'); await p.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(300);
-  await p.click('#btnTaskAdd');
-  await p.fill('#taskFormBox input[aria-label="タスク"]', '印刷会社に見積り依頼');
-  await p.fill('#taskFormBox input[aria-label="担当"]', '印刷会社A');
-  await p.fill('#taskFormBox input[aria-label="期限"]', '2099-01-10');
-  await p.click('#taskFormBox button:has-text("追加")'); await p.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(300);
+  await p.click('#vt-tasks');
+  // quick add: one line, Enter
+  const parsed = await p.evaluate(() => { const T = new Date(2026, 10, 2); return ['表紙案の作成 @デザイナーA 11/20', '見積り 明日', '入稿 来週金曜', '確認 金曜', '年明け確認 1/10', 'P12/P13の確認', '12月1日 校了', '２０２７年２月３日　納品　＠大学'].map((t) => parseQuickTask(t, T)); });
+  ok(JSON.stringify(parsed.map((x) => [x.title, x.who, x.due])) === JSON.stringify([['表紙案の作成', 'デザイナーA', '2026-11-20'], ['見積り', '', '2026-11-03'], ['入稿', '', '2026-11-13'], ['確認', '', '2026-11-06'], ['年明け確認', '', '2027-01-10'], ['P12/P13の確認', '', ''], ['校了', '', '2026-12-01'], ['納品', '大学', '2027-02-03']]), 'quick-add text parsing: ' + JSON.stringify(parsed.map((x) => [x.title, x.who, x.due])));
+  await p.fill('#qaText', '撮影リストを大学に共有 @大学 2026/10/23'); await p.press('#qaText', 'Enter');
+  await p.waitForFunction(() => S.tasks.length === 1, null, { timeout: 15000 }); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => document.activeElement && document.activeElement.id === 'qaText' && document.getElementById('qaText').value === ''), 'after Enter the box is empty and keeps the focus for the next task');
+  await p.fill('#qaText', '印刷会社に見積り依頼 @印刷会社A'); await p.fill('#qaDue', '2099-01-10'); await p.click('#qaAdd');
+  await p.waitForFunction(() => S.tasks.length === 2, null, { timeout: 15000 }); await p.waitForTimeout(300);
   const tk = ss.getSheetByName('タスク').cells;
   ok(tk.length === 3 && tk[1][3] === 'client@example.ac.jp' && tk[2][2] === '印刷会社A' && tk[2][3] === '', 'two tasks saved (member and free-text assignee)');
-  ok(await p.locator('#taskTable tbody tr').count() === 2 && /期限切れ/.test(await p.textContent('#taskTable')), 'list shows both, the past due one flagged');
+  ok(tk[1][1] === '撮影リストを大学に共有' && ss.getSheetByName('タスク').getRange(2, 5).getDisplayValue() === '2026/10/23' && ss.getSheetByName('タスク').getRange(3, 5).getDisplayValue() === '2099/01/10', 'title without the @ and the date; due dates saved');
+  ok(await p.locator('#taskTable .trow').count() === 2 && /期限切れ/.test(await p.textContent('#taskTable')), 'list shows both, the past due one flagged');
   ok(/大学 担当/.test(await p.textContent('#taskPeople')) && /印刷会社A/.test(await p.textContent('#taskPeople')), 'counts per assignee');
-  await p.locator('#taskTable tbody tr').nth(1).locator('select').selectOption('完了'); await p.waitForTimeout(700);
-  ok(ss.getSheetByName('タスク').cells[2][5] === '完了' && await p.locator('#taskTable tbody tr').count() === 1, 'status changed inline; 完了 hidden by the 未完了 filter');
+  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select').selectOption('完了'); await p.waitForTimeout(900);
+  ok(ss.getSheetByName('タスク').cells[2][5] === '完了' && await p.locator('#taskTable .trow').count() === 1, 'status changed inline; 完了 hidden by the 未完了 filter');
   await p.screenshot({ path: path.join(__dirname, 'out', 'w_tasks.png') });
   // minutes
   await p.click('#vt-minutes'); await p.click('#btnMinAdd'); await p.waitForTimeout(300);
@@ -138,7 +138,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await p.locator('#minDoc button:has-text("編集")').count() === 1 && await p.locator('#minDoc button:has-text("削除")').count() === 0, 'client can edit minutes by others but not delete them');
   await p.click('#vt-tasks'); await p.waitForTimeout(200);
   await p.selectOption('#tAssignee', 'me'); await p.waitForTimeout(200);
-  ok(await p.locator('#taskTable tbody tr').count() === 1 && /撮影リスト/.test(await p.textContent('#taskTable')), '「自分」filter shows the task assigned to the client');
+  ok(await p.locator('#taskTable .trow').count() === 1 && /撮影リスト/.test(await p.textContent('#taskTable')), '「自分」filter shows the task assigned to the client');
 
   /* ---------- external ---------- */
   const cExt = await mkctx('T_EXT');
@@ -151,14 +151,17 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(/決定事項|ノンブル/.test(await p.textContent('#minDoc .md-body')) && await p.locator('#minDoc button:has-text("編集")').count() === 0, 'external reads minutes');
   await p.click('#vt-tasks'); await p.click('#btnTaskAdd');
   await p.fill('#taskFormBox input[aria-label="タスク"]', 'P12 レイアウト修正'); await p.fill('#taskFormBox input[aria-label="担当"]', 'デザイナーA');
+  await p.fill('#taskFormBox textarea[aria-label="メモ"]', '写真の差し替えも含む');
   await p.click('#taskFormBox button:has-text("追加")'); await p.waitForSelector('#taskFormBox .form', { state: 'detached', timeout: 20000 }); await p.waitForTimeout(300);
   ok(ss.getSheetByName('タスク').cells[3][1] === 'P12 レイアウト修正' && ss.getSheetByName('タスク').cells[3][3] === 'designer@example.com', 'external creates a task');
   await p.selectOption('#tState', 'all'); await p.waitForTimeout(200);
-  await p.locator('#taskTable tbody tr', { hasText: '撮影リスト' }).locator('button:has-text("編集")').click(); await p.waitForTimeout(200);
+  await p.locator('#taskTable .trow', { hasText: '撮影リスト' }).locator('button:has-text("編集")').click(); await p.waitForTimeout(200);
   ok(await p.locator('#taskFormBox button:has-text("削除")').count() === 0, 'external cannot delete a task created by 社内');
   await p.setViewportSize({ width: 390, height: 844 });
   await p.click('#taskFormBox button:has-text("やめる")');
   const ow = await p.evaluate(() => document.documentElement.scrollWidth); ok(ow <= 390, 'no horizontal page scroll at 390px: ' + ow);
+  const clip = await p.evaluate(() => [...document.querySelectorAll('#taskTable .trow, #qaForm')].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > 390).length);
+  ok(clip === 0, 'task rows and the quick-add box fit a phone (nothing cut off)');
   await p.screenshot({ path: path.join(__dirname, 'out', 'w_tasks_mobile.png'), fullPage: false });
 
   console.log('ERRORS:', errs.length ? errs.slice(0, 8).join('\n') : 'none');

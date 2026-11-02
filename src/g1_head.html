@@ -388,6 +388,24 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 .bellitem { position: relative; padding-left: 14px; }
 body.locked .bellwrap { display: none !important; }
 @media (max-width: 700px) { .bellpanel { position: fixed; left: 16px; right: 16px; top: 64px; width: auto; max-height: calc(100vh - 96px); } }
+.qadd { display: grid; grid-template-columns: minmax(0, 1fr) 11em 10em auto; gap: 8px 10px; align-items: end; margin: 4px 0 0; }
+.qadd .btn { min-height: 34px; }
+.linklike { border: 0; background: none; padding: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 2px; font: inherit; cursor: pointer; }
+.tlist { list-style: none; margin: 12px 0 0; padding: 0; border-top: 1px solid var(--line); }
+.trow { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; gap: 4px 12px; align-items: start; padding: 9px 4px; border-bottom: 1px solid var(--line); }
+.trow:hover { background: color-mix(in srgb, var(--accent) 4%, transparent); }
+.ttitle { display: block; font-size: 14px; line-height: 1.5; overflow-wrap: anywhere; }
+.tmeta { display: flex; flex-wrap: wrap; gap: 2px 16px; font-size: 12.5px; margin-top: 2px; }
+.tmemo { margin: 4px 0 0; font-size: 12.5px; color: var(--mute); white-space: pre-wrap; overflow-wrap: anywhere; }
+.trow.is-done .ttitle { color: var(--mute); font-weight: 500; text-decoration: line-through; text-decoration-color: color-mix(in srgb, var(--mute) 60%, transparent); }
+.tempty { padding: 12px 4px; }
+@media (max-width: 760px) {
+  .qadd { grid-template-columns: 1fr 1fr; }
+  .qadd .qa-text { grid-column: 1 / -1; }
+  .qadd .btn { grid-column: 1 / -1; }
+  .trow { grid-template-columns: minmax(0, 1fr) auto; }
+  .trow .tstate { grid-column: 1 / -1; grid-row: 1; }
+}
 .projlist { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .projitem { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); text-decoration: none; }
 .projitem:hover { border-color: var(--accent); }

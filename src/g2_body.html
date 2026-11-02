@@ -197,12 +197,17 @@
         <label class="field inline"><span>担当</span><select id="tAssignee"></select></label>
         <label class="field inline"><span>状態</span><select id="tState"></select></label>
         <label class="field inline grow"><span>検索</span><input id="tSearch" type="search" autocomplete="off" placeholder="タスク・担当・メモ"></label>
-        <button class="btn primary" id="btnTaskAdd">タスクを追加</button>
       </div>
-      <p class="hint">状態はだれでも一覧から直接変えられます。担当はメンバーから選ぶか、名前を自由に入力できます（メンバー以外にはメールは届きません）。</p>
+      <form class="qadd" id="qaForm" autocomplete="off">
+        <label class="field qa-text"><span>タスクを追加（Enterで登録）</span><input id="qaText" type="text" placeholder="例：表紙案の作成 @デザイナーA 11/20"></label>
+        <label class="field qa-who"><span>担当</span><select id="qaWho"></select></label>
+        <label class="field qa-due"><span>期限</span><input id="qaDue" type="date"></label>
+        <button class="btn primary" id="qaAdd" type="submit">追加</button>
+      </form>
+      <p class="hint">「@名前」で担当、「11/20」「明日」「来週金曜」で期限を一緒に入力できます（右の欄で選んでも同じです）。メモを付けるときは <button class="linklike" id="btnTaskAdd" type="button">詳しく入力</button>。状態は一覧からだれでも直接変えられます。</p>
       <div id="taskFormBox"></div>
       <datalist id="peopleList"></datalist>
-      <div class="tablewrap"><table class="grid" id="taskTable"></table></div>
+      <ul class="tlist" id="taskTable"></ul>
     </section>
   </div>
 
