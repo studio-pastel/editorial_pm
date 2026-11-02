@@ -73,14 +73,14 @@ function makeWorld(opts) {
     return {
       getId: () => id, getName: () => f.name, getSize: () => f.bytes.length, getMimeType: () => f.mime, getLastUpdated: () => new Date(f.updated || 1761600000000), getParents: () => iter((f.parents || []).map(folderObj)),
       setContent: (c) => { f.bytes = Buffer.from(String(c), 'utf8'); f.updated = (f.updated || 1761600000000) + 1000; }, setName: (n) => { f.name = n; },
-      getBlob: () => ({ getDataAsString: (cs) => f.bytes.toString(cs === 'UTF-8' ? 'utf8' : 'latin1') }), setTrashed: (b) => { f.trashed = !!b; if (b) f.parents = []; }
+      getBlob: () => ({ getDataAsString: (cs) => f.bytes.toString(cs === 'UTF-8' ? 'utf8' : 'latin1') }), setTrashed: (b) => { f.trashed = !!b; }, isTrashed: () => !!f.trashed
     };
   };
   const folderObj = (id) => {
     const d = W.folders[id]; if (!d) throw new Error('No item with the given ID could be found');
     return {
       getId: () => id, getName: () => d.name,
-      getFilesByType: (mime) => iter(Object.keys(W.files).filter((k) => W.files[k].parents.includes(id) && W.files[k].mime === mime).map(fileObj)),
+      getFilesByType: (mime) => iter(Object.keys(W.files).filter((k) => W.files[k].parents.includes(id) && W.files[k].mime === mime && !W.files[k].trashed).map(fileObj)),
       createFolder: (name) => { const nid = 'FOLDERNEW' + String(W.nextId++).padStart(16, '0'); W.folders[nid] = { name, parent: id }; return folderObj(nid); },
       createFile: (name, content, mime) => { const fid = 'FILEMD' + String(W.nextId++).padStart(18, '0'); W.files[fid] = { name, mime: mime || 'text/plain', bytes: Buffer.from(String(content), 'utf8'), parents: [id] }; return fileObj(fid); }
     };
@@ -104,7 +104,7 @@ function makeWorld(opts) {
     Session: { getEffectiveUser: () => ({ getEmail: () => W.owner }) },
     ScriptApp: { getOAuthToken: () => 'owner-token' },
     PropertiesService: { getScriptProperties: () => ({ getProperty: (k) => W.props[k] || null, setProperty: (k, v) => { W.props[k] = v; } }) },
-    CacheService: { getScriptCache: () => ({ get: (k) => (W.cache[k] !== undefined ? W.cache[k] : null), put: (k, v) => { W.cache[k] = v; } }) },
+    CacheService: { getScriptCache: () => ({ get: (k) => (W.cache[k] !== undefined ? W.cache[k] : null), put: (k, v) => { W.cache[k] = v; }, removeAll: (ks) => ks.forEach((k) => { delete W.cache[k]; }) }) },
     LockService: { getScriptLock: () => ({ tryLock: () => true, releaseLock() {} }) },
     MailApp: { sendEmail: (o) => W.mails.push(o), getRemainingDailyQuota: () => 100 },
     ContentService: { createTextOutput: (s) => ({ content: s, setMimeType() { return this; } }), MimeType: { JSON: 'json' } },

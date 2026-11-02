@@ -351,6 +351,18 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   W.mails.length = 0; W.G.flushAll_(Date.now() + 11 * 60000);
   { const tos = W.mails.map((m) => m.to); ok(tos.indexOf('client@example.ac.jp') >= 0 && tos.indexOf('owner@example.com') >= 0 && tos.indexOf('designer@example.com') < 0 && new Set(tos).size === tos.length, 'one mail per person for the mixed batch: ' + tos.join()); }
 }
+/* ---- deleting a design PDF ---- */
+{
+  W.files.TRASHME00000000000000 = { name: '削除するPDF.pdf', mime: 'application/pdf', bytes: Buffer.from('%PDF-1.4 x'), parents: [FOLDER] };
+  W.call({ action: 'designAppend', session: S_OWNER, sheet: SID, rows: [['https://drive.google.com/file/d/TRASHME00000000000000/view', '削除するPDF.pdf', 1, 1, '9']] });
+  r = W.call({ action: 'fileMeta', session: S_OWNER, sheet: SID, id: 'TRASHME00000000000000' }); ok(r.ok, 'file served before deleting');
+  r = W.call({ action: 'designTrash', session: S_EXT, sheet: SID, id: 'TRASHME00000000000000' }); ok(!r.ok && r.code === 'forbidden', 'only 社内 can delete PDFs');
+  r = W.call({ action: 'designTrash', session: S_OWNER, sheet: SID, id: 'SECRETFILE00000000000' }); ok(!r.ok && r.code === 'forbidden' && !W.files.SECRETFILE00000000000.trashed, 'a file outside the design folder is never deleted');
+  r = W.call({ action: 'designTrash', session: S_OWNER, sheet: SID, id: 'TRASHME00000000000000' });
+  ok(r.ok && r.trashed && r.removed === 1 && W.files.TRASHME00000000000000.trashed && !ss.getSheetByName('デザイン').cells.some((c) => c && String(c[0]).indexOf('TRASHME') >= 0), 'PDF goes to the trash and its デザイン row is removed');
+  r = W.call({ action: 'load', session: S_OWNER, sheet: SID }); ok(!r.folder.files.some((f) => f.id === 'TRASHME00000000000000'), 'trashed PDF is no longer listed from the folder');
+  r = W.call({ action: 'fileMeta', session: S_OWNER, sheet: SID, id: 'TRASHME00000000000000' }); ok(!r.ok && r.code === 'not_found', 'trashed PDF is no longer served');
+}
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
 ok(!W.formulas.length, 'no value was ever written as a formula');

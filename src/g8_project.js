@@ -332,6 +332,7 @@ function renderDesignList() {
         clearTimeout(armed); deleteDesignRow(d);
       });
       li.append(del);
+      if (hasFeature('designTrash')) li.append(trashButton(d.id, d.name));
     } else {
       const m = document.createElement('span'); m.className = 'meta';
       m.textContent = 'PDF p' + d.from + '〜' + (d.to || (src.numPages || '末尾')) + ' → ' + keyLabel(d.start) + 'から';
@@ -353,6 +354,7 @@ function renderDesignList() {
       pin.title = '今の位置で「デザイン」タブに記録し、貼る位置を変えられるようにします';
       pin.addEventListener('click', () => pinAutoFile(f));
       li.appendChild(pin);
+      if (hasFeature('designTrash')) li.appendChild(trashButton(f.id, f.name));
     }
     srcStatus(li, src);
     ul.appendChild(li);
@@ -369,12 +371,34 @@ async function editDesignRow(d, fromTxt, toTxt, startTxt) {
     setMsg('designMsg', (d.name || 'PDF') + 'を' + keyLabel(start) + 'から貼るように保存しました。', 'ok'); goToKey(start);
   } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
+/** 社内: the PDF goes to the Drive trash (restorable for 30 days) and disappears from the board */
+async function trashDesign(id, name) {
+  setMsg('designMsg', '削除しています…');
+  try {
+    const r = await relay('designTrash', { id });
+    const s = S.sources.get(id);
+    if (s && s.pdf && s.pdf.destroy) try { s.pdf.destroy(); } catch (e) { /* ignore */ }
+    S.sources.delete(id); blobLoads.delete(id); pdfLoads.delete(id);
+    await reloadDesigns();
+    setMsg('designMsg', (r.name || name || 'PDF') + 'を削除しました（ドライブのゴミ箱に移しました。30日以内ならゴミ箱から元に戻せます）。', 'ok');
+  } catch (e) { setMsg('designMsg', e.message, 'err'); }
+}
+function trashButton(id, name) {
+  const b = document.createElement('button'); b.className = 'btn sm danger'; b.textContent = '削除';
+  b.title = 'PDFをドライブのゴミ箱に移し、台割から外します（30日以内ならゴミ箱から元に戻せます）';
+  let armed = 0;
+  b.addEventListener('click', () => {
+    if (!armed) { b.textContent = 'もう一度押すと削除'; armed = setTimeout(() => { armed = 0; b.textContent = '削除'; }, 3000); return; }
+    clearTimeout(armed); b.disabled = true; trashDesign(id, name);
+  });
+  return b;
+}
 async function deleteDesignRow(d) {
   setMsg('designMsg', '外しています…');
   try {
     await relay('designDelete', { row: d.row, id: d.id });
     await reloadDesigns();
-    setMsg('designMsg', '指定を外しました。PDFがデザインフォルダにある場合は、名前順の自動配置に戻ります（台割から消すには、PDFをフォルダの外へ移してください）。', 'ok');
+    setMsg('designMsg', '指定を外しました。PDFがデザインフォルダにある場合は、名前順の自動配置に戻ります（台割から消すには「削除」を押してください）。', 'ok');
   } catch (e) { setMsg('designMsg', e.message, 'err'); }
 }
 

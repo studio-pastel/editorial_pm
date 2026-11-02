@@ -17,8 +17,8 @@
  * 通知メールは「通知」タブに溜め、最後の出来事から10分静かになったら（続いても最長60分で）、案件ごとに1通にまとめて送ります。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-02';
-const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices'];
+const VERSION = '2026-11-02b';
+const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
 const SESSION_DAYS = 30;
@@ -128,6 +128,7 @@ function handle_(req) {
     case 'designAppend': need('manage'); return withLock_(() => designAppend_(ss, req));
     case 'designUpdate': need('manage'); return withLock_(() => designUpdate_(ss, req));
     case 'designDelete': need('manage'); return withLock_(() => designDelete_(ss, req));
+    case 'designTrash': need('manage'); return withLock_(() => designTrash_(ss, me, req));
     case 'scheduleSave': need('scheduleWrite'); return withLock_(() => scheduleSave_(ss, req));
     case 'minuteGet': need('load'); return minuteGet_(ss, req);
     case 'minuteBodies': need('load'); return minuteBodies_(ss);
@@ -318,7 +319,7 @@ function folderListing_(id) {
   if (!id) return null;
   try {
     const f = DriveApp.getFolderById(id), it = f.getFilesByType(MimeType.PDF), files = [];
-    while (it.hasNext() && files.length < 500) { const x = it.next(); files.push({ id: x.getId(), name: x.getName(), size: x.getSize(), v: x.getLastUpdated().getTime() + '-' + x.getSize() }); }
+    while (it.hasNext() && files.length < 500) { const x = it.next(); if (x.isTrashed()) continue; files.push({ id: x.getId(), name: x.getName(), size: x.getSize(), v: x.getLastUpdated().getTime() + '-' + x.getSize() }); }
     return { id, name: f.getName(), files };
   } catch (e) { return { id, error: 'デザインフォルダを開けませんでした（削除されたか、スクリプト所有者の権限がありません）', files: [] }; }
 }
@@ -335,6 +336,7 @@ function allowedFile_(ss, me, id) {
   if (CAN.expenseRead.indexOf(me.key) >= 0) folders.push(driveId_(set['領収書フォルダ']));
   let file;
   try { file = DriveApp.getFileById(id); } catch (e) { fail_('not_found', 'ファイルが見つかりません'); }
+  if (file.isTrashed()) fail_('not_found', 'ファイルは削除されています');
   const parents = file.getParents(); let inside = false;
   while (parents.hasNext()) if (folders.indexOf(parents.next().getId()) >= 0) { inside = true; break; }
   if (!inside) fail_('forbidden', 'このファイルは案件のフォルダの外にあるため表示できません（デザインフォルダに移してください）');
@@ -563,6 +565,28 @@ function designUpdate_(ss, req) {
   return { ok: true };
 }
 function designDelete_(ss, req) { const d = designRow_(ss, req); d.sh.deleteRow(d.r); return { ok: true }; }
+/** a PDF in this project's design folder goes to the Drive trash (restorable for 30 days) and its 「デザイン」 rows are removed */
+function designTrash_(ss, me, req) {
+  const id = String(req.id || '');
+  const set = settingsMap_(readTab_(ss, TAB.setting)), folder = driveId_(set['デザインフォルダ']);
+  if (!/^[A-Za-z0-9_-]{10,}$/.test(id)) fail_('bad_request', 'ファイルの指定が正しくありません');
+  let f;
+  try { f = DriveApp.getFileById(id); } catch (e) { f = null; }
+  if (f) {
+    const parents = f.getParents(); let inside = false;
+    while (parents.hasNext()) if (parents.next().getId() === folder) { inside = true; break; }
+    if (!inside) fail_('forbidden', 'デザインフォルダの外にあるファイルは削除できません');
+    f.setTrashed(true);
+  }
+  const sh = ss.getSheetByName(TAB.design);
+  let removed = 0;
+  if (sh) {
+    const rows = sh.getDataRange().getDisplayValues();
+    for (let i = rows.length - 1; i >= 1; i--) if (driveId_(rows[i][0]) === id) { sh.deleteRow(i + 1); removed++; }
+  }
+  CacheService.getScriptCache().removeAll(['staff', 'client', 'ext'].map((k) => 'ok:' + ss.getId() + ':' + k + ':' + id));
+  return { ok: true, trashed: !!f, removed, name: f ? f.getName() : '' };
+}
 
 /* ================= shared helpers ================= */
 function projectName_(ss) { return settingsMap_(readTab_(ss, TAB.setting))['案件名'] || ss.getName(); }
