@@ -426,7 +426,7 @@ async function uploadFiles(files, startKey) {
       const f = pdfs[i];
       if (cursor === null) { notes.push(f.name + 'は台割の末尾を超えるため登録しませんでした'); continue; }
       setMsg('designMsg', 'アップロード中（' + (i + 1) + '／' + pdfs.length + '）：' + f.name);
-      const pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await f.arrayBuffer()), isEvalSupported: false }).promise;
+      const pdf = await pdfOpen(new Uint8Array(await f.arrayBuffer()));
       const n = pdf.numPages;
       const up = await relayUpload(f, 'design', (p) => { $('upBar').style.width = Math.round(((i + p) / pdfs.length) * 100) + '%'; });
       const s = srcFor(up.id, f.name); s.blob = f; s.pdf = pdf; s.numPages = n; s.err = '';

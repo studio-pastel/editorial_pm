@@ -54,6 +54,10 @@ async function cachePrune(keep) {
   for (const r of all.slice(0, all.length - keep)) await idb.del(r.k);
 }
 
+/* Japanese text in PDFs is usually set with CID fonts whose character maps (CMap) are not inside the file:
+   without these tables pdf.js draws nothing for those characters (kanji vanish while Latin text shows). */
+const PDF_ASSETS = 'https://cdn.jsdelivr.net/npm/pdfjs-dist@3.11.174/';
+const pdfOpen = (bytes) => pdfjsLib.getDocument({ data: bytes, isEvalSupported: false, cMapUrl: PDF_ASSETS + 'cmaps/', cMapPacked: true, standardFontDataUrl: PDF_ASSETS + 'standard_fonts/' }).promise;
 if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
 
 function srcFor(id, name) {
@@ -117,7 +121,7 @@ function getPdf(src) {
     const blob = await loadBlob(src);
     if (src.pdf) return src.pdf;
     let pdf;
-    try { pdf = await pdfjsLib.getDocument({ data: new Uint8Array(await blob.arrayBuffer()), isEvalSupported: false }).promise; }
+    try { pdf = await pdfOpen(new Uint8Array(await blob.arrayBuffer())); }
     catch (e) { src.err = 'PDFを開けませんでした（' + (e && e.message ? e.message : e) + '）'; throw new Error(src.err); }
     src.pdf = pdf; src.numPages = pdf.numPages; src.err = '';
     return pdf;
