@@ -375,6 +375,14 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 @media (max-width: 900px) { .mgrid { grid-template-columns: minmax(0, 1fr); } .mside { position: static; max-height: none; } .mlist { max-height: 46vh; } }
 .hint a, .foot a { color: var(--accent); }
 .bellwrap { position: relative; }
+.btn.icon { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 36px; min-height: 34px; position: relative; }
+.btn.icon.sm { width: 30px; min-height: 30px; }
+.btn.icon.xs { width: 26px; min-height: 26px; border-color: transparent; background: transparent; }
+.btn.icon.xs:hover { border-color: var(--line); background: var(--panel-2); }
+.bdot { position: absolute; top: -6px; right: -7px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #e5352b; color: #fff; font: 700 11px/19px var(--font-mono); text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+.panel { position: relative; }
+.pclose { position: absolute; top: 8px; right: 8px; }
+.bellhead .spacer { flex: 1 1 auto; }
 .bell { position: relative; }
 .bellpanel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 35; width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 560px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px color-mix(in srgb, var(--fg) 18%, transparent); padding: 10px 12px; }
 .bellhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }

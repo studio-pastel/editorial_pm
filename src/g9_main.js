@@ -54,6 +54,10 @@ async function runDiagnosis() {
 }
 
 function wire() {
+  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.close; $(id).hidden = true;
+    const t = document.querySelector('[data-panel="' + id + '"]'); if (t) { t.classList.remove('on'); t.focus(); }
+  }));
   document.querySelectorAll('[data-panel]').forEach((b) => b.addEventListener('click', () => {
     const p = $(b.dataset.panel); p.hidden = !p.hidden; b.classList.toggle('on', !p.hidden);
   }));

@@ -17,7 +17,7 @@
  * 通知メールは「通知」タブに溜め、最後の出来事から10分静かになったら（続いても最長60分で）、案件ごとに1通にまとめて送ります。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-02c';
+const VERSION = '2026-11-02d';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -849,12 +849,15 @@ function taskDelete_(ss, me, req) {
 function rowObj_(head, arr) { const o = {}; head.forEach((k, i) => { o[k] = arr[i] === undefined ? '' : String(arr[i]); }); return o; }
 /** 台割の「002」→「P2」, 表1 etc. stay as they are */
 function pageLabel_(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? 'P' + Number(v) : v; }
-/** members of the given roles + extra addresses that are members; never the person who acted, never a クライアント */
+/** members of the given roles + extra addresses that are members; never the person who acted, never a クライアント.
+ *  The script owner gets every notice, their own actions included. */
 function recipients_(ss, me, roles, extra) {
-  const people = memberList_(ss), known = {};
+  const people = memberList_(ss), known = {}, owner = ownerEmail_();
   people.forEach((p) => { known[p.email] = p; });
   const list = people.filter((p) => roles.indexOf(roleKey_(p.role)) >= 0).map((p) => p.email).concat(extra || []);
-  return list.filter((e, i, a) => e && a.indexOf(e) === i && e !== me.email && known[e] && roleKey_(known[e].role) !== 'client');
+  const out = list.filter((e, i, a) => e && a.indexOf(e) === i && e !== me.email && known[e] && roleKey_(known[e].role) !== 'client');
+  if (owner && out.indexOf(owner) < 0) out.push(owner);
+  return out;
 }
 function noticeLink_(ss, origin, where) {
   origin = String(origin || '');

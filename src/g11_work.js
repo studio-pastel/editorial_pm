@@ -508,6 +508,7 @@ function wireBell() {
     if (!p.hidden) { renderBellList(); refreshNotices(); }
   });
   $('btnBellAll').addEventListener('click', () => markNotices(null));
+  $('btnBellClose').addEventListener('click', () => { $('bellPanel').hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); $('btnBell').focus(); });
   document.addEventListener('click', (e) => { const p = $('bellPanel'); if (!p.hidden && !e.target.closest('.bellwrap')) { p.hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('bellPanel').hidden) { $('bellPanel').hidden = true; $('btnBell').focus(); } });
   setInterval(() => { if (!document.hidden) refreshNotices(); }, 180000);

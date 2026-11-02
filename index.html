@@ -375,6 +375,14 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 @media (max-width: 900px) { .mgrid { grid-template-columns: minmax(0, 1fr); } .mside { position: static; max-height: none; } .mlist { max-height: 46vh; } }
 .hint a, .foot a { color: var(--accent); }
 .bellwrap { position: relative; }
+.btn.icon { display: inline-flex; align-items: center; justify-content: center; padding: 0; width: 36px; min-height: 34px; position: relative; }
+.btn.icon.sm { width: 30px; min-height: 30px; }
+.btn.icon.xs { width: 26px; min-height: 26px; border-color: transparent; background: transparent; }
+.btn.icon.xs:hover { border-color: var(--line); background: var(--panel-2); }
+.bdot { position: absolute; top: -6px; right: -7px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 999px; background: #e5352b; color: #fff; font: 700 11px/19px var(--font-mono); text-align: center; box-shadow: 0 0 0 2px var(--bg); }
+.panel { position: relative; }
+.pclose { position: absolute; top: 8px; right: 8px; }
+.bellhead .spacer { flex: 1 1 auto; }
 .bell { position: relative; }
 .bellpanel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 35; width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 560px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px color-mix(in srgb, var(--fg) 18%, transparent); padding: 10px 12px; }
 .bellhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
@@ -426,9 +434,9 @@ body.editor .viewonly { display: none !important; }
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
     <div class="bellwrap">
-      <button class="btn bell" id="btnBell" hidden aria-expanded="false" aria-controls="bellPanel">通知<b class="badge" id="badgeBell" hidden></b></button>
+      <button class="btn icon bell" id="btnBell" hidden aria-label="通知" title="通知" aria-expanded="false" aria-controls="bellPanel"><svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9a6 6 0 0 1 12 0c0 6 2.5 7.5 2.5 7.5h-17S6 15 6 9z"/><path d="M10 20a2.2 2.2 0 0 0 4 0"/></svg><b class="bdot" id="badgeBell" hidden></b></button>
       <div class="bellpanel" id="bellPanel" hidden role="dialog" aria-label="通知">
-        <div class="bellhead"><b>通知</b><button class="btn xs" id="btnBellAll">すべて既読にする</button></div>
+        <div class="bellhead"><b>通知</b><span class="spacer"></span><button class="btn xs" id="btnBellAll">すべて既読にする</button><button class="btn icon xs" id="btnBellClose" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button></div>
         <ul class="belllist" id="bellList"></ul>
         <p class="hint">メールは、動きが10分ほど落ち着いたところで（続いていても最長60分で）案件ごとに1通にまとめて届きます。</p>
       </div>
@@ -485,6 +493,7 @@ body.editor .viewonly { display: none !important; }
     </div>
 
     <section class="panel" id="panelProject" hidden>
+      <button class="btn icon xs pclose" data-close="panelProject" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h2>案件</h2>
       <p class="kv"><span>スプレッドシート</span><a id="sheetLink" target="_blank" rel="noopener"></a></p>
       <p class="kv"><span>共有用URL</span><code id="shareUrl"></code><button class="btn sm" id="btnCopyUrl">コピー</button></p>
@@ -504,6 +513,7 @@ body.editor .viewonly { display: none !important; }
     </section>
 
     <section class="panel" id="panelBook" hidden>
+      <button class="btn icon xs pclose" data-close="panelBook" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h2>判型・製本</h2>
       <div class="grid-form">
         <label class="field"><span>判型</span><select id="trimPreset" class="ed"></select></label>
@@ -528,6 +538,7 @@ body.editor .viewonly { display: none !important; }
     </section>
 
     <section class="panel" id="panelDesign" hidden>
+      <button class="btn icon xs pclose" data-close="panelDesign" aria-label="閉じる" title="閉じる"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
       <h2>デザインPDF</h2>
       <div class="edonly">
         <div class="drop" id="dropZone">片ページのPDFをここへドラッグ、または<button class="btn sm" id="btnPick" style="margin-left:6px">ファイルを選ぶ</button>
@@ -713,7 +724,7 @@ body.editor .viewonly { display: none !important; }
     <button class="btn sm" id="dPrev" aria-label="前のページ">◀</button>
     <h2 id="dTitle"></h2>
     <button class="btn sm" id="dNext" aria-label="次のページ">▶</button>
-    <button class="btn sm" id="dClose" aria-label="閉じる">閉じる</button>
+    <button class="btn icon sm" id="dClose" aria-label="閉じる" title="閉じる（Esc）"><svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M6 6l12 12M18 6L6 18"/></svg></button>
   </header>
   <div class="dbody" id="dBody"></div>
 </aside>
@@ -3534,6 +3545,7 @@ function wireBell() {
     if (!p.hidden) { renderBellList(); refreshNotices(); }
   });
   $('btnBellAll').addEventListener('click', () => markNotices(null));
+  $('btnBellClose').addEventListener('click', () => { $('bellPanel').hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); $('btnBell').focus(); });
   document.addEventListener('click', (e) => { const p = $('bellPanel'); if (!p.hidden && !e.target.closest('.bellwrap')) { p.hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); } });
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('bellPanel').hidden) { $('bellPanel').hidden = true; $('btnBell').focus(); } });
   setInterval(() => { if (!document.hidden) refreshNotices(); }, 180000);
@@ -3595,6 +3607,10 @@ async function runDiagnosis() {
 }
 
 function wire() {
+  document.querySelectorAll('[data-close]').forEach((b) => b.addEventListener('click', () => {
+    const id = b.dataset.close; $(id).hidden = true;
+    const t = document.querySelector('[data-panel="' + id + '"]'); if (t) { t.classList.remove('on'); t.focus(); }
+  }));
   document.querySelectorAll('[data-panel]').forEach((b) => b.addEventListener('click', () => {
     const p = $(b.dataset.panel); p.hidden = !p.hidden; b.classList.toggle('on', !p.hidden);
   }));

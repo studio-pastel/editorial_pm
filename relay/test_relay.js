@@ -332,13 +332,13 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   W.call({ action: 'status', session: S_EXT, sheet: SID, tab: '台割／表', headerRow: 1, pageCol: 1, row: 4, col: 7, page: '002', value: '確定', origin: O });
   const added = nsh().cells.slice(nAt).filter((c) => c && c[0]).map((c) => c[4] + '→' + c[3]);
   ok(!added.some((x) => /client@|noinvite@|badorigin@/.test(x)), 'no notice of any kind for a クライアント: ' + added.join(' '));
-  ok(added.filter((x) => x === 'タスク→designer@example.com').length === 1 && added.filter((x) => /^タスク/.test(x)).length === 1, 'task: only the new assignee (チームメンバー), once');
-  ok(['議事録→designer@example.com', '議事録→writer@example.com', '議事録→photo@example.com'].every((x) => added.indexOf(x) >= 0) && added.indexOf('議事録→owner@example.com') < 0, 'minutes: 社内 + チームメンバー except the writer');
+  ok(added.filter((x) => x === 'タスク→designer@example.com').length === 1 && added.filter((x) => /^タスク/.test(x) && x !== 'タスク→owner@example.com').length === 1, 'task: the new assignee (チームメンバー) once, plus the owner');
+  ok(['議事録→designer@example.com', '議事録→writer@example.com', '議事録→photo@example.com'].every((x) => added.indexOf(x) >= 0) && added.indexOf('議事録→owner@example.com') >= 0, 'minutes: 社内 + チームメンバー (the owner too, even as the writer)');
   ok(added.indexOf('コメント→owner@example.com') >= 0, 'comment by a チームメンバー on a クライアント thread: 社内 only');
   ok(added.indexOf('進捗→owner@example.com') >= 0 && !added.some((x) => /^進捗→(designer|writer|photo)/.test(x)), 'progress: 社内 only');
   const prow = nsh().cells.slice(nAt).find((c) => c && c[4] === '進捗');
   ok(prow[5] === 'P2' && /初校：.* → 確定/.test(prow[6]) && /&page=P2/.test(prow[8]), 'progress notice says page, stage, before → after: ' + prow[6]);
-  const trow = nsh().cells.slice(nAt).find((c) => c && c[4] === 'タスク');
+  const trow = nsh().cells.slice(nAt).find((c) => c && c[4] === 'タスク' && c[3] === 'designer@example.com');
   ok(/撮影の段取り（期限 2026\/11\/20）/.test(trow[6]) && /&view=tasks/.test(trow[8]), 'task notice links to the tasks tab');
   // bell
   ok(W.call({ action: 'load', session: S_CLIENT, sheet: SID }).notices.length === 0, 'クライアント: the bell stays empty');
@@ -367,6 +367,17 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   ok(r.ok && r.trashed && r.removed === 1 && W.files.TRASHME00000000000000.trashed && !ss.getSheetByName('デザイン').cells.some((c) => c && String(c[0]).indexOf('TRASHME') >= 0), 'PDF goes to the trash and its デザイン row is removed');
   r = W.call({ action: 'load', session: S_OWNER, sheet: SID }); ok(!r.folder.files.some((f) => f.id === 'TRASHME00000000000000'), 'trashed PDF is no longer listed from the folder');
   r = W.call({ action: 'fileMeta', session: S_OWNER, sheet: SID, id: 'TRASHME00000000000000' }); ok(!r.ok && r.code === 'not_found', 'trashed PDF is no longer served');
+}
+/* ---- the script owner gets every notice, own actions included ---- */
+{
+  const nsh = ss.getSheetByName('通知'), at = nsh.cells.length;
+  W.call({ action: 'commentAdd', session: S_OWNER, sheet: SID, page: 'P40', text: '自分のコメント', origin: 'https://studio-pastel.github.io/editorial_pm/' });
+  W.call({ action: 'taskSave', session: S_EXT, sheet: SID, values: { 'タスク': '他人のタスク', '担当メール': 'designer@example.com' }, origin: 'https://studio-pastel.github.io/editorial_pm/' });
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': 'デザイナーのタスク', '担当メール': 'designer@example.com' }, origin: 'https://studio-pastel.github.io/editorial_pm/' });
+  const added = nsh.cells.slice(at).filter((c) => c && c[0]).map((c) => c[4] + ':' + c[6] + '→' + c[3]);
+  ok(added.indexOf('コメント:自分のコメント→owner@example.com') >= 0, 'owner is told about their own comment');
+  ok(added.indexOf('タスク:デザイナーのタスク→owner@example.com') >= 0 && added.indexOf('タスク:デザイナーのタスク→designer@example.com') >= 0, 'owner also gets task notices for others');
+  ok(!added.some((x) => /client@/.test(x)), 'still nothing for クライアント');
 }
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
