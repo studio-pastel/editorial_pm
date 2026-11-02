@@ -114,7 +114,7 @@ async function setStage(k, col, value, sel) {
   if (!info || S.map.page < 0) { toast('ページ列がない台割では進捗を変更できません', 'err'); return; }
   const row = S.rows[info.row];
   await busy(sel, async () => {
-    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value });
+    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value, origin: entryUrl() });
     row[col] = r.value;
     toast(pageLabel(k) + '：' + (S.rows[S.headerRow][col]) + 'を「' + r.value + '」にしました');
     renderBoard(); renderViews();
@@ -136,7 +136,9 @@ function selectPage(k) {
   openDetail(k);
 }
 function openPageFromUrl() {
-  const p = new URLSearchParams(location.search).get('page');
+  const q = new URLSearchParams(location.search);
+  if (q.get('view') && !q.get('page')) { if (q.get('minute')) minSel = q.get('minute'); setView(q.get('view')); return; }
+  const p = q.get('page');
   if (!p) return;
   const k = keyOfLabel(p);
   if (k !== null) { setView('board'); selectPage(k); }
@@ -193,7 +195,8 @@ async function addComment(label, text, replyTo, btn) {
   const r = await busy(btn, () => relay('commentAdd', { page: label, text, replyTo: replyTo || '', origin: location.origin + location.pathname }));
   if (!r) return false;
   S.comments.push(rowObj(H_COMMENT, r.comment));
-  toast(r.notified ? 'コメントしました（' + r.notified + '人にメールで通知）' : 'コメントしました');
+  toast(r.notified ? 'コメントしました（' + r.notified + '人に通知。メールは動きが落ち着いてからまとめて届きます）' : 'コメントしました');
+  if (r.notified) refreshNotices();
   renderBoard(); renderViews();
   return true;
 }

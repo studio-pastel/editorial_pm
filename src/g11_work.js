@@ -135,7 +135,7 @@ function taskStateSelect(t) {
   return sel;
 }
 async function saveTask(t, values, btn) {
-  const r = await busy(btn, () => relay('taskSave', { id: t ? t.ID : '', base: t ? t['更新日時'] : null, values }));
+  const r = await busy(btn, () => relay('taskSave', { id: t ? t.ID : '', base: t ? t['更新日時'] : null, values, origin: entryUrl() }));
   if (!r) { renderTasks(); return false; }
   const obj = rowObj(H_TASK, r.row);
   const i = S.tasks.findIndex((x) => x.ID === obj.ID);
@@ -362,7 +362,7 @@ async function editMinute(m) {
     if (!F['日付'].value) { toast('日付を入力してください', 'err'); return; }
     if (!F['タイトル'].value.trim()) { toast('タイトルを入力してください', 'err'); F['タイトル'].focus(); return; }
     const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
-    const r = await busy(save, () => relay('minuteSave', { id: minEditing.id, base: minEditing.base, values, body: ta.value }));
+    const r = await busy(save, () => relay('minuteSave', { id: minEditing.id, base: minEditing.base, values, body: ta.value, origin: entryUrl() }));
     if (!r) return;
     const obj = rowObj(H_MINUTE, r.row);
     const i = S.minutes.findIndex((x) => x.ID === obj.ID);
@@ -410,4 +410,54 @@ function wireWork() {
   });
   let rTimer = 0;
   window.addEventListener('resize', () => { if (curView !== 'schedule') return; clearTimeout(rTimer); rTimer = setTimeout(renderSchedule, 150); });
+}
+
+/* ================= notices (bell) ================= */
+const NOTICE_VIEW = { 'タスク': 'tasks', '議事録': 'minutes' };
+function renderBell() {
+  const ok = hasFeature('notices');
+  $('btnBell').hidden = !ok || !S.me;
+  const n = (S.notices || []).filter((x) => !x.read).length;
+  const b = $('badgeBell'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
+  $('btnBell').setAttribute('aria-label', '通知' + (n ? '（未読 ' + n + '件）' : ''));
+  if (!$('bellPanel').hidden) renderBellList();
+}
+function renderBellList() {
+  const ul = $('bellList'); ul.textContent = '';
+  const list = S.notices || [];
+  $('btnBellAll').disabled = !list.some((x) => !x.read);
+  if (!list.length) { ul.appendChild(el('li', { class: 'muted', text: '通知はまだありません' })); return; }
+  list.forEach((x) => ul.appendChild(el('li', null, el('button', { class: 'bellitem' + (x.read ? '' : ' unread'), onclick: () => openNotice(x) },
+    el('span', { class: 'bmeta' }, el('span', { class: 'chip', text: x.kind }), x.page ? el('b', { text: x.page }) : null, el('span', { text: x.by }), el('span', { text: String(x.at) })),
+    el('span', { class: 'btext', text: x.text })))));
+}
+async function markNotices(ids) {
+  (S.notices || []).forEach((x) => { if (!ids || ids.indexOf(x.id) >= 0) x.read = true; });
+  renderBell();
+  try { await relay('noticeRead', ids ? { ids } : {}); } catch (e) { /* the next refresh shows the truth */ }
+}
+async function openNotice(x) {
+  $('bellPanel').hidden = true; $('btnBell').setAttribute('aria-expanded', 'false');
+  if (!x.read) markNotices([x.id]);
+  if (NOTICE_VIEW[x.kind] && Date.now() - (S.loadedAt || 0) > 15000) await loadProject();   // bring in the task / minutes it points to
+  if (x.page) { const k = keyOfLabel(x.page); if (k !== null) { setView('board'); selectPage(k); return; } }
+  const v = NOTICE_VIEW[x.kind];
+  if (v) {
+    if (v === 'minutes') { const m = String(x.link || '').match(/[?&]minute=([^&]+)/); if (m) minSel = decodeURIComponent(m[1]); }
+    setView(v);
+  }
+}
+async function refreshNotices() {
+  if (!S.loaded || !hasFeature('notices')) return;
+  try { const r = await relay('notices', {}, { quiet: true }); S.notices = r.notices || []; renderBell(); } catch (e) { /* ignore */ }
+}
+function wireBell() {
+  $('btnBell').addEventListener('click', () => {
+    const p = $('bellPanel'); p.hidden = !p.hidden; $('btnBell').setAttribute('aria-expanded', String(!p.hidden));
+    if (!p.hidden) { renderBellList(); refreshNotices(); }
+  });
+  $('btnBellAll').addEventListener('click', () => markNotices(null));
+  document.addEventListener('click', (e) => { const p = $('bellPanel'); if (!p.hidden && !e.target.closest('.bellwrap')) { p.hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('bellPanel').hidden) { $('bellPanel').hidden = true; $('btnBell').focus(); } });
+  setInterval(() => { if (!document.hidden) refreshNotices(); }, 180000);
 }

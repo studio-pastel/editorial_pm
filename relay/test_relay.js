@@ -64,11 +64,15 @@ r = st(S_EXT, { col: 5, value: 'x' }); ok(!r.ok && r.code === 'forbidden', 'non-
 
 /* ---- comments + mail ---- */
 r = W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P1', text: '扉の写真、差し替え希望です', origin: 'https://studio-pastel.github.io/editorial_pm/' });
-ok(r.ok && r.notified === 1 && W.mails[0].to === 'owner@example.com', 'client comment mails 社内 only: ' + JSON.stringify(W.mails.map((m) => m.to)));
-ok(/editorial_pm\/\?sheet=TESTSHEET.*&page=P1/.test(W.mails[0].body) && /大学 担当/.test(W.mails[0].subject), 'mail has link to page');
+ok(r.ok && r.notified === 1 && W.mails.length === 0, 'comment is queued, not mailed at once');
+const FLUSH = () => W.G.flushAll_(Date.now() + 11 * 60000);
+FLUSH();
+ok(W.mails.length === 1 && W.mails[0].to === 'owner@example.com', 'after 10 quiet minutes: 社内 gets one mail: ' + JSON.stringify(W.mails.map((m) => m.to)));
+ok(/editorial_pm\/\?sheet=TESTSHEET.*&page=P1/.test(W.mails[0].body) && /大学 担当/.test(W.mails[0].body) && /扉の写真/.test(W.mails[0].body), 'mail lists the comment with a link to the page');
 const cid = r.comment[0];
 r = W.call({ action: 'commentAdd', session: S_EXT, sheet: SID, page: 'P1', text: '=IMPORTXML("http://evil","//a")', origin: 'https://evil.example/' });
-ok(r.ok && !W.formulas.length && W.mails.length === 3 && !/evil\.example/.test(W.mails[1].body), 'external reply: mails owner + earlier commenter, no formula, no foreign link');
+FLUSH();
+ok(r.ok && !W.formulas.length && W.mails.length === 3 && !/evil\.example/.test(W.mails[1].body + W.mails[2].body), 'external reply: owner + earlier commenter, no formula, no foreign link');
 r = W.call({ action: 'commentState', session: S_EXT, sheet: SID, id: cid, state: '対応済' }); ok(!r.ok && r.code === 'forbidden', 'cannot resolve someone else\'s comment');
 r = W.call({ action: 'commentState', session: S_CLIENT, sheet: SID, id: cid, state: '対応済' }); ok(r.ok && ss.getSheetByName('コメント').cells[1][7] === '対応済', 'author resolves own comment');
 r = W.call({ action: 'commentDelete', session: S_OWNER, sheet: SID, id: cid }); ok(r.ok && ss.getSheetByName('コメント').getLastRow() === 2, '社内 deletes a comment');
@@ -138,6 +142,7 @@ ok(r.schedule === undefined, 'external staff gets no schedule');
 ok(Array.isArray(r.people) && r.people.some((p) => p.name === '大学 担当' && p.email === 'client@example.ac.jp'), 'everyone gets the member list for assigning');
 W.mails.length = 0;
 W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P2', text: 'テスト', origin: 'https://studio-pastel.github.io/editorial_pm/' });
+FLUSH();
 ok(W.mails.length && W.mails[0].subject.indexOf('［サンプル冊子2028］') === 0, 'mail subject uses 案件名: ' + (W.mails[0] || {}).subject);
 
 /* ---- schedule (separate spreadsheet) ---- */
@@ -242,7 +247,8 @@ ok(r.ok && ss.getSheetByName('メンバー').cells.some((c) => c[0] === 'writer@
 r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, email: 'x@example.com', role: 'メンバー' }); ok(!r.ok && /チームメンバー/.test(r.message), 'unknown role refused, message names チームメンバー');
 W.mails.length = 0;
 W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P9', text: '確認', origin: 'https://studio-pastel.github.io/editorial_pm/' });
-ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディトリアルPMで開く/.test(W.mails[0].body) && !/台割ボード/.test(W.mails[0].body), 'mail sent as エディトリアルPM');
+FLUSH();
+ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディトリアルPM/.test(W.mails[0].body) && !/台割ボード/.test(W.mails[0].body), 'mail sent as エディトリアルPM');
 /* ---- entry page: sign-in without a project and the list of my projects ---- */
 {
   const ORIGIN = 'https://studio-pastel.github.io/editorial_pm/';
@@ -292,6 +298,58 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   W.mails.length = 0;
   W.call({ action: 'memberInvite', session: S_OWNER, sheet: SID, email: 'noinvite@example.com', origin: ORIGIN });
   ok(W.mails[0].subject === 'サンプル冊子2028のご案内' && W.mails[0].body === 'xさん\n入口：' + ORIGIN + '\n=注意', 'custom template used: ' + JSON.stringify(W.mails[0].body));
+}
+/* ---- notices: batching, kinds, bell ---- */
+{
+  const O = 'https://studio-pastel.github.io/editorial_pm/';
+  const nsh = () => ss.getSheetByName('通知');
+  const setTs = (fromRow, ms) => { const c = nsh().cells; for (let i = fromRow; i < c.length; i++) if (c[i] && c[i][0]) c[i][2] = ms; };
+  W.G.flushAll_(Date.now() + 999 * 60000); W.mails.length = 0;          // start clean
+  const T0 = Date.now(), start = nsh().cells.length;
+  W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P5', text: '一件目', origin: O });
+  setTs(start, T0);
+  const mid = nsh().cells.length;
+  W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P6', text: '二件目', origin: O });
+  setTs(mid, T0 + 5 * 60000);
+  W.G.flushAll_(T0 + 12 * 60000); ok(W.mails.length === 0, 'still within 10 quiet minutes of the last one → not sent');
+  W.G.flushAll_(T0 + 16 * 60000);
+  ok(W.mails.length === 1 && W.mails[0].subject === '［サンプル冊子2028］新しい更新 2件' && /■ ページ P5[\s\S]*一件目[\s\S]*■ ページ P6[\s\S]*二件目/.test(W.mails[0].body), 'two comments → one mail per person, grouped by page');
+  W.G.flushAll_(T0 + 30 * 60000); ok(W.mails.length === 1, 'nothing is sent twice');
+  // steady activity: sent at the 60-minute mark even if it never goes quiet
+  W.mails.length = 0;
+  const T1 = Date.now(), s1 = nsh().cells.length;
+  for (let i = 0; i < 13; i++) { const at = nsh().cells.length; W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P7', text: 'n' + i, origin: O }); setTs(at, T1 + i * 5 * 60000); }
+  W.G.flushAll_(T1 + 59 * 60000); ok(W.mails.length === 0, 'busy and under 60 minutes → wait');
+  W.G.flushAll_(T1 + 60 * 60000 + 1); ok(W.mails.length === 1 && /13件/.test(W.mails[0].subject), 'busy for 60 minutes → sent anyway');
+  W.G.flushAll_(T1 + 999 * 60000); W.mails.length = 0;
+  // kinds and who gets them
+  const nAt = nsh().cells.length;
+  r = W.call({ action: 'taskSave', session: S_EXT, sheet: SID, values: { 'タスク': '撮影の段取り', '担当': '大学 担当', '期限': '2026-11-20' }, origin: O });
+  const tid2 = r.id;
+  W.call({ action: 'taskSave', session: S_EXT, sheet: SID, id: tid2, values: { '状態': '進行中' }, origin: O });
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '自分用', '担当': '大学 担当' }, origin: O });
+  W.call({ action: 'minuteSave', session: S_CLIENT, sheet: SID, values: { '日付': '2026-11-02', 'タイトル': '定例' }, body: 'x', origin: O });
+  W.call({ action: 'status', session: S_EXT, sheet: SID, tab: '台割／表', headerRow: 1, pageCol: 1, row: 4, col: 7, page: '002', value: '確定', origin: O });
+  const added = nsh().cells.slice(nAt).filter((c) => c && c[0]).map((c) => c[4] + '→' + c[3]);
+  ok(added.filter((x) => x === 'タスク→client@example.ac.jp').length === 1 && !added.some((x) => /^タスク→(owner|designer)/.test(x)), 'task: only the new assignee, once, never yourself: ' + added.join(' '));
+  ok(added.indexOf('議事録→owner@example.com') >= 0 && !added.some((x) => /^議事録→(client|designer)/.test(x)), 'minutes: 社内 + クライアント except the writer');
+  ok(added.indexOf('進捗→owner@example.com') >= 0 && !added.some((x) => /^進捗→(client|designer)/.test(x)), 'progress: 社内 only');
+  const prow = nsh().cells.slice(nAt).find((c) => c && c[4] === '進捗');
+  ok(prow[5] === 'P2' && /初校：.* → 確定/.test(prow[6]) && /&page=P2/.test(prow[8]), 'progress notice says page, stage, before → after: ' + prow[6]);
+  const trow = nsh().cells.slice(nAt).find((c) => c && c[4] === 'タスク');
+  ok(/撮影の段取り（期限 2026\/11\/20）/.test(trow[6]) && /&view=tasks/.test(trow[8]), 'task notice links to the tasks tab');
+  // bell
+  r = W.call({ action: 'load', session: S_CLIENT, sheet: SID });
+  const mine = r.notices;
+  ok(mine.length && mine[0].kind === 'タスク' && mine.every((n) => !n.read) && !mine.some((n) => n.kind === '進捗'), 'bell: my notices, newest first, unread');
+  r = W.call({ action: 'noticeRead', session: S_CLIENT, sheet: SID, ids: [mine[0].id] });
+  r = W.call({ action: 'notices', session: S_CLIENT, sheet: SID });
+  ok(r.notices[0].read && !r.notices[1].read, 'mark one as read');
+  W.call({ action: 'noticeRead', session: S_CLIENT, sheet: SID });
+  ok(W.call({ action: 'notices', session: S_CLIENT, sheet: SID }).notices.every((n) => n.read), 'mark all as read');
+  ok(W.call({ action: 'notices', session: S_OWNER, sheet: SID }).notices.some((n) => !n.read), 'someone else\'s read state is untouched');
+  W.mails.length = 0; W.G.flushAll_(Date.now() + 11 * 60000);
+  { const tos = W.mails.map((m) => m.to); ok(tos.indexOf('client@example.ac.jp') >= 0 && tos.indexOf('owner@example.com') >= 0 && tos.indexOf('designer@example.com') < 0 && new Set(tos).size === tos.length, 'one mail per person for the mixed batch: ' + tos.join()); }
 }
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');

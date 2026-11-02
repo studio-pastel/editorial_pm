@@ -59,7 +59,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // members
   await p.click('#vt-members'); await p.uncheck('#mInvite');
   for (const [e, n, r] of [['client@example.ac.jp', '大学 担当', 'クライアント'], ['designer@example.com', 'デザイナーA', 'チームメンバー']]) {
-    await p.fill('#mEmail', e); await p.fill('#mName', n); await p.selectOption('#mRole', r); await p.click('#btnMemAdd'); await p.waitForTimeout(400);
+    await p.uncheck('#mInvite'); await p.fill('#mEmail', e); await p.fill('#mName', n); await p.selectOption('#mRole', r); await p.click('#btnMemAdd'); await p.waitForTimeout(400);
   }
   ok(ss.getSheetByName('メンバー').cells.length === 4, 'two members added to メンバー tab (header + owner + 2)');
   // page detail: progress + comment + figure
@@ -104,7 +104,9 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.click('.tile[data-k="2"]'); await p.waitForTimeout(400);
   ok(await p.locator('#dBody .stage select').first().isDisabled(), 'client cannot change progress');
   await p.fill('#dBody .cform textarea', '承知しました。差し替え写真を送ります'); await p.click('#dBody .cform button'); await p.waitForTimeout(800);
-  ok(W.mails.length === 1 && W.mails[0].to === 'owner@example.com' && /page=P2/.test(W.mails[0].body), 'client comment emailed to 社内 with a link to P2');
+  ok(W.mails.length === 0, 'client comment: no mail at once');
+  W.G.flushAll_(Date.now() + 11 * 60000);
+  ok(W.mails.length === 1 && W.mails[0].to === 'owner@example.com' && /page=P2/.test(W.mails[0].body), 'after the quiet time 社内 gets a mail with a link to P2');
   await p.click('#dClose'); await p.click('#vt-expenses'); await p.waitForTimeout(300);
   ok(!(await vis(p, '#btnExpAdd')) && /¥55,000/.test(await p.textContent('#expSummary')), 'client reads expenses, cannot add');
 
@@ -116,9 +118,10 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(!(await p.locator('#dBody .stage select').first().isDisabled()), 'external can change progress');
   await p.locator('#dBody .stage select').nth(1).selectOption('調整中'); await p.waitForTimeout(800);
   ok(ss.getSheetByName('台割／表').cells[rowP2][7] === '調整中', 'external updated 再校');
-  ok(W.mails.length === 1, 'no mail for status changes');
+  ok(W.mails.length === 1, 'status change by チームメンバー: nothing mailed at once');
   await p.fill('#dBody .cform textarea', '再校の修正を入れました'); await p.click('#dBody .cform button'); await p.waitForTimeout(800);
-  ok(W.mails.length === 3 && W.mails.slice(1).map((m) => m.to).sort().join(',') === 'client@example.ac.jp,owner@example.com', 'external comment mails 社内 + earlier commenter on P2');
+  W.G.flushAll_(Date.now() + 11 * 60000);
+  ok(W.mails.length === 3 && W.mails.slice(1).map((m) => m.to).sort().join(',') === 'client@example.ac.jp,owner@example.com' && /初校|再校/.test(W.mails.find((m) => m.to === 'owner@example.com' && m !== W.mails[0]).body), '社内 gets comment + progress in one mail; the earlier commenter gets the comment');
   await p.click('#vt-comments'); await p.waitForTimeout(300);
   ok((await p.locator('#commentList > li').count()) === 3, 'comments view lists the 3 open comments');
 

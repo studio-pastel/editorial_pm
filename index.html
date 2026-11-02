@@ -370,6 +370,20 @@ button.chip.tag.on { background: var(--accent); color: var(--accent-fg); border-
 @media (max-width: 1100px) { .mdedit { grid-template-columns: minmax(0, 1fr); } .mdedit textarea.md-src, .md-preview { min-height: 34vh; } }
 @media (max-width: 900px) { .mgrid { grid-template-columns: minmax(0, 1fr); } .mside { position: static; max-height: none; } .mlist { max-height: 46vh; } }
 .hint a, .foot a { color: var(--accent); }
+.bellwrap { position: relative; }
+.bell { position: relative; }
+.bellpanel { position: absolute; right: 0; top: calc(100% + 6px); z-index: 35; width: min(420px, calc(100vw - 32px)); max-height: min(70vh, 560px); display: flex; flex-direction: column; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; box-shadow: 0 10px 28px color-mix(in srgb, var(--fg) 18%, transparent); padding: 10px 12px; }
+.bellhead { display: flex; align-items: center; justify-content: space-between; gap: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.belllist { list-style: none; margin: 6px 0 0; padding: 0; overflow-y: auto; min-height: 0; flex: 1 1 auto; }
+.bellitem { width: 100%; text-align: left; border: 0; border-bottom: 1px solid color-mix(in srgb, var(--line) 60%, transparent); background: none; padding: 8px 4px; display: grid; gap: 2px; }
+.bellitem:hover { background: color-mix(in srgb, var(--accent) 6%, transparent); }
+.bellitem .bmeta { display: flex; flex-wrap: wrap; gap: 4px 8px; align-items: center; font-size: 12px; color: var(--mute); }
+.bellitem .btext { font-size: 13px; line-height: 1.5; overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.bellitem.unread .btext { font-weight: 700; }
+.bellitem.unread::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: var(--warn); position: absolute; margin: 6px 0 0 -10px; }
+.bellitem { position: relative; padding-left: 14px; }
+body.locked .bellwrap { display: none !important; }
+@media (max-width: 700px) { .bellpanel { position: fixed; left: 16px; right: 16px; top: 64px; width: auto; max-height: calc(100vh - 96px); } }
 .projlist { list-style: none; margin: 12px 0 0; padding: 0; display: grid; gap: 8px; }
 .projitem { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 4px 12px; padding: 12px 14px; border: 1px solid var(--line); border-radius: 8px; background: var(--bg); color: var(--fg); text-decoration: none; }
 .projitem:hover { border-color: var(--accent); }
@@ -389,6 +403,14 @@ body.editor .viewonly { display: none !important; }
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
+    <div class="bellwrap">
+      <button class="btn bell" id="btnBell" hidden aria-expanded="false" aria-controls="bellPanel">通知<b class="badge" id="badgeBell" hidden></b></button>
+      <div class="bellpanel" id="bellPanel" hidden role="dialog" aria-label="通知">
+        <div class="bellhead"><b>通知</b><button class="btn xs" id="btnBellAll">すべて既読にする</button></div>
+        <ul class="belllist" id="bellList"></ul>
+        <p class="hint">メールは、動きが10分ほど落ち着いたところで（続いていても最長60分で）案件ごとに1通にまとめて届きます。</p>
+      </div>
+    </div>
     <a class="btn" id="btnProjects" href="./?list=1" hidden title="所属している案件の一覧に戻ります">案件一覧</a>
     <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
     <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
@@ -1992,7 +2014,7 @@ async function loadProject(opts) {
   applyRole(); pushSettingsToUI(); renderProjectUI();
   if (heavy) S.thumbs.clear();
   texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
-  renderViews();
+  renderViews(); renderBell();
   if (heavy) await refreshAssignments(); else renderDesignList();
   if (first) openPageFromUrl();
   S.loadedAt = Date.now();
@@ -2018,6 +2040,7 @@ function applyLoad(r) {
   S.minutes = tableObjects(r.minutes);
   S.tasks = tableObjects(r.tasks);
   S.schedule = r.schedule;
+  S.notices = r.notices || [];
 }
 function rebuildRows() {
   const d = detectColumns(S.rows);
@@ -2132,7 +2155,7 @@ function renderProjectUI() {
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetName || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';
-  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク'];
+  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク', '通知'];
   S.tabs.filter((t) => special.indexOf(t.title) < 0).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
   sel.value = S.tabName; sel.disabled = !isStaff();
   renderColMap();
@@ -2453,7 +2476,7 @@ async function setStage(k, col, value, sel) {
   if (!info || S.map.page < 0) { toast('ページ列がない台割では進捗を変更できません', 'err'); return; }
   const row = S.rows[info.row];
   await busy(sel, async () => {
-    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value });
+    const r = await relay('status', { tab: S.tabName, headerRow: S.headerRow + 1, pageCol: S.map.page + 1, row: info.row + 1, col: col + 1, page: row[S.map.page], value, origin: entryUrl() });
     row[col] = r.value;
     toast(pageLabel(k) + '：' + (S.rows[S.headerRow][col]) + 'を「' + r.value + '」にしました');
     renderBoard(); renderViews();
@@ -2475,7 +2498,9 @@ function selectPage(k) {
   openDetail(k);
 }
 function openPageFromUrl() {
-  const p = new URLSearchParams(location.search).get('page');
+  const q = new URLSearchParams(location.search);
+  if (q.get('view') && !q.get('page')) { if (q.get('minute')) minSel = q.get('minute'); setView(q.get('view')); return; }
+  const p = q.get('page');
   if (!p) return;
   const k = keyOfLabel(p);
   if (k !== null) { setView('board'); selectPage(k); }
@@ -2532,7 +2557,8 @@ async function addComment(label, text, replyTo, btn) {
   const r = await busy(btn, () => relay('commentAdd', { page: label, text, replyTo: replyTo || '', origin: location.origin + location.pathname }));
   if (!r) return false;
   S.comments.push(rowObj(H_COMMENT, r.comment));
-  toast(r.notified ? 'コメントしました（' + r.notified + '人にメールで通知）' : 'コメントしました');
+  toast(r.notified ? 'コメントしました（' + r.notified + '人に通知。メールは動きが落ち着いてからまとめて届きます）' : 'コメントしました');
+  if (r.notified) refreshNotices();
   renderBoard(); renderViews();
   return true;
 }
@@ -3005,7 +3031,7 @@ function taskStateSelect(t) {
   return sel;
 }
 async function saveTask(t, values, btn) {
-  const r = await busy(btn, () => relay('taskSave', { id: t ? t.ID : '', base: t ? t['更新日時'] : null, values }));
+  const r = await busy(btn, () => relay('taskSave', { id: t ? t.ID : '', base: t ? t['更新日時'] : null, values, origin: entryUrl() }));
   if (!r) { renderTasks(); return false; }
   const obj = rowObj(H_TASK, r.row);
   const i = S.tasks.findIndex((x) => x.ID === obj.ID);
@@ -3232,7 +3258,7 @@ async function editMinute(m) {
     if (!F['日付'].value) { toast('日付を入力してください', 'err'); return; }
     if (!F['タイトル'].value.trim()) { toast('タイトルを入力してください', 'err'); F['タイトル'].focus(); return; }
     const values = {}; Object.keys(F).forEach((k) => { values[k] = F[k].value; });
-    const r = await busy(save, () => relay('minuteSave', { id: minEditing.id, base: minEditing.base, values, body: ta.value }));
+    const r = await busy(save, () => relay('minuteSave', { id: minEditing.id, base: minEditing.base, values, body: ta.value, origin: entryUrl() }));
     if (!r) return;
     const obj = rowObj(H_MINUTE, r.row);
     const i = S.minutes.findIndex((x) => x.ID === obj.ID);
@@ -3280,6 +3306,56 @@ function wireWork() {
   });
   let rTimer = 0;
   window.addEventListener('resize', () => { if (curView !== 'schedule') return; clearTimeout(rTimer); rTimer = setTimeout(renderSchedule, 150); });
+}
+
+/* ================= notices (bell) ================= */
+const NOTICE_VIEW = { 'タスク': 'tasks', '議事録': 'minutes' };
+function renderBell() {
+  const ok = hasFeature('notices');
+  $('btnBell').hidden = !ok || !S.me;
+  const n = (S.notices || []).filter((x) => !x.read).length;
+  const b = $('badgeBell'); b.hidden = !n; b.textContent = n > 99 ? '99+' : String(n);
+  $('btnBell').setAttribute('aria-label', '通知' + (n ? '（未読 ' + n + '件）' : ''));
+  if (!$('bellPanel').hidden) renderBellList();
+}
+function renderBellList() {
+  const ul = $('bellList'); ul.textContent = '';
+  const list = S.notices || [];
+  $('btnBellAll').disabled = !list.some((x) => !x.read);
+  if (!list.length) { ul.appendChild(el('li', { class: 'muted', text: '通知はまだありません' })); return; }
+  list.forEach((x) => ul.appendChild(el('li', null, el('button', { class: 'bellitem' + (x.read ? '' : ' unread'), onclick: () => openNotice(x) },
+    el('span', { class: 'bmeta' }, el('span', { class: 'chip', text: x.kind }), x.page ? el('b', { text: x.page }) : null, el('span', { text: x.by }), el('span', { text: String(x.at) })),
+    el('span', { class: 'btext', text: x.text })))));
+}
+async function markNotices(ids) {
+  (S.notices || []).forEach((x) => { if (!ids || ids.indexOf(x.id) >= 0) x.read = true; });
+  renderBell();
+  try { await relay('noticeRead', ids ? { ids } : {}); } catch (e) { /* the next refresh shows the truth */ }
+}
+async function openNotice(x) {
+  $('bellPanel').hidden = true; $('btnBell').setAttribute('aria-expanded', 'false');
+  if (!x.read) markNotices([x.id]);
+  if (NOTICE_VIEW[x.kind] && Date.now() - (S.loadedAt || 0) > 15000) await loadProject();   // bring in the task / minutes it points to
+  if (x.page) { const k = keyOfLabel(x.page); if (k !== null) { setView('board'); selectPage(k); return; } }
+  const v = NOTICE_VIEW[x.kind];
+  if (v) {
+    if (v === 'minutes') { const m = String(x.link || '').match(/[?&]minute=([^&]+)/); if (m) minSel = decodeURIComponent(m[1]); }
+    setView(v);
+  }
+}
+async function refreshNotices() {
+  if (!S.loaded || !hasFeature('notices')) return;
+  try { const r = await relay('notices', {}, { quiet: true }); S.notices = r.notices || []; renderBell(); } catch (e) { /* ignore */ }
+}
+function wireBell() {
+  $('btnBell').addEventListener('click', () => {
+    const p = $('bellPanel'); p.hidden = !p.hidden; $('btnBell').setAttribute('aria-expanded', String(!p.hidden));
+    if (!p.hidden) { renderBellList(); refreshNotices(); }
+  });
+  $('btnBellAll').addEventListener('click', () => markNotices(null));
+  document.addEventListener('click', (e) => { const p = $('bellPanel'); if (!p.hidden && !e.target.closest('.bellwrap')) { p.hidden = true; $('btnBell').setAttribute('aria-expanded', 'false'); } });
+  document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('bellPanel').hidden) { $('bellPanel').hidden = true; $('btnBell').focus(); } });
+  setInterval(() => { if (!document.hidden) refreshNotices(); }, 180000);
 }
 
 /* ===== self-check, wiring, startup ===== */
@@ -3404,7 +3480,7 @@ function wire() {
 function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
 
 async function start() {
-  initSettingsUI(); wire(); wirePM(); wireWork(); initThree(); syncControls(); applyRole();
+  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); initThree(); syncControls(); applyRole();
   await idb.open();
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
@@ -3417,7 +3493,7 @@ async function start() {
   if (!signedIn()) await sessionFromDirectory(id);
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
   if (!signedIn()) { showLogin(); return; }
-  if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }
+  if (await loadProject()) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
 }
 start();
 

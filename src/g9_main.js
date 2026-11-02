@@ -120,7 +120,7 @@ function wire() {
 function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
 
 async function start() {
-  initSettingsUI(); wire(); wirePM(); wireWork(); initThree(); syncControls(); applyRole();
+  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); initThree(); syncControls(); applyRole();
   await idb.open();
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
@@ -133,6 +133,6 @@ async function start() {
   if (!signedIn()) await sessionFromDirectory(id);
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
   if (!signedIn()) { showLogin(); return; }
-  if (await loadProject()) { if (!new URLSearchParams(location.search).get('page')) setView(v); }
+  if (await loadProject()) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
 }
 start();

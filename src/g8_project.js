@@ -65,7 +65,7 @@ async function loadProject(opts) {
   applyRole(); pushSettingsToUI(); renderProjectUI();
   if (heavy) S.thumbs.clear();
   texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
-  renderViews();
+  renderViews(); renderBell();
   if (heavy) await refreshAssignments(); else renderDesignList();
   if (first) openPageFromUrl();
   S.loadedAt = Date.now();
@@ -91,6 +91,7 @@ function applyLoad(r) {
   S.minutes = tableObjects(r.minutes);
   S.tasks = tableObjects(r.tasks);
   S.schedule = r.schedule;
+  S.notices = r.notices || [];
 }
 function rebuildRows() {
   const d = detectColumns(S.rows);
@@ -205,7 +206,7 @@ function renderProjectUI() {
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetName || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';
-  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク'];
+  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク', '通知'];
   S.tabs.filter((t) => special.indexOf(t.title) < 0).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
   sel.value = S.tabName; sel.disabled = !isStaff();
   renderColMap();

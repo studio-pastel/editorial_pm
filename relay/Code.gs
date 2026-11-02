@@ -13,15 +13,18 @@
  *
  * 招待メールの文面は、各案件の「設定」タブに「招待メール件名」「招待メール本文」の行を作ると、その内容で上書きできます。
  * 使える差し込み：【名前】【メール】【招待者】【案件名】【役割】【できること】【入口URL】
+ *
+ * 通知メールは「通知」タブに溜め、最後の出来事から10分静かになったら（続いても最長60分で）、案件ごとに1通にまとめて送ります。
+ * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-10-29c';
-const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite'];
+const VERSION = '2026-11-02';
+const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
 const SESSION_DAYS = 30;
 const CHUNK = 4 * 1024 * 1024;                 // multiple of 256 KiB (Drive resumable upload unit)
 
-const TAB = { member: 'メンバー', comment: 'コメント', figure: '図版', expense: '経費', design: 'デザイン', setting: '設定', minute: '議事録', task: 'タスク' };
+const TAB = { member: 'メンバー', comment: 'コメント', figure: '図版', expense: '経費', design: 'デザイン', setting: '設定', minute: '議事録', task: 'タスク', notice: '通知' };
 const HEAD = {
   member: ['メール', '名前', '役割', 'メモ'],
   comment: ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'],
@@ -32,7 +35,9 @@ const HEAD = {
   minute: ['ID', '日付', 'タイトル', '出席者', 'タグ', 'ファイル', '文字数', '作成者', '作成者メール', '作成日時', '更新者', '更新日時'],
   task: ['ID', 'タスク', '担当', '担当メール', '期限', '状態', 'メモ', '作成者', '作成者メール', '作成日時', '更新者', '更新日時']
 };
+HEAD.notice = ['ID', '日時', 'ts', '宛先', '種類', 'ページ', '内容', '投稿者', 'リンク', '送信', '既読'];
 const TASK_STATES = ['未着手', '進行中', '確認待ち', '完了'];
+const NOTICE_QUIET_MIN = 10, NOTICE_MAX_MIN = 60;
 const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: 'チームメンバー' };
 const ROLE_CAN = {
   staff: 'すべての操作（設定・デザインPDF・メンバー・経費の登録を含む）',
@@ -130,6 +135,8 @@ function handle_(req) {
     case 'minuteDelete': need('minuteWrite'); return withLock_(() => minuteDelete_(ss, me, req));
     case 'taskSave': need('task'); return withLock_(() => taskSave_(ss, me, req));
     case 'taskDelete': need('task'); return withLock_(() => taskDelete_(ss, me, req));
+    case 'notices': need('load'); return { ok: true, notices: noticesFor_(ss, me) };
+    case 'noticeRead': need('load'); return withLock_(() => noticeRead_(ss, me, req));
     case 'uploadInit': need(req.target === 'receipt' ? 'expenseWrite' : 'manage'); return uploadInit_(ss, me, req);
     case 'uploadChunk': return uploadChunk_(me, req);
     default: fail_('bad_request', '不明な操作です：' + req.action);
@@ -285,6 +292,7 @@ function load_(ss, me, req) {
   registerProject_(ss.getId());
   res.minutes = readTab_(ss, TAB.minute);
   res.tasks = readTab_(ss, TAB.task);
+  res.notices = noticesFor_(ss, me);
   if (CAN.schedule.indexOf(me.key) >= 0) {
     try { res.schedule = scheduleRead_(ss, set); } catch (e) { res.schedule = { error: 'スケジュールを読み込めませんでした：' + (e && e.message ? e.message : String(e)) }; }
   }
@@ -406,9 +414,15 @@ function status_(ss, me, req) {
   if (!/校/.test(sh.getRange(head, col).getDisplayValue())) fail_('forbidden', 'この列は進捗の列ではありません');
   const page = sh.getRange(row, Math.floor(Number(req.pageCol))).getDisplayValue();
   if (String(page).trim() !== String(req.page || '').trim()) fail_('stale', 'シートが更新されています。再読み込みしてからもう一度変更してください');
+  const before = sh.getRange(row, col).getDisplayValue(), stage = sh.getRange(head, col).getDisplayValue();
   try { sh.getRange(row, col).setValue(clean_(req.value, 100)); }
   catch (e) { fail_('invalid', 'シートの入力規則に合わない値です'); }
-  return { ok: true, value: sh.getRange(row, col).getDisplayValue() };
+  const after = sh.getRange(row, col).getDisplayValue();
+  if (after !== before) {
+    const label = pageLabel_(page);
+    try { enqueue_(ss, me, '進捗', label, stage + '：' + (before || '—') + ' → ' + (after || '—'), recipients_(ss, me, ['staff']), req.origin, { page: label }); } catch (e) { console.warn(e); }
+  }
+  return { ok: true, value: after };
 }
 
 /* ================= comments ================= */
@@ -419,7 +433,11 @@ function commentAdd_(ss, me, req) {
   const row = [newId_(), clean_(req.page, 40), me.email, me.name, now_(ss), text, clean_(req.replyTo, 40), '未対応'];
   writeRow_(sh, sh.getLastRow() + 1, row);
   let notified = 0;
-  try { notified = notify_(ss, me, String(req.page || ''), text, String(req.origin || '')); } catch (e) { console.warn(e); }
+  try {
+    const page = String(req.page || '');
+    const prior = readTab_(ss, TAB.comment).slice(1).filter((r) => r[1] === page).map((r) => String(r[2]).toLowerCase());
+    notified = enqueue_(ss, me, req.replyTo ? '返信' : 'コメント', page, text, recipients_(ss, me, ['staff'], prior), req.origin, { page });
+  } catch (e) { console.warn(e); }
   return { ok: true, comment: sh.getRange(sh.getLastRow(), 1, 1, HEAD.comment.length).getDisplayValues()[0], notified };
 }
 function commentRow_(ss, me, id) {
@@ -439,25 +457,6 @@ function commentDelete_(ss, me, req) {
   const c = commentRow_(ss, me, req.id);
   c.sh.deleteRow(c.r);
   return { ok: true };
-}
-function notify_(ss, me, page, text, origin) {
-  const members = readTab_(ss, TAB.member).slice(1).filter((r) => r[0]);
-  const known = {}; members.forEach((r) => { known[String(r[0]).trim().toLowerCase()] = r; });
-  const staff = members.filter((r) => roleKey_(r[2]) === 'staff').map((r) => String(r[0]).trim().toLowerCase());
-  const prior = readTab_(ss, TAB.comment).slice(1).filter((r) => r[1] === page).map((r) => String(r[2]).toLowerCase());
-  const to = staff.concat(prior).filter((e, i, a) => e && a.indexOf(e) === i && e !== me.email && known[e]);
-  if (!to.length) return 0;
-  const okOrigin = ALLOWED_ORIGINS.some((o) => origin.indexOf(o + '/') === 0);
-  const link = okOrigin ? origin.split('?')[0] + '?sheet=' + ss.getId() + '&page=' + encodeURIComponent(page) : '';
-  const subject = '［' + projectName_(ss) + '］' + page + ' に ' + me.name + ' さんからコメント';
-  const body = me.name + ' さんが ' + page + ' にコメントしました。\n\n' + text + '\n\n' + (link ? 'エディトリアルPMで開く：\n' + link + '\n' : '') + '\n—\nこのメールはエディトリアルPMから自動で送信されています。';
-  let sent = 0;
-  for (const addr of to) {
-    if (MailApp.getRemainingDailyQuota() < 1) break;
-    MailApp.sendEmail({ to: addr, subject, body, name: 'エディトリアルPM' });
-    sent++;
-  }
-  return sent;
 }
 
 /* ================= 図版 / 経費 (records with an ID column) ================= */
@@ -773,6 +772,7 @@ function minuteSave_(ss, me, req) {
   vals['ファイル'] = 'https://drive.google.com/file/d/' + f.getId() + '/view';
   vals['文字数'] = body.length;
   const res = recordSave_(ss, me, 'minute', { id: r > 0 ? String(req.id) : '', values: vals });
+  try { enqueue_(ss, me, '議事録', '', (r > 0 ? '更新：' : '追加：') + date + ' ' + title, recipients_(ss, me, ['staff', 'client']), req.origin, { view: 'minutes', minute: res.id }); } catch (e) { console.warn(e); }
   return Object.assign(res, { body: stripFront_(content) });
 }
 function minuteDelete_(ss, me, req) {
@@ -802,8 +802,16 @@ function taskSave_(ss, me, req) {
     v['担当'] = hit ? hit.name : nm; v['担当メール'] = hit ? hit.email : '';
   }
   const sh = ensureTab_(ss, 'task');
-  checkBase_(sh, req.id ? findById_(sh, req.id) : -1, req.base);
-  return recordSave_(ss, me, 'task', { id: req.id || '', values: v });
+  const r0 = req.id ? findById_(sh, req.id) : -1;
+  checkBase_(sh, r0, req.base);
+  const prevTo = r0 > 0 ? cellByHead_(sh, r0, '担当メール').toLowerCase() : '';
+  const res = recordSave_(ss, me, 'task', { id: req.id || '', values: v });
+  const to = String(v['担当メール'] || '').toLowerCase();
+  if (v['担当メール'] !== undefined && to && to !== prevTo && to !== me.email) {
+    const t = rowObj_(HEAD.task, res.row);
+    try { enqueue_(ss, me, 'タスク', '', t['タスク'] + (t['期限'] ? '（期限 ' + t['期限'] + '）' : ''), [to], req.origin, { view: 'tasks' }); } catch (e) { console.warn(e); }
+  }
+  return res;
 }
 function taskDelete_(ss, me, req) {
   const sh = ss.getSheetByName(TAB.task), r = sh ? findById_(sh, req.id) : -1;
@@ -811,6 +819,124 @@ function taskDelete_(ss, me, req) {
   if (!mineOrStaff_(sh, r, me)) fail_('forbidden', 'タスクを削除できるのは、作成した人と社内メンバーです');
   sh.deleteRow(r);
   return { ok: true };
+}
+
+/* ================= notices: queued, shown in the bell, mailed in batches ================= */
+function rowObj_(head, arr) { const o = {}; head.forEach((k, i) => { o[k] = arr[i] === undefined ? '' : String(arr[i]); }); return o; }
+/** 台割の「002」→「P2」, 表1 etc. stay as they are */
+function pageLabel_(v) { v = String(v || '').trim(); return /^\d+$/.test(v) ? 'P' + Number(v) : v; }
+/** members of the given roles + extra addresses that are members; never the person who acted */
+function recipients_(ss, me, roles, extra) {
+  const people = memberList_(ss), known = {};
+  people.forEach((p) => { known[p.email] = p; });
+  const list = people.filter((p) => roles.indexOf(roleKey_(p.role)) >= 0).map((p) => p.email).concat(extra || []);
+  return list.filter((e, i, a) => e && a.indexOf(e) === i && e !== me.email && known[e]);
+}
+function noticeLink_(ss, origin, where) {
+  origin = String(origin || '');
+  if (!ALLOWED_ORIGINS.some((o) => origin.indexOf(o + '/') === 0)) return '';
+  let u = origin.split('?')[0].split('#')[0] + '?sheet=' + ss.getId();
+  if (where.page) u += '&page=' + encodeURIComponent(where.page);
+  if (where.view) u += '&view=' + encodeURIComponent(where.view);
+  if (where.minute) u += '&minute=' + encodeURIComponent(where.minute);
+  return u;
+}
+/** returns how many people will be told */
+function enqueue_(ss, me, kind, page, text, to, origin, where) {
+  if (!to.length) return 0;
+  const sh = ensureTab_(ss, 'notice'), at = now_(ss), ts = Date.now(), link = noticeLink_(ss, origin, where || {});
+  const body = String(text || '').replace(/\s+/g, ' ').slice(0, 300);
+  const rows = to.map((e) => [newId_(), at, ts, e, kind, page || '', body, me.name, link, '', '']);
+  sh.getRange(sh.getLastRow() + 1, 1, rows.length, rows[0].length).setValues(rows.map((r) => r.map((v) => clean_(v, 400))));
+  registerProject_(ss.getId());
+  return to.length;
+}
+/** text columns as shown; ts as the stored number (Sheets turns date-like text into dates, so the time shown comes from ts) */
+function noticeRows_(sh) {
+  const rg = sh.getDataRange(), disp = rg.getDisplayValues(), vals = rg.getValues(), it = HEAD.notice.indexOf('ts');
+  return disp.slice(1).map((r, i) => {
+    const o = rowObj_(HEAD.notice, r);
+    o.ts = String(Number(vals[i + 1][it]) || 0);
+    return { row: i + 2, o };
+  }).filter((x) => x.o.ID);
+}
+function noticeTime_(ms) { return Utilities.formatDate(new Date(Number(ms) || 0), 'Asia/Tokyo', 'MM/dd HH:mm'); }
+function noticesFor_(ss, me) {
+  const sh = ss.getSheetByName(TAB.notice);
+  if (!sh) return [];
+  return noticeRows_(sh).filter((x) => x.o['宛先'].toLowerCase() === me.email).slice(-60).reverse()
+    .map((x) => ({ id: x.o.ID, at: noticeTime_(x.o.ts), kind: x.o['種類'], page: x.o['ページ'], text: x.o['内容'], by: x.o['投稿者'], link: x.o['リンク'], read: !!x.o['既読'] }));
+}
+function noticeRead_(ss, me, req) {
+  const sh = ss.getSheetByName(TAB.notice);
+  if (!sh) return { ok: true };
+  const ids = Array.isArray(req.ids) ? req.ids.map(String) : null, col = HEAD.notice.indexOf('既読') + 1, at = now_(ss);
+  noticeRows_(sh).forEach((x) => {
+    if (x.o['宛先'].toLowerCase() !== me.email || x.o['既読']) return;
+    if (ids && ids.indexOf(x.o.ID) < 0) return;
+    sh.getRange(x.row, col).setValue(at);
+  });
+  return { ok: true };
+}
+/** one mail per person per project: sent when nothing new came for NOTICE_QUIET_MIN minutes, or NOTICE_MAX_MIN after the first */
+function flushProject_(ss, nowMs) {
+  const sh = ss.getSheetByName(TAB.notice);
+  if (!sh) return 0;
+  const all = noticeRows_(sh), pending = {};
+  all.forEach((x) => { if (!x.o['送信']) (pending[x.o['宛先'].toLowerCase()] = pending[x.o['宛先'].toLowerCase()] || []).push(x); });
+  const sentCol = HEAD.notice.indexOf('送信') + 1, name = projectName_(ss), members = {};
+  memberList_(ss).forEach((p) => { members[p.email] = p; });
+  let mails = 0;
+  Object.keys(pending).forEach((to) => {
+    const items = pending[to], first = Math.min.apply(null, items.map((x) => Number(x.o.ts) || nowMs)), last = Math.max.apply(null, items.map((x) => Number(x.o.ts) || 0));
+    if (nowMs - last < NOTICE_QUIET_MIN * 60000 && nowMs - first < NOTICE_MAX_MIN * 60000) return;
+    const at = Utilities.formatDate(new Date(nowMs), ss.getSpreadsheetTimeZone() || 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
+    if (!members[to]) { items.forEach((x) => sh.getRange(x.row, sentCol).setValue('対象外 ' + at)); return; }   // removed from the project
+    if (MailApp.getRemainingDailyQuota() < 1) return;
+    const groups = [], key = (x) => x.o['ページ'] ? 'ページ ' + x.o['ページ'] : x.o['種類'];
+    items.forEach((x) => { let g = groups.filter((y) => y.k === key(x))[0]; if (!g) { g = { k: key(x), items: [] }; groups.push(g); } g.items.push(x); });
+    const lines = [];
+    groups.forEach((g) => {
+      lines.push('■ ' + g.k);
+      g.items.forEach((x) => lines.push('・' + x.o['投稿者'] + '（' + noticeTime_(x.o.ts) + '）' + (x.o['ページ'] ? x.o['種類'] + '：' : '') + x.o['内容']));
+      const link = g.items.map((x) => x.o['リンク']).filter(Boolean).pop();
+      if (link) lines.push('  開く：' + link);
+      lines.push('');
+    });
+    const subject = '［' + name + '］新しい更新 ' + items.length + '件';
+    const body = (members[to].name || to) + ' さん\n\n「' + name + '」に新しい更新があります。\n\n' + lines.join('\n') +
+      '—\nこのメールはエディトリアルPMから自動で送信されています（' + NOTICE_QUIET_MIN + '分ほど動きがなくなった時点で、まとめて送ります）。';
+    MailApp.sendEmail({ to, subject, body, name: 'エディトリアルPM' });
+    items.forEach((x) => sh.getRange(x.row, sentCol).setValue(at));
+    mails++;
+  });
+  // keep the tab small: drop the oldest rows that were mailed and read
+  if (all.length > 3000) {
+    const old = all.filter((x) => x.o['送信'] && x.o['既読']).slice(0, all.length - 2000).map((x) => x.row).sort((a, b) => b - a);
+    old.forEach((r) => sh.deleteRow(r));
+  }
+  return mails;
+}
+function flushAll_(nowMs) {
+  let n = 0;
+  registry_().forEach((id) => {
+    let ss;
+    try { ss = openSheet_(id); } catch (e) { return; }
+    try { n += flushProject_(ss, nowMs); } catch (e) { console.warn(e); }
+  });
+  return n;
+}
+/** called every 5 minutes by the trigger made with setupNotifications */
+function flushNotifications() {
+  const lock = LockService.getScriptLock();
+  if (!lock.tryLock(30000)) return;
+  try { flushAll_(Date.now()); } finally { lock.releaseLock(); }
+}
+/** 一度だけ手動で実行：5分おきに通知メールの送信を確かめる設定を作ります（何度実行しても1つだけになります） */
+function setupNotifications() {
+  ScriptApp.getProjectTriggers().filter((t) => t.getHandlerFunction() === 'flushNotifications').forEach((t) => ScriptApp.deleteTrigger(t));
+  ScriptApp.newTrigger('flushNotifications').timeBased().everyMinutes(5).create();
+  console.log('通知メールの送信設定を作りました（5分おき）');
 }
 
 /* ================= entry page: sign-in without a project, list of my projects ================= */

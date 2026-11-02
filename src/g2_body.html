@@ -4,6 +4,14 @@
     <span class="proj" id="projTitle"></span>
     <div class="stats" id="stats"></div>
     <div class="spacer"></div>
+    <div class="bellwrap">
+      <button class="btn bell" id="btnBell" hidden aria-expanded="false" aria-controls="bellPanel">通知<b class="badge" id="badgeBell" hidden></b></button>
+      <div class="bellpanel" id="bellPanel" hidden role="dialog" aria-label="通知">
+        <div class="bellhead"><b>通知</b><button class="btn xs" id="btnBellAll">すべて既読にする</button></div>
+        <ul class="belllist" id="bellList"></ul>
+        <p class="hint">メールは、動きが10分ほど落ち着いたところで（続いていても最長60分で）案件ごとに1通にまとめて届きます。</p>
+      </div>
+    </div>
     <a class="btn" id="btnProjects" href="./?list=1" hidden title="所属している案件の一覧に戻ります">案件一覧</a>
     <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
     <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
