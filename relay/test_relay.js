@@ -379,6 +379,27 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   ok(added.indexOf('タスク:デザイナーのタスク→owner@example.com') >= 0 && added.indexOf('タスク:デザイナーのタスク→designer@example.com') >= 0, 'owner also gets task notices for others');
   ok(!added.some((x) => /client@/.test(x)), 'still nothing for クライアント');
 }
+/* ---- タスク notices are batched hourly ---- */
+{
+  const O = 'https://studio-pastel.github.io/editorial_pm/', nsh = ss.getSheetByName('通知');
+  W.G.flushAll_(Date.now() + 999 * 60000); W.mails.length = 0;
+  const T = Date.now(), at0 = nsh.cells.length;
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '一時間テストA', '担当メール': 'designer@example.com' }, origin: O });
+  const at1 = nsh.cells.length;
+  W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P8', text: 'コメント一件', origin: O });
+  const at2 = nsh.cells.length;
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '一時間テストB', '担当メール': 'designer@example.com' }, origin: O });
+  const setTs = (a, b, ms) => { for (let i = a; i < b; i++) if (nsh.cells[i] && nsh.cells[i][0]) nsh.cells[i][2] = ms; };
+  setTs(at0, at1, T); setTs(at1, at2, T + 5 * 60000); setTs(at2, nsh.cells.length, T + 30 * 60000);
+  W.G.flushAll_(T + 16 * 60000);
+  const toD = () => W.mails.filter((m) => m.to === 'designer@example.com'), toO = () => W.mails.filter((m) => m.to === 'owner@example.com');
+  ok(toD().length === 0, 'task for the designer is held back after 16 minutes');
+  ok(toO().length === 1 && /コメント一件/.test(toO()[0].body) && !/一時間テスト/.test(toO()[0].body), 'the comment goes out on its 10-minute rhythm without the tasks');
+  W.G.flushAll_(T + 59 * 60000); ok(toD().length === 0, 'still held at 59 minutes');
+  W.G.flushAll_(T + 60 * 60000 + 1);
+  ok(toD().length === 1 && /一時間テストA[\s\S]*/.test(toD()[0].body) && /一時間テストB/.test(toD()[0].body) && toO().length === 2 && /一時間テストA/.test(toO()[1].body), 'one hour after the first task: both tasks in one mail');
+  ok(/タスクの通知は1時間ごと/.test(toD()[0].body), 'mail footer says tasks are hourly');
+}
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
 ok(!W.formulas.length, 'no value was ever written as a formula');

@@ -73,7 +73,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.click('#bellList .bellitem >> nth=0'); await p.waitForTimeout(500);
   ok(await vis(p, '#view-tasks'), 'task notice opens the タスク tab');
   // batched mail
-  W.G.flushAll_(Date.now() + 11 * 60000);
+  W.G.flushAll_(Date.now() + 61 * 60000);   // tasks are mailed hourly
   const toOwner = W.mails.filter((m) => m.to === 'owner@example.com'), toExt = W.mails.filter((m) => m.to === 'designer@example.com');
   ok(toOwner.length === 1 && toExt.length === 1 && /&view=tasks/.test(toExt[0].body) && !W.mails.some((m) => m.to === 'client@example.ac.jp'), 'after the quiet time: one mail each to 社内 and チームメンバー, none to クライアント');
   // link from the mail opens the right view

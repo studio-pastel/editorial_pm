@@ -17,7 +17,7 @@
  * 通知メールは「通知」タブに溜め、最後の出来事から10分静かになったら（続いても最長60分で）、案件ごとに1通にまとめて送ります。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-02d';
+const VERSION = '2026-11-06';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -38,6 +38,7 @@ const HEAD = {
 HEAD.notice = ['ID', '日時', 'ts', '宛先', '種類', 'ページ', '内容', '投稿者', 'リンク', '送信', '既読'];
 const TASK_STATES = ['未着手', '進行中', '確認待ち', '完了'];
 const NOTICE_QUIET_MIN = 10, NOTICE_MAX_MIN = 60;
+const NOTICE_TASK_MIN = 60;                 // タスクの通知は1時間ごとにまとめる
 const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: 'チームメンバー' };
 const ROLE_CAN = {
   staff: 'すべての操作（設定・デザインPDF・メンバー・経費の登録を含む）',
@@ -905,7 +906,8 @@ function noticeRead_(ss, me, req) {
   });
   return { ok: true };
 }
-/** one mail per person per project: sent when nothing new came for NOTICE_QUIET_MIN minutes, or NOTICE_MAX_MIN after the first */
+/** one mail per person per project: sent when nothing new came for NOTICE_QUIET_MIN minutes, or NOTICE_MAX_MIN after the first.
+ *  タスク notices have their own rhythm: they wait NOTICE_TASK_MIN after the first one, so they arrive at most about once an hour. */
 function flushProject_(ss, nowMs) {
   const sh = ss.getSheetByName(TAB.notice);
   if (!sh) return 0;
@@ -914,11 +916,15 @@ function flushProject_(ss, nowMs) {
   const sentCol = HEAD.notice.indexOf('送信') + 1, name = projectName_(ss), members = {};
   memberList_(ss).forEach((p) => { members[p.email] = p; });
   let mails = 0;
+  const tsOf = (x) => Number(x.o.ts) || nowMs;
   Object.keys(pending).forEach((to) => {
-    const items = pending[to], first = Math.min.apply(null, items.map((x) => Number(x.o.ts) || nowMs)), last = Math.max.apply(null, items.map((x) => Number(x.o.ts) || 0));
-    if (nowMs - last < NOTICE_QUIET_MIN * 60000 && nowMs - first < NOTICE_MAX_MIN * 60000) return;
     const at = Utilities.formatDate(new Date(nowMs), ss.getSpreadsheetTimeZone() || 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
-    if (!members[to] || roleKey_(members[to].role) === 'client') { items.forEach((x) => sh.getRange(x.row, sentCol).setValue('対象外 ' + at)); return; }   // removed, or a クライアント
+    if (!members[to] || roleKey_(members[to].role) === 'client') { pending[to].forEach((x) => sh.getRange(x.row, sentCol).setValue('対象外 ' + at)); return; }   // removed, or a クライアント
+    const tasks = pending[to].filter((x) => x.o['種類'] === 'タスク'), others = pending[to].filter((x) => x.o['種類'] !== 'タスク');
+    const othersReady = others.length && (nowMs - Math.max.apply(null, others.map(tsOf)) >= NOTICE_QUIET_MIN * 60000 || nowMs - Math.min.apply(null, others.map(tsOf)) >= NOTICE_MAX_MIN * 60000);
+    const tasksReady = tasks.length && nowMs - Math.min.apply(null, tasks.map(tsOf)) >= NOTICE_TASK_MIN * 60000;
+    const items = (othersReady ? others : []).concat(tasksReady ? tasks : []);
+    if (!items.length) return;
     if (MailApp.getRemainingDailyQuota() < 1) return;
     const groups = [], key = (x) => x.o['ページ'] ? 'ページ ' + x.o['ページ'] : x.o['種類'];
     items.forEach((x) => { let g = groups.filter((y) => y.k === key(x))[0]; if (!g) { g = { k: key(x), items: [] }; groups.push(g); } g.items.push(x); });
@@ -932,7 +938,7 @@ function flushProject_(ss, nowMs) {
     });
     const subject = '［' + name + '］新しい更新 ' + items.length + '件';
     const body = (members[to].name || to) + ' さん\n\n「' + name + '」に新しい更新があります。\n\n' + lines.join('\n') +
-      '—\nこのメールはエディトリアルPMから自動で送信されています（' + NOTICE_QUIET_MIN + '分ほど動きがなくなった時点で、まとめて送ります）。';
+      '—\nこのメールはエディトリアルPMから自動で送信されています（動きが' + NOTICE_QUIET_MIN + '分ほど落ち着いた時点でまとめて送ります。タスクの通知は1時間ごとにまとめます）。';
     MailApp.sendEmail({ to, subject, body, name: 'エディトリアルPM' });
     items.forEach((x) => sh.getRange(x.row, sentCol).setValue(at));
     mails++;
