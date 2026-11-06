@@ -65,7 +65,7 @@ r = st(S_EXT, { col: 5, value: 'x' }); ok(!r.ok && r.code === 'forbidden', 'non-
 /* ---- comments + mail ---- */
 r = W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P1', text: '扉の写真、差し替え希望です', origin: 'https://studio-pastel.github.io/editorial_pm/' });
 ok(r.ok && r.notified === 1 && W.mails.length === 0, 'comment is queued, not mailed at once');
-const FLUSH = () => W.G.flushAll_(Date.now() + 11 * 60000);
+const FLUSH = () => W.G.flushAll_(Date.now() + 2 * 86400e3);
 FLUSH();
 ok(W.mails.length === 1 && W.mails[0].to === 'owner@example.com', 'after 10 quiet minutes: 社内 gets one mail: ' + JSON.stringify(W.mails.map((m) => m.to)));
 ok(/editorial_pm\/\?sheet=TESTSHEET.*&page=P1/.test(W.mails[0].body) && /大学 担当/.test(W.mails[0].body) && /扉の写真/.test(W.mails[0].body), 'mail lists the comment with a link to the page');
@@ -304,24 +304,18 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   const O = 'https://studio-pastel.github.io/editorial_pm/';
   const nsh = () => ss.getSheetByName('通知');
   const setTs = (fromRow, ms) => { const c = nsh().cells; for (let i = fromRow; i < c.length; i++) if (c[i] && c[i][0]) c[i][2] = ms; };
-  W.G.flushAll_(Date.now() + 999 * 60000); W.mails.length = 0;          // start clean
-  const T0 = Date.now(), start = nsh().cells.length;
-  W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P5', text: '一件目', origin: O });
-  setTs(start, T0);
-  const mid = nsh().cells.length;
-  W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P6', text: '二件目', origin: O });
-  setTs(mid, T0 + 5 * 60000);
-  W.G.flushAll_(T0 + 12 * 60000); ok(W.mails.length === 0, 'still within 10 quiet minutes of the last one → not sent');
-  W.G.flushAll_(T0 + 16 * 60000);
-  ok(W.mails.length === 1 && W.mails[0].subject === '［サンプル冊子2028］新しい更新 2件' && /■ ページ P5[\s\S]*一件目[\s\S]*■ ページ P6[\s\S]*二件目/.test(W.mails[0].body), 'two comments → one mail per person, grouped by page');
-  W.G.flushAll_(T0 + 30 * 60000); ok(W.mails.length === 1, 'nothing is sent twice');
-  // steady activity: sent at the 60-minute mark even if it never goes quiet
-  W.mails.length = 0;
-  const T1 = Date.now(), s1 = nsh().cells.length;
-  for (let i = 0; i < 13; i++) { const at = nsh().cells.length; W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P7', text: 'n' + i, origin: O }); setTs(at, T1 + i * 5 * 60000); }
-  W.G.flushAll_(T1 + 59 * 60000); ok(W.mails.length === 0, 'busy and under 60 minutes → wait');
-  W.G.flushAll_(T1 + 60 * 60000 + 1); ok(W.mails.length === 1 && /13件/.test(W.mails[0].subject), 'busy for 60 minutes → sent anyway');
-  W.G.flushAll_(T1 + 999 * 60000); W.mails.length = 0;
+  W.G.flushAll_(Date.now() + 2 * 86400e3); W.mails.length = 0;          // start clean
+  const JST = (d, h, m) => Date.UTC(2030, 0, d, h - 9, m || 0);         // 2030-01-d h:m in Japan
+  const add = (page, text, ms) => { const at = nsh().cells.length; W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page, text, origin: O }); setTs(at, ms); };
+  // fixed clock times; the flush is given the time to test
+  add('P5', '朝の一件', JST(10, 9, 30)); add('P6', '夕方の一件', JST(10, 17, 59)); add('P7', '夜の一件', JST(10, 18, 1));
+  W.G.flushAll_(JST(10, 17, 59)); ok(W.mails.length === 0, 'before 18:00 → nothing sent');
+  W.G.flushAll_(JST(10, 18, 0));
+  ok(W.mails.length === 1 && W.mails[0].subject === '［サンプル冊子2028］新しい更新 2件' && /■ ページ P5[\s\S]*朝の一件[\s\S]*■ ページ P6[\s\S]*夕方の一件/.test(W.mails[0].body) && !/夜の一件/.test(W.mails[0].body), 'at 18:00 the day\'s notices go out in one mail, grouped by page; the 18:01 one waits');
+  ok(/毎日18時/.test(W.mails[0].body), 'mail footer says daily at 18');
+  W.G.flushAll_(JST(10, 23, 0)); W.G.flushAll_(JST(11, 17, 0)); ok(W.mails.length === 1, 'nothing more until the next 18:00, nothing sent twice');
+  W.G.flushAll_(JST(11, 18, 5)); ok(W.mails.length === 2 && /夜の一件/.test(W.mails[1].body) && /1件/.test(W.mails[1].subject), 'the after-18:00 notice goes out at 18:00 the next day');
+  W.G.flushAll_(Date.now() + 2 * 86400e3); W.mails.length = 0;
   // kinds and who gets them (never a クライアント)
   const nAt = nsh().cells.length;
   W.call({ action: 'taskSave', session: S_EXT, sheet: SID, values: { 'タスク': '大学への確認', '担当': '大学 担当' }, origin: O });
@@ -353,7 +347,7 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   ok(W.call({ action: 'notices', session: S_OWNER, sheet: SID }).notices.some((n) => !n.read), 'someone else\'s read state is untouched');
   // a クライアント with mail already queued (e.g. before this rule) gets nothing
   nsh().cells.push(['OLDQUEUED1', '', Date.now() - 3600e3, 'client@example.ac.jp', 'コメント', 'P1', '古い通知', 'x', '', '', '']);
-  W.mails.length = 0; W.G.flushAll_(Date.now() + 11 * 60000);
+  W.mails.length = 0; W.G.flushAll_(Date.now() + 2 * 86400e3);
   { const tos = W.mails.map((m) => m.to); ok(tos.indexOf('designer@example.com') >= 0 && tos.indexOf('owner@example.com') >= 0 && !tos.some((t) => /client@|noinvite@|badorigin@/.test(t)) && new Set(tos).size === tos.length, 'one mail per person, none to クライアント: ' + tos.join()); }
 }
 /* ---- deleting a design PDF ---- */
@@ -379,26 +373,21 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   ok(added.indexOf('タスク:デザイナーのタスク→owner@example.com') >= 0 && added.indexOf('タスク:デザイナーのタスク→designer@example.com') >= 0, 'owner also gets task notices for others');
   ok(!added.some((x) => /client@/.test(x)), 'still nothing for クライアント');
 }
-/* ---- タスク notices are batched hourly ---- */
+/* ---- タスク notices ride the same daily 18:00 mail ---- */
 {
   const O = 'https://studio-pastel.github.io/editorial_pm/', nsh = ss.getSheetByName('通知');
-  W.G.flushAll_(Date.now() + 999 * 60000); W.mails.length = 0;
-  const T = Date.now(), at0 = nsh.cells.length;
-  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '一時間テストA', '担当メール': 'designer@example.com' }, origin: O });
-  const at1 = nsh.cells.length;
+  W.G.flushAll_(Date.now() + 2 * 86400e3); W.mails.length = 0;
+  const JST = (d, h, m) => Date.UTC(2031, 0, d, h - 9, m || 0), at0 = nsh.cells.length;
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '日次テストA', '担当メール': 'designer@example.com' }, origin: O });
   W.call({ action: 'commentAdd', session: S_CLIENT, sheet: SID, page: 'P8', text: 'コメント一件', origin: O });
-  const at2 = nsh.cells.length;
-  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '一時間テストB', '担当メール': 'designer@example.com' }, origin: O });
-  const setTs = (a, b, ms) => { for (let i = a; i < b; i++) if (nsh.cells[i] && nsh.cells[i][0]) nsh.cells[i][2] = ms; };
-  setTs(at0, at1, T); setTs(at1, at2, T + 5 * 60000); setTs(at2, nsh.cells.length, T + 30 * 60000);
-  W.G.flushAll_(T + 16 * 60000);
-  const toD = () => W.mails.filter((m) => m.to === 'designer@example.com'), toO = () => W.mails.filter((m) => m.to === 'owner@example.com');
-  ok(toD().length === 0, 'task for the designer is held back after 16 minutes');
-  ok(toO().length === 1 && /コメント一件/.test(toO()[0].body) && !/一時間テスト/.test(toO()[0].body), 'the comment goes out on its 10-minute rhythm without the tasks');
-  W.G.flushAll_(T + 59 * 60000); ok(toD().length === 0, 'still held at 59 minutes');
-  W.G.flushAll_(T + 60 * 60000 + 1);
-  ok(toD().length === 1 && /一時間テストA[\s\S]*/.test(toD()[0].body) && /一時間テストB/.test(toD()[0].body) && toO().length === 2 && /一時間テストA/.test(toO()[1].body), 'one hour after the first task: both tasks in one mail');
-  ok(/タスクの通知は1時間ごと/.test(toD()[0].body), 'mail footer says tasks are hourly');
+  W.call({ action: 'taskSave', session: S_CLIENT, sheet: SID, values: { 'タスク': '日次テストB', '担当メール': 'designer@example.com' }, origin: O });
+  for (let i = at0; i < nsh.cells.length; i++) if (nsh.cells[i] && nsh.cells[i][0]) nsh.cells[i][2] = JST(5, 11, i - at0);
+  W.G.flushAll_(JST(5, 17, 55));
+  ok(W.mails.length === 0, 'tasks and comments are held until 18:00');
+  W.G.flushAll_(JST(5, 18, 0));
+  const toD = W.mails.filter((m) => m.to === 'designer@example.com'), toO = W.mails.filter((m) => m.to === 'owner@example.com');
+  ok(toD.length === 1 && /日次テストA/.test(toD[0].body) && /日次テストB/.test(toD[0].body), 'designer: both tasks in one mail at 18:00');
+  ok(toO.length === 1 && /日次テストA/.test(toO[0].body) && /コメント一件/.test(toO[0].body), 'owner: tasks and the comment together in one mail');
 }
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');

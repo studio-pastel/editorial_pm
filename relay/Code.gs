@@ -14,10 +14,10 @@
  * 招待メールの文面は、各案件の「設定」タブに「招待メール件名」「招待メール本文」の行を作ると、その内容で上書きできます。
  * 使える差し込み：【名前】【メール】【招待者】【案件名】【役割】【できること】【入口URL】
  *
- * 通知メールは「通知」タブに溜め、最後の出来事から10分静かになったら（続いても最長60分で）、案件ごとに1通にまとめて送ります。
+ * 通知メールは「通知」タブに溜め、毎日18時に、その日の分を案件ごとに1通にまとめて送ります（18時以降の出来事は翌日18時）。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-06';
+const VERSION = '2026-11-06b';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -37,8 +37,7 @@ const HEAD = {
 };
 HEAD.notice = ['ID', '日時', 'ts', '宛先', '種類', 'ページ', '内容', '投稿者', 'リンク', '送信', '既読'];
 const TASK_STATES = ['未着手', '進行中', '確認待ち', '完了'];
-const NOTICE_QUIET_MIN = 10, NOTICE_MAX_MIN = 60;
-const NOTICE_TASK_MIN = 60;                 // タスクの通知は1時間ごとにまとめる
+const NOTICE_HOUR = 18;                     // 通知メールは毎日この時刻に、その日の分（前日の18時以降〜当日18時まで）をまとめて送る
 const ROLE_LABEL = { staff: '社内', client: 'クライアント', ext: 'チームメンバー' };
 const ROLE_CAN = {
   staff: 'すべての操作（設定・デザインPDF・メンバー・経費の登録を含む）',
@@ -906,8 +905,8 @@ function noticeRead_(ss, me, req) {
   });
   return { ok: true };
 }
-/** one mail per person per project: sent when nothing new came for NOTICE_QUIET_MIN minutes, or NOTICE_MAX_MIN after the first.
- *  タスク notices have their own rhythm: they wait NOTICE_TASK_MIN after the first one, so they arrive at most about once an hour. */
+/** one mail per person per project, once a day at NOTICE_HOUR (local time of the sheet):
+ *  a notice made before 18:00 goes out at 18:00 that day; one made after 18:00 waits for 18:00 the next day. */
 function flushProject_(ss, nowMs) {
   const sh = ss.getSheetByName(TAB.notice);
   if (!sh) return 0;
@@ -916,14 +915,14 @@ function flushProject_(ss, nowMs) {
   const sentCol = HEAD.notice.indexOf('送信') + 1, name = projectName_(ss), members = {};
   memberList_(ss).forEach((p) => { members[p.email] = p; });
   let mails = 0;
-  const tsOf = (x) => Number(x.o.ts) || nowMs;
+  const tsOf = (x) => Number(x.o.ts) || nowMs, tz = ss.getSpreadsheetTimeZone() || 'Asia/Tokyo';
+  const day = (ms) => Utilities.formatDate(new Date(ms), tz, 'yyyyMMdd');
+  const lastSend = day(nowMs - NOTICE_HOUR * 3600e3);                       // the day of the latest 18:00 that has passed
+  const ready = (x) => day(tsOf(x) + (24 - NOTICE_HOUR) * 3600e3) <= lastSend;   // its 18:00 is that one or earlier
   Object.keys(pending).forEach((to) => {
     const at = Utilities.formatDate(new Date(nowMs), ss.getSpreadsheetTimeZone() || 'Asia/Tokyo', 'yyyy/MM/dd HH:mm');
     if (!members[to] || roleKey_(members[to].role) === 'client') { pending[to].forEach((x) => sh.getRange(x.row, sentCol).setValue('対象外 ' + at)); return; }   // removed, or a クライアント
-    const tasks = pending[to].filter((x) => x.o['種類'] === 'タスク'), others = pending[to].filter((x) => x.o['種類'] !== 'タスク');
-    const othersReady = others.length && (nowMs - Math.max.apply(null, others.map(tsOf)) >= NOTICE_QUIET_MIN * 60000 || nowMs - Math.min.apply(null, others.map(tsOf)) >= NOTICE_MAX_MIN * 60000);
-    const tasksReady = tasks.length && nowMs - Math.min.apply(null, tasks.map(tsOf)) >= NOTICE_TASK_MIN * 60000;
-    const items = (othersReady ? others : []).concat(tasksReady ? tasks : []);
+    const items = pending[to].filter(ready);
     if (!items.length) return;
     if (MailApp.getRemainingDailyQuota() < 1) return;
     const groups = [], key = (x) => x.o['ページ'] ? 'ページ ' + x.o['ページ'] : x.o['種類'];
@@ -938,7 +937,7 @@ function flushProject_(ss, nowMs) {
     });
     const subject = '［' + name + '］新しい更新 ' + items.length + '件';
     const body = (members[to].name || to) + ' さん\n\n「' + name + '」に新しい更新があります。\n\n' + lines.join('\n') +
-      '—\nこのメールはエディトリアルPMから自動で送信されています（動きが' + NOTICE_QUIET_MIN + '分ほど落ち着いた時点でまとめて送ります。タスクの通知は1時間ごとにまとめます）。';
+      '—\nこのメールはエディトリアルPMから自動で送信されています（毎日' + NOTICE_HOUR + '時に、その日の更新をまとめて送ります）。';
     MailApp.sendEmail({ to, subject, body, name: 'エディトリアルPM' });
     items.forEach((x) => sh.getRange(x.row, sentCol).setValue(at));
     mails++;
@@ -959,8 +958,9 @@ function flushAll_(nowMs) {
   });
   return n;
 }
-/** called every 5 minutes by the trigger made with setupNotifications */
+/** called every 5 minutes by the trigger made with setupNotifications; does the work only during the 18 o'clock hour */
 function flushNotifications() {
+  if (Number(Utilities.formatDate(new Date(), Session.getScriptTimeZone() || 'Asia/Tokyo', 'HH')) !== NOTICE_HOUR) return;
   const lock = LockService.getScriptLock();
   if (!lock.tryLock(30000)) return;
   try { flushAll_(Date.now()); } finally { lock.releaseLock(); }
