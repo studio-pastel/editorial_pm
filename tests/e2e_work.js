@@ -99,6 +99,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.fill('#taskTable .trow-edit textarea[aria-label="メモ"]', '入力途中のメモ');
   await p.evaluate(() => { renderTasks(); renderTasks(); });
   ok(await p.inputValue('#taskTable .trow-edit textarea[aria-label="メモ"]') === '入力途中のメモ', 'typed text survives a redraw');
+  ok(await p.locator('#taskTable .trow', { hasText: '印刷会社' }).count() === 0 && await p.locator('#taskTable li').nth(1).evaluate((e) => e.classList.contains('trow-edit')), 'the row itself becomes the form, in its place');
   await p.click('#taskTable .trow-edit button:has-text("やめる")');
   // assignee changed straight from the row
   const who = p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select.whosel');

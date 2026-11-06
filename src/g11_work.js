@@ -187,6 +187,7 @@ function taskForm(t) {
   }));
   const box = el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === 'タスク' || k === 'メモ' ? ' wide' : '') }, el('span', { text: k }), F[k])), acts);
   F['タスク'].addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
+  box.addEventListener('keydown', (e) => { if (e.key === 'Escape') { e.preventDefault(); taskEditing = null; taskFormEl = null; renderTasks(); } });
   setTimeout(() => F['タスク'].focus(), 0);   // only when the form is first made
   return box;
 }
@@ -232,6 +233,9 @@ function renderTasks() {
   // one row per task: state | title + who/when/memo | edit — wraps cleanly at any width
   list.forEach((x) => {
     const due = isoOf(x['期限']), over = taskOverdue(x), who = taskWho(x);
+    // while editing, the row itself turns into the form (same place, same task)
+    const f = formFor(x.ID);
+    if (f) { t.appendChild(el('li', { class: 'trow-edit' }, f)); return; }
     t.appendChild(el('li', { class: 'trow' + (x['状態'] === '完了' ? ' is-done' : '') },
       el('div', { class: 'tstate' }, taskStateSelect(x)),
       el('div', { class: 'tmain' },
@@ -241,9 +245,7 @@ function renderTasks() {
           el('span', { class: over ? 'bad' : '' }, el('span', { class: 'muted', text: '期限 ' }), due ? fmtMD(due) : 'なし', over ? el('b', { class: 'overdue', text: ' 期限切れ' }) : null),
           el('span', { class: 'muted small', text: '更新 ' + [x['更新者'], String(x['更新日時'] || '').replace(/^\d{4}\//, '').replace(/:\d{2}$/, '')].filter(Boolean).join(' ') })),
         x['メモ'] ? el('p', { class: 'tmemo', text: x['メモ'] }) : null),
-      el('div', { class: 'tacts' }, el('button', { class: 'btn xs', 'aria-expanded': String(taskEditing === x.ID), onclick: () => { taskEditing = taskEditing === x.ID ? null : x.ID; renderTasks(); } }, taskEditing === x.ID ? '閉じる' : '編集'))));
-    const f = formFor(x.ID);
-    if (f) t.appendChild(el('li', { class: 'trow-edit' }, f));
+      el('div', { class: 'tacts' }, el('button', { class: 'btn xs', onclick: () => { taskEditing = x.ID; renderTasks(); } }, '編集'))));
   });
   if (!list.length) t.appendChild(el('li', { class: 'muted tempty', text: S.tasks.length ? '条件に合うタスクはありません' : 'タスクはまだありません。上の欄に入力して Enter で登録できます' }));
   // quick add: assignee choices
