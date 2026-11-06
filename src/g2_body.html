@@ -193,22 +193,25 @@
 
   <!-- ============ タスク ============ -->
   <div class="view" id="view-tasks" hidden>
-    <section class="panel"><h2>担当者別</h2><div class="tablewrap"><table class="grid tcount" id="taskPeople"></table></div></section>
-    <section class="panel">
-      <div class="vhead">
-        <h2>タスク</h2>
-        <label class="field inline"><span>担当</span><select id="tAssignee"></select></label>
-        <label class="field inline"><span>状態</span><select id="tState"></select></label>
-        <label class="field inline grow"><span>検索</span><input id="tSearch" type="search" autocomplete="off" placeholder="タスク・担当・メモ"></label>
-      </div>
+    <section class="panel" id="taskAddPanel">
+      <h2>タスクを追加</h2>
       <form class="qadd" id="qaForm" autocomplete="off">
-        <label class="field qa-text"><span>タスクを追加（Enterで登録）</span><input id="qaText" type="text" placeholder="例：表紙案の作成 @デザイナーA 11/20"></label>
+        <label class="field qa-text"><span>タスク（Enterで登録）</span><input id="qaText" type="text" placeholder="例：表紙案の作成 @デザイナーA 11/20"></label>
         <label class="field qa-who"><span>担当</span><select id="qaWho"></select></label>
         <label class="field qa-due"><span>期限</span><input id="qaDue" type="date"></label>
         <button class="btn primary" id="qaAdd" type="submit">追加</button>
       </form>
-      <p class="hint">「@名前」で担当、「11/20」「明日」「来週金曜」で期限を一緒に入力できます（右の欄で選んでも同じです）。メモを付けるときは <button class="linklike" id="btnTaskAdd" type="button">詳しく入力</button>。状態は一覧からだれでも直接変えられます。</p>
+      <p class="hint">「@名前」で担当、「11/20」「明日」「来週金曜」で期限も一緒に入力できます（右の欄で選んでも同じです）。メモも付けるときは <button class="linklike" id="btnTaskAdd" type="button">詳しく入力</button>。</p>
       <div id="taskFormBox"></div>
+    </section>
+    <section class="panel">
+      <div class="vhead">
+        <h2>タスク一覧</h2>
+        <label class="field inline"><span>担当</span><select id="tAssignee"></select></label>
+        <label class="field inline"><span>状態</span><select id="tState"></select></label>
+        <label class="field inline grow"><span>検索</span><input id="tSearch" type="search" autocomplete="off" placeholder="タスク・担当・メモ"></label>
+      </div>
+      <p class="hint">状態と担当は一覧からだれでも直接変えられます。タスク名・期限・メモは「編集」から。</p>
       <datalist id="peopleList"></datalist>
       <ul class="tlist" id="taskTable"></ul>
     </section>

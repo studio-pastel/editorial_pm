@@ -93,8 +93,22 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(tk.length === 3 && tk[1][3] === 'client@example.ac.jp' && tk[2][2] === '印刷会社A' && tk[2][3] === '', 'two tasks saved (member and free-text assignee)');
   ok(tk[1][1] === '撮影リストを大学に共有' && ss.getSheetByName('タスク').getRange(2, 5).getDisplayValue() === '2026/10/23' && ss.getSheetByName('タスク').getRange(3, 5).getDisplayValue() === '2099/01/10', 'title without the @ and the date; due dates saved');
   ok(await p.locator('#taskTable .trow').count() === 2 && /期限切れ/.test(await p.textContent('#taskTable')), 'list shows both, the past due one flagged');
-  ok(/大学 担当/.test(await p.textContent('#taskPeople')) && /印刷会社A/.test(await p.textContent('#taskPeople')), 'counts per assignee');
-  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select').selectOption('完了'); await p.waitForTimeout(900);
+  ok(await p.locator('#taskPeople').count() === 0, 'no per-assignee table');
+  // the edit form keeps what was typed when the list is redrawn (another row's change, refresh)
+  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('button:has-text("編集")').click();
+  await p.fill('#taskTable .trow-edit textarea[aria-label="メモ"]', '入力途中のメモ');
+  await p.evaluate(() => { renderTasks(); renderTasks(); });
+  ok(await p.inputValue('#taskTable .trow-edit textarea[aria-label="メモ"]') === '入力途中のメモ', 'typed text survives a redraw');
+  await p.click('#taskTable .trow-edit button:has-text("やめる")');
+  // assignee changed straight from the row
+  const who = p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select.whosel');
+  const opts = await who.locator('option').allTextContents();
+  ok(opts.includes('印刷会社A') && opts.includes('（なし）'), 'row assignee offers members, the free name and none');
+  const mem = opts.find((o) => o !== '（なし）' && o !== '印刷会社A');
+  await who.selectOption({ label: mem }); await p.waitForTimeout(900);
+  const trow = ss.getSheetByName('タスク').cells[2];
+  ok(trow.indexOf(mem) >= 0 && trow.some((c) => /@/.test(String(c))), 'assignee and its mail saved from the row');
+  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select.stsel').selectOption('完了'); await p.waitForTimeout(900);
   ok(ss.getSheetByName('タスク').cells[2][5] === '完了' && await p.locator('#taskTable .trow').count() === 1, 'status changed inline; 完了 hidden by the 未完了 filter');
   await p.screenshot({ path: path.join(__dirname, 'out', 'w_tasks.png') });
   // minutes
@@ -156,9 +170,9 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(ss.getSheetByName('タスク').cells[3][1] === 'P12 レイアウト修正' && ss.getSheetByName('タスク').cells[3][3] === 'designer@example.com', 'external creates a task');
   await p.selectOption('#tState', 'all'); await p.waitForTimeout(200);
   await p.locator('#taskTable .trow', { hasText: '撮影リスト' }).locator('button:has-text("編集")').click(); await p.waitForTimeout(200);
-  ok(await p.locator('#taskFormBox button:has-text("削除")').count() === 0, 'external cannot delete a task created by 社内');
+  ok(await p.locator('#taskTable .trow-edit button:has-text("削除")').count() === 0 && await p.locator('#taskTable .trow-edit').count() === 1, 'external cannot delete a task created by 社内');
   await p.setViewportSize({ width: 390, height: 844 });
-  await p.click('#taskFormBox button:has-text("やめる")');
+  await p.click('#taskTable .trow-edit button:has-text("やめる")');
   const ow = await p.evaluate(() => document.documentElement.scrollWidth); ok(ow <= 390, 'no horizontal page scroll at 390px: ' + ow);
   const clip = await p.evaluate(() => [...document.querySelectorAll('#taskTable .trow, #qaForm')].filter((e) => e.scrollWidth > e.clientWidth + 1 || e.getBoundingClientRect().right > 390).length);
   ok(clip === 0, 'task rows and the quick-add box fit a phone (nothing cut off)');

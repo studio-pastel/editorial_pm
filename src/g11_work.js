@@ -124,9 +124,26 @@ function schEditForm(it) {
 
 /* ================= tasks ================= */
 let taskEditing = null;   // task ID, or 'new'
+let taskFormEl = null;     // the open form, reused while it stays open
 const taskWho = (t) => String(t['担当'] || '').trim();
 const isMyTask = (t) => !!S.me && ((t['担当メール'] && String(t['担当メール']).toLowerCase() === meEmail()) || (!t['担当メール'] && taskWho(t) && taskWho(t) === S.me.name));
 const taskOverdue = (t) => { const d = isoOf(t['期限']); return !!d && t['状態'] !== '完了' && d < todayIso(); };
+/** assignee straight from the list: members, plus a non-member name already set */
+function taskWhoSelect(t) {
+  const sel = el('select', { class: 'whosel', 'aria-label': (t['タスク'] || '') + 'の担当' });
+  sel.appendChild(el('option', { value: '', text: '（なし）' }));
+  (S.people || []).forEach((p) => sel.appendChild(el('option', { value: 'm:' + p.email, text: p.name })));
+  const em = String(t['担当メール'] || '').toLowerCase(), who = taskWho(t);
+  let cur = '';
+  if (em && (S.people || []).some((p) => p.email === em)) cur = 'm:' + em;
+  else if (who) { sel.appendChild(el('option', { value: 'n:' + who, text: who })); cur = 'n:' + who; }
+  sel.value = cur;
+  sel.addEventListener('change', () => {
+    const v = sel.value, p = v.indexOf('m:') === 0 ? (S.people || []).find((x) => x.email === v.slice(2)) : null;
+    saveTask(t, { '担当': p ? p.name : (v.indexOf('n:') === 0 ? v.slice(2) : ''), '担当メール': p ? p.email : '' }, sel);
+  });
+  return sel;
+}
 function taskStateSelect(t) {
   const sel = el('select', { class: 'stsel st-' + (TASK_CLASS[t['状態']] || 'todo'), 'aria-label': (t['タスク'] || '') + 'の状態' });
   TASK_STATES.forEach((s) => sel.appendChild(el('option', { value: s, text: s })));
@@ -160,24 +177,24 @@ function taskForm(t) {
     if (!name) { toast('タスクの内容を入力してください', 'err'); F['タスク'].focus(); return; }
     const who = F['担当'].value.trim(), p = (S.people || []).find((x) => x.name === who);
     const values = { 'タスク': name, '担当': who, '担当メール': p ? p.email : '', '期限': F['期限'].value, '状態': F['状態'].value, 'メモ': F['メモ'].value };
-    if (await saveTask(t.ID ? t : null, values, save)) { taskEditing = null; renderTasks(); }
+    if (await saveTask(t.ID ? t : null, values, save)) { taskEditing = null; taskFormEl = null; renderTasks(); }
   });
-  const acts = el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => { taskEditing = null; renderTasks(); } }, 'やめる'));
+  const acts = el('div', { class: 'formacts' }, save, el('button', { class: 'btn', onclick: () => { taskEditing = null; taskFormEl = null; renderTasks(); } }, 'やめる'));
   if (t.ID && (isStaff() || createdByMe(t))) acts.appendChild(armButton(el('button', { class: 'btn' }), '削除', 'もう一度押すと削除', async () => {
     const r = await busy(null, () => relay('taskDelete', { id: t.ID }));
     if (!r) return;
-    S.tasks = S.tasks.filter((x) => x.ID !== t.ID); taskEditing = null; toast('タスクを削除しました'); renderTasks();
+    S.tasks = S.tasks.filter((x) => x.ID !== t.ID); taskEditing = null; taskFormEl = null; toast('タスクを削除しました'); renderTasks();
   }));
   const box = el('div', { class: 'form' }, Object.keys(F).map((k) => el('label', { class: 'field' + (k === 'タスク' || k === 'メモ' ? ' wide' : '') }, el('span', { text: k }), F[k])), acts);
   F['タスク'].addEventListener('keydown', (e) => { if (e.key === 'Enter') { e.preventDefault(); save.click(); } });
-  setTimeout(() => F['タスク'].focus(), 0);
+  setTimeout(() => F['タスク'].focus(), 0);   // only when the form is first made
   return box;
 }
 function renderTasks() {
-  const t = $('taskTable'), pc = $('taskPeople');
-  t.textContent = ''; pc.textContent = ''; $('taskFormBox').textContent = '';
-  if (!hasFeature('tasks')) { t.appendChild(el('li', { class: 'muted', text: RELAY_OLD })); $('qaForm').hidden = true; return; }
-  $('qaForm').hidden = false;
+  const t = $('taskTable');
+  t.textContent = '';
+  if (!hasFeature('tasks')) { t.appendChild(el('li', { class: 'muted', text: RELAY_OLD })); $('taskAddPanel').hidden = true; return; }
+  $('taskAddPanel').hidden = false;
   const dl = $('peopleList'); dl.textContent = '';
   (S.people || []).forEach((p) => dl.appendChild(el('option', { value: p.name, label: p.role || '' })));
   // filters
@@ -190,30 +207,18 @@ function renderTasks() {
   aSel.value = [...aSel.options].some((o) => o.value === curA) ? curA : 'all';
   const sSel = $('tState');
   if (!sSel.options.length) { [['open', '未完了'], ['all', 'すべて']].concat(TASK_STATES.map((s) => [s, s])).forEach(([v, l]) => sSel.appendChild(el('option', { value: v, text: l }))); sSel.value = 'open'; }
-  // counts per assignee
-  const groups = new Map();
-  S.tasks.forEach((x) => {
-    const k = taskWho(x) || '未割当';
-    if (!groups.has(k)) groups.set(k, { name: k, n: {}, over: 0, open: 0, all: 0 });
-    const g = groups.get(k), st = TASK_STATES.indexOf(x['状態']) >= 0 ? x['状態'] : '未着手';
-    g.n[st] = (g.n[st] || 0) + 1; g.all++;
-    if (st !== '完了') g.open++;
-    if (taskOverdue(x)) g.over++;
-  });
-  pc.appendChild(el('thead', null, el('tr', null, el('th', { text: '担当' }), TASK_STATES.map((s) => el('th', { class: 'num', text: s })), el('th', { class: 'num', text: 'うち期限切れ' }), el('th', { class: 'num', text: '合計' }))));
-  const pb = el('tbody');
-  [...groups.values()].sort((a, b) => b.open - a.open || b.all - a.all || a.name.localeCompare(b.name, 'ja')).forEach((g) => {
-    const v = g.name === '未割当' && !names.includes('未割当') ? 'none' : 'n:' + g.name;
-    pb.appendChild(el('tr', null,
-      el('td', null, el('button', { class: 'pagelink', onclick: () => { aSel.value = v; $('tState').value = 'open'; renderTasks(); } }, g.name)),
-      TASK_STATES.map((s) => el('td', { class: 'num' + (g.n[s] ? '' : ' muted'), text: String(g.n[s] || 0) })),
-      el('td', { class: 'num' + (g.over ? ' bad' : ' muted'), text: String(g.over) }),
-      el('td', { class: 'num', text: String(g.all) })));
-  });
-  if (!groups.size) pb.appendChild(el('tr', null, el('td', { colspan: TASK_STATES.length + 3, class: 'muted', text: 'タスクはまだありません' })));
-  pc.appendChild(pb);
-  // form
-  if (taskEditing) $('taskFormBox').appendChild(taskForm(taskEditing === 'new' ? null : S.tasks.find((x) => x.ID === taskEditing)));
+  // the open form is kept as it is across redraws (refresh, another row's change), so nothing typed is lost
+  const formFor = (key) => {
+    if (taskEditing !== key) return null;
+    if (!taskFormEl || taskFormEl.dataset.key !== key) {
+      const t = key === 'new' ? null : S.tasks.find((x) => x.ID === key);
+      if (key !== 'new' && !t) { taskEditing = null; taskFormEl = null; return null; }
+      taskFormEl = taskForm(t); taskFormEl.dataset.key = key;
+    }
+    return taskFormEl;
+  };
+  const nb = $('taskFormBox'), nf = formFor('new');
+  if (nf) { if (nf.parentNode !== nb) { nb.textContent = ''; nb.appendChild(nf); } } else nb.textContent = '';
   // list
   const q = ($('tSearch').value || '').trim().toLowerCase(), A = aSel.value, St = sSel.value;
   const list = S.tasks.filter((x) => {
@@ -232,11 +237,13 @@ function renderTasks() {
       el('div', { class: 'tmain' },
         el('b', { class: 'ttitle', text: x['タスク'] }),
         el('div', { class: 'tmeta' },
-          el('span', { class: who ? '' : 'muted' }, el('span', { class: 'muted', text: '担当 ' }), who || 'なし'),
+          el('label', { class: 'twho' }, el('span', { class: 'muted', text: '担当 ' }), taskWhoSelect(x)),
           el('span', { class: over ? 'bad' : '' }, el('span', { class: 'muted', text: '期限 ' }), due ? fmtMD(due) : 'なし', over ? el('b', { class: 'overdue', text: ' 期限切れ' }) : null),
           el('span', { class: 'muted small', text: '更新 ' + [x['更新者'], String(x['更新日時'] || '').replace(/^\d{4}\//, '').replace(/:\d{2}$/, '')].filter(Boolean).join(' ') })),
         x['メモ'] ? el('p', { class: 'tmemo', text: x['メモ'] }) : null),
-      el('div', { class: 'tacts' }, el('button', { class: 'btn xs', onclick: () => { taskEditing = x.ID; renderTasks(); $('taskFormBox').scrollIntoView({ block: 'nearest' }); } }, '編集'))));
+      el('div', { class: 'tacts' }, el('button', { class: 'btn xs', 'aria-expanded': String(taskEditing === x.ID), onclick: () => { taskEditing = taskEditing === x.ID ? null : x.ID; renderTasks(); } }, taskEditing === x.ID ? '閉じる' : '編集'))));
+    const f = formFor(x.ID);
+    if (f) t.appendChild(el('li', { class: 'trow-edit' }, f));
   });
   if (!list.length) t.appendChild(el('li', { class: 'muted tempty', text: S.tasks.length ? '条件に合うタスクはありません' : 'タスクはまだありません。上の欄に入力して Enter で登録できます' }));
   // quick add: assignee choices
@@ -445,7 +452,7 @@ function wireWork() {
   $('tAssignee').addEventListener('change', renderTasks);
   $('tState').addEventListener('change', renderTasks);
   $('tSearch').addEventListener('input', renderTasks);
-  $('btnTaskAdd').addEventListener('click', () => { taskEditing = 'new'; renderTasks(); });
+  $('btnTaskAdd').addEventListener('click', () => { taskEditing = 'new'; taskFormEl = null; renderTasks(); });
   $('qaForm').addEventListener('submit', quickAdd);
   $('btnMinAdd').addEventListener('click', () => { if (minEditing) { toast('編集中です。保存するか「やめる」を押してください', 'err'); return; } editMinute(null); });
   let sTimer = 0;
