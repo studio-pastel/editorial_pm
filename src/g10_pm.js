@@ -150,6 +150,15 @@ function openDetail(k) {
   renderDetail();
   if (V.ok) { resize(); }
 }
+/** the open detail panel follows the book: turning to another spread shows that spread's first page */
+function followSpread(s) {
+  if ($('detail').hidden || !NS()) return;
+  const sk = spreadKeys(s, NS(), S.set.binding), keys = [sk.left, sk.right].filter((x) => x !== null && x !== undefined);
+  if (!keys.length || keys.some((x) => kstr(x) === kstr(S.detailKey))) return;
+  const order = orderKeys(Math.max(NS(), 2)).map(kstr);
+  keys.sort((a, b) => order.indexOf(kstr(a)) - order.indexOf(kstr(b)));
+  S.detailKey = keys[0]; renderDetail();
+}
 function closeDetail() { $('detail').hidden = true; document.body.classList.remove('has-detail'); if (V.ok) resize(); }
 function stepDetail(d) {
   const keys = orderKeys(Math.max(NS(), 2));

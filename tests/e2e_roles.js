@@ -65,6 +65,14 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // page detail: progress + comment + figure
   await p.click('#vt-board'); await p.click('.tile[data-k="2"]'); await p.waitForTimeout(500);
   ok(await vis(p, '#detail') && /P2/.test(await p.textContent('#dTitle')), 'clicking a page opens its detail: ' + await p.textContent('#dTitle'));
+  {
+    const exp = await p.evaluate(() => { const k = spreadKeys(curSpread + 1, NS(), S.set.binding); return [k.left, k.right].filter((x) => x !== null).map(keyLabel); });
+    await p.click('#btnNext'); await p.waitForTimeout(300);
+    const t = await p.textContent('#dTitle');
+    ok(exp.some((l) => t.indexOf(l + '　') === 0 || t === l), 'turning the book moves the detail panel to the new spread: ' + t + ' / ' + exp.join(','));
+    await p.click('.tile[data-k="2"]'); await p.waitForTimeout(400);
+    ok(/^P2/.test(await p.textContent('#dTitle')), 'clicking a tile still opens that page');
+  }
   const sel = p.locator('#dBody .stage select').first();
   await sel.selectOption('確定'); await p.waitForTimeout(800);
   const rowP2 = ss.getSheetByName('台割／表').cells.findIndex((r) => r[0] === '002');

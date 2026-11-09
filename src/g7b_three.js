@@ -239,6 +239,7 @@ function maxSpread() { return spreadCount(Math.max(NS(), 2)) - 1; }
 function setSpread(s, scroll) {
   s = Math.max(0, Math.min(maxSpread(), Math.round(s)));
   V.target = s; markCurrent(s); syncControls();
+  if (typeof followSpread === 'function') followSpread(s);
   if (scroll) { const w = document.querySelector('.spread-wrap[data-s="' + s + '"]'); if (w && w.scrollIntoView) w.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }
   if (V.ok) {
     const open = s >= 1;
