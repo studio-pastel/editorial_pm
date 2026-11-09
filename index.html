@@ -2726,7 +2726,7 @@ async function addComment(label, text, replyTo, btn) {
   const r = await busy(btn, () => relay('commentAdd', { page: label, text, replyTo: replyTo || '', origin: location.origin + location.pathname }));
   if (!r) return false;
   S.comments.push(rowObj(H_COMMENT, r.comment));
-  toast(r.notified ? 'コメントしました（' + r.notified + '人に通知。メールは動きが落ち着いてからまとめて届きます）' : 'コメントしました');
+  toast(r.notified ? 'コメントしました（' + r.notified + '人に通知。メールは18時にまとめて届きます）' : 'コメントしました');
   if (r.notified) refreshNotices();
   renderBoard(); renderViews();
   return true;
