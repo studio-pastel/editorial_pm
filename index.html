@@ -3439,6 +3439,13 @@ function selectMinute(id) {
   minSel = id; renderMinList(); drawMinDoc();
   if (window.matchMedia('(max-width: 900px)').matches) $('minDoc').scrollIntoView({ block: 'start' });
 }
+function minuteUrl(m) { return projectUrl(S.sheetId) + '&view=minutes&minute=' + encodeURIComponent(m.ID); }
+function copyMinuteLink(m, btn) {
+  const url = minuteUrl(m);
+  const done = () => { toast('議事録のリンクをコピーしました（登録メンバーだけが開けます）'); if (btn) { btn.textContent = 'コピーしました'; setTimeout(() => { btn.textContent = 'リンクをコピー'; }, 2000); } };
+  const fallback = () => { window.prompt('このリンクをコピーしてください', url); };
+  try { navigator.clipboard.writeText(url).then(done, fallback); } catch (e) { fallback(); }
+}
 async function drawMinDoc() {
   const box = $('minDoc'); box.textContent = '';
   if (!hasFeature('minutes')) { box.appendChild(el('p', { class: 'muted', text: RELAY_OLD })); return; }
@@ -3446,6 +3453,7 @@ async function drawMinDoc() {
   if (!m) { box.appendChild(el('p', { class: 'muted', text: S.minutes.length ? '左の一覧から議事録を選んでください。' : 'まだ議事録はありません。' + (canWriteMinutes() ? '「新規作成」から書き始められます。' : '') })); return; }
   const acts = el('div', { class: 'cacts' });
   if (canWriteMinutes()) acts.appendChild(el('button', { class: 'btn sm primary', onclick: () => editMinute(m) }, '編集'));
+  acts.appendChild(el('button', { class: 'btn sm', title: 'メンバーに送るとワンクリックでこの議事録が開きます', onclick: (e) => copyMinuteLink(m, e.currentTarget) }, 'リンクをコピー'));
   if (isStaff() && m['ファイル']) acts.appendChild(el('a', { class: 'btn sm', href: m['ファイル'], target: '_blank', rel: 'noopener' }, 'ドライブで開く（.md）'));
   if (isStaff() || createdByMe(m)) acts.appendChild(armButton(el('button', { class: 'btn sm' }), '削除', 'もう一度押すと削除', () => deleteMinute(m)));
   const bodyBox = el('div', { class: 'md-body' }, el('p', { class: 'muted', text: '読み込み中…' }));

@@ -95,7 +95,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await p.locator('#taskTable .trow').count() === 2 && /期限切れ/.test(await p.textContent('#taskTable')), 'list shows both, the past due one flagged');
   ok(await p.locator('#taskPeople').count() === 0, 'no per-assignee table');
   // the edit form keeps what was typed when the list is redrawn (another row's change, refresh)
-  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('button:has-text("編集")').click();
+  await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('button:has-text("編集")').click(); await p.waitForSelector('#taskTable .trow-edit textarea'); await p.waitForTimeout(200);
   await p.fill('#taskTable .trow-edit textarea[aria-label="メモ"]', '入力途中のメモ');
   await p.evaluate(() => { renderTasks(); renderTasks(); });
   ok(await p.inputValue('#taskTable .trow-edit textarea[aria-label="メモ"]') === '入力途中のメモ', 'typed text survives a redraw');
@@ -127,6 +127,12 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   const mfile = Object.values(W.files).find((f) => /\.md$/.test(f.name));
   ok(mfile && mfile.name === '2026-10-09_対面お打ち合わせ.md' && ss.getSheetByName('議事録').cells[1][2] === '対面お打ち合わせ', 'saved: row in 議事録 + .md file in Drive');
   ok(await vis(p, '#minDoc .md-body strong') && /案B/.test(await p.textContent('#minDoc .md-body')), 'saved minutes displayed rendered');
+  {
+    const url = await p.evaluate(() => minuteUrl(S.minutes.find((x) => x.ID === minSel)));
+    ok(/[?]sheet=[^&]+&view=minutes&minute=[0-9a-f]+$/.test(url) && await vis(p, '#minDoc button:has-text("リンクをコピー")'), 'minute link: ' + url.replace(/^.*[?]/, '?'));
+    await p.click('#vt-board'); await p.goto(url); await p.waitForTimeout(1500);
+    ok(await vis(p, '#view-minutes') && /対面お打ち合わせ/.test(await p.textContent('#minDoc h2').catch(() => '')), 'opening the link shows that minute');
+  }
   await p.click('#btnMinAdd'); await p.waitForTimeout(300);
   await p.fill('#minDoc input[aria-label="タイトル"]', '社内メモ'); await p.fill('#minDoc input[aria-label="タグ"]', '社内');
   await p.fill('#minDoc textarea', 'ノンブルの位置を確認');
