@@ -37,9 +37,26 @@ function armButton(btn, label, armedLabel, fn) {
   });
   return btn;
 }
+/** while fn runs: the control is disabled and shows that it is working (a spinner and 「保存中…」 on buttons, a pulse on selects) */
+const BUSY_WORDS = { '保存': '保存中…', '追加': '追加中…', '削除': '削除中…', '登録': '登録中…', '更新': '更新中…', '送信': '送信中…' };
+function busyOn(btn) {
+  if (!btn) return null;
+  const was = { html: btn.tagName === 'BUTTON' ? btn.innerHTML : null };
+  btn.disabled = true; btn.classList.add('is-busy'); btn.setAttribute('aria-busy', 'true');
+  if (was.html !== null) {
+    const t = btn.textContent.trim(), w = BUSY_WORDS[t] || (/(を)?保存$/.test(t) ? '保存中…' : t);
+    btn.textContent = ''; btn.append(el('span', { class: 'spin', 'aria-hidden': 'true' }), w);
+  }
+  return was;
+}
+function busyOff(btn, was) {
+  if (!btn) return;
+  btn.disabled = false; btn.classList.remove('is-busy'); btn.removeAttribute('aria-busy');
+  if (was && was.html !== null) btn.innerHTML = was.html;
+}
 async function busy(btn, fn) {
-  if (btn) btn.disabled = true;
-  try { return await fn(); } catch (e) { toast(e.message, 'err'); if (e.code === 'stale') loadProject(); return null; } finally { if (btn) btn.disabled = false; }
+  const was = busyOn(btn);
+  try { return await fn(); } catch (e) { toast(e.message, 'err'); if (e.code === 'stale') loadProject(); return null; } finally { busyOff(btn, was); }
 }
 
 /* ---- views ---- */

@@ -428,6 +428,12 @@ body.locked .bellwrap { display: none !important; }
 body.locked .foot { display: none; }
 body:not(.editor) .edonly { display: none !important; }
 body.editor .viewonly { display: none !important; }
+.spin { display: inline-block; width: .95em; height: .95em; margin-right: .45em; vertical-align: -.12em; border: 2px solid currentColor; border-right-color: transparent; border-radius: 50%; animation: spin .7s linear infinite; }
+.btn.is-busy { cursor: progress; opacity: .85; }
+select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@keyframes busypulse { 50% { opacity: .45; } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 1.6s; } select.is-busy { animation: none; opacity: .6; } }
 </style>
 </head>
 <body>

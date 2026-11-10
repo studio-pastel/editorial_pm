@@ -112,6 +112,18 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('select.stsel').selectOption('完了'); await p.waitForTimeout(900);
   ok(ss.getSheetByName('タスク').cells[2][5] === '完了' && await p.locator('#taskTable .trow').count() === 1, 'status changed inline; 完了 hidden by the 未完了 filter');
   await p.screenshot({ path: path.join(__dirname, 'out', 'w_tasks.png') });
+  // saving shows a spinner and 「保存中…」, then the button comes back as it was
+  {
+    const r = await p.evaluate(async () => {
+      const b = el('button', { class: 'btn primary' }, '保存'); document.body.appendChild(b);
+      let go; const pr = busy(b, () => new Promise((res) => { go = res; }));
+      const during = { text: b.textContent, spin: !!b.querySelector('.spin'), dis: b.disabled, cls: b.classList.contains('is-busy') };
+      go(1); await pr;
+      const after = { text: b.textContent, spin: !!b.querySelector('.spin'), dis: b.disabled }; b.remove();
+      return { during, after };
+    });
+    ok(r.during.text === '保存中…' && r.during.spin && r.during.dis && r.during.cls && r.after.text === '保存' && !r.after.spin && !r.after.dis, 'busy button: ' + JSON.stringify(r));
+  }
   // minutes
   await p.click('#vt-minutes'); await p.click('#btnMinAdd'); await p.waitForTimeout(300);
   await p.fill('#minDoc input[aria-label="日付"]', '2026-10-09');
