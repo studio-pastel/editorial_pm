@@ -94,6 +94,20 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(tk[1][1] === '撮影リストを大学に共有' && ss.getSheetByName('タスク').getRange(2, 5).getDisplayValue() === '2026/10/23' && ss.getSheetByName('タスク').getRange(3, 5).getDisplayValue() === '2099/01/10', 'title without the @ and the date; due dates saved');
   ok(await p.locator('#taskTable .trow').count() === 2 && /期限切れ/.test(await p.textContent('#taskTable')), 'list shows both, the past due one flagged');
   ok(await p.locator('#taskPeople').count() === 0, 'no per-assignee table');
+  // Markdown in the task list; a memo past 5 lines is folded with a fade and opens in place
+  await p.evaluate(() => { const x = S.tasks[0]; x['タスク'] = '**撮影**リストを共有'; x['メモ'] = '- **一行目**\n- 二\n- 三\n- 四\n- 五\n- 六\n- 七\n- 八'; S.tasks[1]['メモ'] = '短い`メモ`'; renderTasks(); });
+  await p.waitForSelector('#taskTable .tmemo strong'); await p.waitForTimeout(300);
+  const md = await p.evaluate(() => {
+    const rows = [...document.querySelectorAll('#taskTable .trow')], a = rows.find((r) => /撮影/.test(r.textContent)), b = rows.find((r) => /短い/.test(r.textContent));
+    const w = a.querySelector('.tmemo-wrap'), m = a.querySelector('.tmemo');
+    return { title: !!a.querySelector('.ttitle strong'), li: m.querySelectorAll('li').length, long: w.classList.contains('is-long'), folded: m.clientHeight < m.scrollHeight, tog: !a.querySelector('.tmore').hidden, shortTog: b.querySelector('.tmore').hidden, code: !!b.querySelector('.tmemo code') };
+  });
+  ok(md.title && md.li === 8 && md.long && md.folded && md.tog && md.shortTog && md.code, 'task Markdown + fold past 5 lines: ' + JSON.stringify(md));
+  await p.click('#taskTable .tmore:not([hidden])');
+  ok(await p.evaluate(() => { const m = [...document.querySelectorAll('#taskTable .tmemo-wrap')].find((w) => w.classList.contains('is-long')); return m.classList.contains('is-open') && m.querySelector('.tmemo').clientHeight >= m.querySelector('.tmemo').scrollHeight - 1 && m.querySelector('.tmore').textContent === 'たたむ'; }), 'opening shows the whole memo');
+  await p.evaluate(() => renderTasks()); await p.waitForTimeout(300);
+  ok(await p.evaluate(() => !!document.querySelector('#taskTable .tmemo-wrap.is-open')), 'opened memo stays open across a redraw');
+  await p.evaluate(() => { S.tasks[0]['タスク'] = '撮影リストを大学に共有'; S.tasks[0]['メモ'] = ''; S.tasks[1]['メモ'] = ''; renderTasks(); });
   // the edit form keeps what was typed when the list is redrawn (another row's change, refresh)
   await p.locator('#taskTable .trow', { hasText: '印刷会社' }).locator('button:has-text("編集")').click(); await p.waitForSelector('#taskTable .trow-edit textarea'); await p.waitForTimeout(200);
   await p.fill('#taskTable .trow-edit textarea[aria-label="メモ"]', '入力途中のメモ');

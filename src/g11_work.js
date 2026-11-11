@@ -144,6 +144,36 @@ function taskWhoSelect(t) {
   });
   return sel;
 }
+/* task text in Markdown: the title inline (bold, links, code), the memo as full Markdown.
+   A memo longer than 5 lines is shown folded with a fade, and opens/closes in place. */
+const taskMemoOpen = new Set();   // task IDs whose memo is unfolded (kept across redraws)
+function mdInline(text) { return window.marked && window.DOMPurify ? DOMPurify.sanitize(marked.parseInline(String(text || ''))) : null; }
+function taskTitleEl(x) {
+  const b = el('b', { class: 'ttitle', text: x['タスク'] || '' });
+  loadMd().then((ok) => { const h = ok && mdInline(x['タスク']); if (h !== null && h !== false && /[*_`\[~<]/.test(x['タスク'] || '')) b.innerHTML = h; });
+  return b;
+}
+function taskMemoEl(x) {
+  const body = el('div', { class: 'tmemo md-body' }), wrap = el('div', { class: 'tmemo-wrap' }, body);
+  const tog = el('button', { class: 'linklike tmore', type: 'button', hidden: true });
+  wrap.appendChild(tog);
+  const sync = () => {
+    const open = taskMemoOpen.has(x.ID);
+    wrap.classList.toggle('is-open', open);
+    tog.textContent = open ? 'たたむ' : '続きを表示';
+    tog.setAttribute('aria-expanded', String(open));
+  };
+  tog.addEventListener('click', () => { if (taskMemoOpen.has(x.ID)) taskMemoOpen.delete(x.ID); else taskMemoOpen.add(x.ID); sync(); });
+  const measure = () => {
+    if (!wrap.isConnected) return;
+    const lh = parseFloat(getComputedStyle(body).lineHeight) || 20;
+    const long = body.scrollHeight > lh * 5 + 2;
+    wrap.classList.toggle('is-long', long); tog.hidden = !long; sync();
+  };
+  body.textContent = x['メモ'];
+  renderMdInto(body, x['メモ']).then(() => requestAnimationFrame(measure));
+  return wrap;
+}
 function taskStateSelect(t) {
   const sel = el('select', { class: 'stsel st-' + (TASK_CLASS[t['状態']] || 'todo'), 'aria-label': (t['タスク'] || '') + 'の状態' });
   TASK_STATES.forEach((s) => sel.appendChild(el('option', { value: s, text: s })));
@@ -168,7 +198,7 @@ function taskForm(t) {
     '担当': el('input', { type: 'text', value: t['担当'] || '', list: 'peopleList', placeholder: 'メンバーを選ぶか名前を入力', 'aria-label': '担当' }),
     '期限': el('input', { type: 'date', value: isoOf(t['期限']), 'aria-label': '期限' }),
     '状態': (() => { const s = el('select', { 'aria-label': '状態' }); TASK_STATES.forEach((k) => s.appendChild(el('option', { value: k, text: k }))); s.value = t['状態'] || '未着手'; return s; })(),
-    'メモ': el('textarea', { rows: 2, 'aria-label': 'メモ' })
+    'メモ': el('textarea', { rows: 4, 'aria-label': 'メモ', placeholder: 'Markdownで書けます（- 箇条書き、**太字**、[リンク](https://…)、- [ ] チェック）' })
   };
   F['メモ'].value = t['メモ'] || '';
   const save = el('button', { class: 'btn primary' }, t.ID ? '保存' : '追加');
@@ -239,12 +269,12 @@ function renderTasks() {
     t.appendChild(el('li', { class: 'trow' + (x['状態'] === '完了' ? ' is-done' : '') },
       el('div', { class: 'tstate' }, taskStateSelect(x)),
       el('div', { class: 'tmain' },
-        el('b', { class: 'ttitle', text: x['タスク'] }),
+        taskTitleEl(x),
         el('div', { class: 'tmeta' },
           el('label', { class: 'twho' }, el('span', { class: 'muted', text: '担当 ' }), taskWhoSelect(x)),
           el('span', { class: over ? 'bad' : '' }, el('span', { class: 'muted', text: '期限 ' }), due ? fmtMD(due) : 'なし', over ? el('b', { class: 'overdue', text: ' 期限切れ' }) : null),
           el('span', { class: 'muted small', text: '更新 ' + [x['更新者'], String(x['更新日時'] || '').replace(/^\d{4}\//, '').replace(/:\d{2}$/, '')].filter(Boolean).join(' ') })),
-        x['メモ'] ? el('p', { class: 'tmemo', text: x['メモ'] }) : null),
+        x['メモ'] ? taskMemoEl(x) : null),
       el('div', { class: 'tacts' }, el('button', { class: 'btn xs', onclick: () => { taskEditing = x.ID; renderTasks(); } }, '編集'))));
   });
   if (!list.length) t.appendChild(el('li', { class: 'muted tempty', text: S.tasks.length ? '条件に合うタスクはありません' : 'タスクはまだありません。上の欄に入力して Enter で登録できます' }));
