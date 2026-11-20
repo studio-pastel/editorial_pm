@@ -350,6 +350,15 @@ function renderFigures() {
   const fsel = $('figFilter');
   if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
   const want = fsel.value;
+  // 提供元・撮影者: the names in use (rebuilt each time, keeping the choice), plus 「（未設定）」
+  const ssel = $('figSource'), pick = ssel.value;
+  const names = [...new Set(S.figures.map((f) => String(f['提供元・撮影者'] || '').trim()).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'ja'));
+  ssel.textContent = '';
+  ssel.appendChild(el('option', { value: '', text: 'すべて' }));
+  names.forEach((n) => ssel.appendChild(el('option', { value: 'n:' + n, text: n })));
+  ssel.appendChild(el('option', { value: '-', text: '（未設定）' }));
+  ssel.value = [...ssel.options].some((o) => o.value === pick) ? pick : '';
+  const src = ssel.value, srcOk = (f) => { const v = String(f['提供元・撮影者'] || '').trim(); return !src || (src === '-' ? !v : v === src.slice(2)); };
   const order = orderKeys(Math.max(NS(), 2)).map(pageLabel);
   const byPage = (a, b) => order.indexOf(a['ページ']) - order.indexOf(b['ページ']) || String(a['図版番号']).localeCompare(String(b['図版番号']), 'ja', { numeric: true });
   const col = figSort.key;
@@ -359,7 +368,7 @@ function renderFigures() {
     if (!x !== !y) return x ? -1 : 1;                        // blanks always last
     return figSort.dir * x.localeCompare(y, 'ja', { numeric: true }) || byPage(a, b);
   };
-  const list = S.figures.filter((f) => !want || (f['手配状況'] || '未定') === want).slice().sort(cmp);
+  const list = S.figures.filter((f) => (!want || (f['手配状況'] || '未定') === want) && srcOk(f)).slice().sort(cmp);
   const t = $('figTable'); t.textContent = '';
   const head = (h) => {
     const key = FIG_SORTABLE[h];
@@ -566,6 +575,7 @@ function wirePM() {
   }));
   $('cSearch').addEventListener('input', renderComments);
   $('figFilter').addEventListener('change', renderFigures);
+  $('figSource').addEventListener('change', renderFigures);
   $('btnFigAdd').addEventListener('click', () => showFigForm(null));
   $('progSection').addEventListener('change', renderProgress);
   $('progOpen').addEventListener('change', renderProgress);
