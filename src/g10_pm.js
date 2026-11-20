@@ -343,14 +343,33 @@ function figureSection(label) {
   draw(); sec.appendChild(box);
   return sec;
 }
+/* sort of the figure list: a column header toggles 昇順 → 降順; ties fall back to page order */
+let figSort = { key: 'ページ', dir: 1 };
+const FIG_SORTABLE = { 'ページ': 'ページ', '番号': '図版番号', '種別': '種別', '手配状況': '手配状況', '提供元・撮影者': '提供元・撮影者', 'クレジット': 'クレジット', '更新': '更新日時' };
 function renderFigures() {
   const fsel = $('figFilter');
   if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
   const want = fsel.value;
   const order = orderKeys(Math.max(NS(), 2)).map(pageLabel);
-  const list = S.figures.filter((f) => !want || (f['手配状況'] || '未定') === want).slice().sort((a, b) => order.indexOf(a['ページ']) - order.indexOf(b['ページ']) || String(a['図版番号']).localeCompare(String(b['図版番号']), 'ja', { numeric: true }));
+  const byPage = (a, b) => order.indexOf(a['ページ']) - order.indexOf(b['ページ']) || String(a['図版番号']).localeCompare(String(b['図版番号']), 'ja', { numeric: true });
+  const col = figSort.key;
+  const cmp = (a, b) => {
+    if (col === 'ページ') return figSort.dir * byPage(a, b);
+    const x = String((col === '手配状況' ? a[col] || '未定' : a[col]) || '').trim(), y = String((col === '手配状況' ? b[col] || '未定' : b[col]) || '').trim();
+    if (!x !== !y) return x ? -1 : 1;                        // blanks always last
+    return figSort.dir * x.localeCompare(y, 'ja', { numeric: true }) || byPage(a, b);
+  };
+  const list = S.figures.filter((f) => !want || (f['手配状況'] || '未定') === want).slice().sort(cmp);
   const t = $('figTable'); t.textContent = '';
-  t.appendChild(el('thead', null, el('tr', null, ['ページ', '番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', '更新', ''].map((h) => el('th', { text: h })))));
+  const head = (h) => {
+    const key = FIG_SORTABLE[h];
+    if (!key) return el('th', { text: h });
+    const on = figSort.key === key;
+    return el('th', { 'aria-sort': on ? (figSort.dir > 0 ? 'ascending' : 'descending') : 'none' },
+      el('button', { class: 'sorth' + (on ? ' on' : ''), type: 'button', title: h + 'で並べ替え', onclick: () => { figSort = on ? { key, dir: -figSort.dir } : { key, dir: 1 }; renderFigures(); } },
+        h, el('span', { class: 'sortmark', 'aria-hidden': 'true', text: on ? (figSort.dir > 0 ? '▲' : '▼') : '↕' })));
+  };
+  t.appendChild(el('thead', null, el('tr', null, ['ページ', '番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', '更新', ''].map(head))));
   const tb = el('tbody');
   list.forEach((f) => {
     const k = keyOfLabel(f['ページ']);

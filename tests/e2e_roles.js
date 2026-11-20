@@ -86,6 +86,22 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.locator('#dBody .form select[aria-label="手配状況"]').selectOption('依頼中');
   await p.click('#dBody .form button:has-text("追加")'); await p.waitForTimeout(800);
   ok(ss.getSheetByName('図版').cells[1][1] === 'P2' && ss.getSheetByName('図版').cells[1][4] === 'キャンパス全景（夕景）', 'figure saved for P2');
+  {
+    // the figure list sorts by a clicked column (提供元・撮影者 here); blanks stay last, ties keep page order
+    const r = await p.evaluate(async () => {
+      const keep = S.figures;
+      S.figures = [{ ID: 'a', 'ページ': 'P8', '提供元・撮影者': '矢野さん' }, { ID: 'b', 'ページ': 'P2', '提供元・撮影者': '衣笠さん' }, { ID: 'c', 'ページ': 'P4', '提供元・撮影者': '' }, { ID: 'd', 'ページ': 'P3', '提供元・撮影者': '矢野さん' }];
+      setView('figures');
+      const pages = () => [...document.querySelectorAll('#figTable tbody tr td:first-child')].map((td) => td.textContent);
+      const th = () => [...document.querySelectorAll('#figTable th button')].find((b) => /提供元/.test(b.textContent));
+      const first = pages();
+      th().click(); const asc = pages(); const sortAttr = th().closest('th').getAttribute('aria-sort');
+      th().click(); const desc = pages();
+      S.figures = keep; figSort = { key: 'ページ', dir: 1 }; renderFigures(); setView('board');
+      return { first, asc, desc, sortAttr };
+    });
+    ok(r.first.join() === 'P2,P3,P4,P8' && r.asc.join() === 'P2,P3,P8,P4' && r.desc.join() === 'P3,P8,P2,P4' && r.sortAttr === 'ascending', 'figure list sorts by 提供元・撮影者: ' + JSON.stringify(r));
+  }
   await p.screenshot({ path: path.join(__dirname, 'out', 'pm_detail.png') });
   // expenses
   await p.click('#dClose'); await p.click('#vt-expenses'); await p.click('#btnExpAdd');
