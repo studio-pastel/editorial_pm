@@ -110,7 +110,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
     });
     ok(r.first.join() === 'P2,P3,P4,P8' && r.asc.join() === 'P2,P3,P8,P4' && r.desc.join() === 'P3,P8,P2,P4' && r.sortAttr === 'ascending', 'figure list sorts by 提供元・撮影者: ' + JSON.stringify(r));
     ok(r.opts.join() === 'すべて,衣笠さん,矢野さん,（未設定）' && r.yano.slice().sort().join() === 'P3,P8' && r.none.join() === 'P4', 'figure list filters by 提供元・撮影者: ' + JSON.stringify({ opts: r.opts, yano: r.yano, none: r.none }));
-    ok(r.links.length === 1 && /^ポートレート撮影予約ページ/.test(r.links[0][0]) && r.links[0][1] === 'https://example.com/shoot/' && r.links[0][2] === '_blank', 'link at the top of the 図版 tab from 設定: ' + JSON.stringify(r.links));
+    ok(r.links.length === 1 && /ポートレート撮影予約ページ/.test(r.links[0][0]) && r.links[0][1] === 'https://example.com/shoot/' && r.links[0][2] === '_blank', 'link at the top of the 図版 tab from 設定: ' + JSON.stringify(r.links));
   }
   await p.screenshot({ path: path.join(__dirname, 'out', 'pm_detail.png') });
   // expenses
