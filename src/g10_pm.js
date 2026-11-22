@@ -548,7 +548,8 @@ function showExpForm(e) {
   const people = (S.people && S.people.length ? S.people : (S.members || []).map((m) => ({ name: m['名前'] || m.name, email: m['メール'] || m.email }))).filter((p) => p && p.name);
   who.appendChild(el('option', { value: '', text: '（未選択）' }));
   people.forEach((p) => who.appendChild(el('option', { value: p.name, text: p.name })));
-  const curWho = e.ID ? payerOf(e) : (S.me ? S.me.name : '');
+  const meName = (() => { const em = String((S.me && S.me.email) || AUTH.email || '').toLowerCase(); const p = people.find((x) => String(x.email || '').toLowerCase() === em); return p ? p.name : ((S.me && S.me.name) || AUTH.name || ''); })();
+  const curWho = e.ID ? payerOf(e) : meName;     // a new expense: the signed-in person
   if (curWho && !people.some((p) => p.name === curWho)) who.appendChild(el('option', { value: curWho, text: curWho + '（メンバー外）' }));
   who.value = curWho;
   const date = el('input', { type: 'date', 'aria-label': '日付', value: isoOfSlash(e['日付']) || isoOfSlash(ymdSlash(new Date())) });
@@ -615,12 +616,12 @@ function showExpForm(e) {
   box.appendChild(el('div', { class: 'expform' },
     el('h3', { text: e.ID ? '経費を編集' : '経費を追加' }),
     el('div', { class: 'field' }, el('span', { text: '区分' }), kinds),
-    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('支払者', who)),
-    el('div', { class: 'exprow' }, f('内容', what, 'grow'), f('支払先', payee)),
-    el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
+    el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('内容', what, 'grow')),
+    el('div', { class: 'exprow' }, f('支払先', payee), f('金額（税込）', money, 'amt'), f('支払者', who)),
+    el('div', { class: 'exprow' }, el('div', { class: 'field grow' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
     file, acts));
   box.scrollIntoView({ block: 'nearest' });
-  setTimeout(() => money.querySelector('input').focus(), 0);
+  setTimeout(() => what.focus(), 0);
 }
 
 /* ---- members ---- */

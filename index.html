@@ -83,7 +83,7 @@ button { cursor: pointer; }
 .grid-form { display: grid; grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); gap: 10px 14px; }
 .field { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
 .field > span { font-size: 12px; color: var(--mute); }
-.field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 6px 8px; min-width: 0; width: 100%; }
+.field input, .field select, .field textarea { border: 1px solid var(--line); background: var(--panel); border-radius: 5px; padding: 6px 8px; min-width: 0; width: 100%; }
 .field input[type="color"] { padding: 2px; height: 34px; }
 .field textarea { min-height: 84px; font-family: var(--font-mono); font-size: 12px; resize: vertical; }
 .row { display: flex; flex-wrap: wrap; gap: 8px; align-items: flex-end; }
@@ -248,7 +248,7 @@ table.grid tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transp
 .reply { margin: 8px 0 0 14px; padding-left: 10px; border-left: 2px solid var(--line); }
 .cacts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
 .replybox, .cform { display: flex; flex-direction: column; gap: 6px; margin-top: 8px; }
-.replybox textarea, .cform textarea, .form textarea { width: 100%; border: 1px solid var(--line); background: var(--bg); border-radius: 5px; padding: 6px 8px; font: inherit; resize: vertical; }
+.replybox textarea, .cform textarea, .form textarea { width: 100%; border: 1px solid var(--line); background: var(--panel); border-radius: 5px; padding: 6px 8px; font: inherit; resize: vertical; }
 .replybox .btn, .cform .btn { align-self: flex-end; }
 .fcard { border: 1px solid var(--line); border-radius: 6px; padding: 8px 10px; margin-bottom: 8px; background: var(--panel); }
 .fcard p { margin: 4px 0 0; overflow-wrap: anywhere; }
@@ -258,7 +258,7 @@ table.grid tr:hover td { background: color-mix(in srgb, var(--accent) 5%, transp
 .formacts { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; }
 .memadd { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px 12px; align-items: end; margin-bottom: 10px; }
 .memadd .field input, .memadd .field select { width: 100%; }
-table.grid td input, table.grid td select { border: 1px solid var(--line); background: var(--bg); border-radius: 4px; padding: 3px 6px; max-width: 16em; }
+table.grid td input, table.grid td select { border: 1px solid var(--line); background: var(--panel); border-radius: 4px; padding: 3px 6px; max-width: 16em; }
 
 /* expenses */
 .kpis { display: flex; flex-wrap: wrap; gap: 10px; }
@@ -462,7 +462,7 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
 body.is-stale .syncing { display: inline-flex; }
 .expform { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; margin: 8px 0 14px; background: var(--bg); display: grid; gap: 14px; }
 .expform h3 { margin: 0; font-size: 14px; }
-.exprow { display: grid; grid-template-columns: minmax(180px, 1.2fr) minmax(150px, 1fr) minmax(150px, 1fr); gap: 12px; }
+.exprow { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; }
 .exprow .grow { grid-column: span 2; }
 @media (max-width: 640px) { .exprow { grid-template-columns: 1fr; } .exprow .grow { grid-column: auto; } }
 .seg { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -473,7 +473,7 @@ body.is-stale .syncing { display: inline-flex; }
 .yen { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); overflow: hidden; }
 .yen:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
 .yen-mark { display: flex; align-items: center; padding: 0 10px; font-weight: 700; color: var(--mute); background: color-mix(in srgb, var(--line) 35%, transparent); }
-.yen input { border: 0 !important; box-shadow: none !important; outline: none; flex: 1; min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; padding: 6px 10px; background: transparent; color: var(--fg); }
+.yen input { border: 0 !important; box-shadow: none !important; outline: none; flex: 1; min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 15px; line-height: 1.6; font-variant-numeric: tabular-nums; padding: 6px 10px; background: transparent; color: var(--fg); }
 .rec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 td.nowrap { white-space: nowrap; }
 .datebox { display: grid; gap: 4px; }
@@ -3180,7 +3180,8 @@ function showExpForm(e) {
   const people = (S.people && S.people.length ? S.people : (S.members || []).map((m) => ({ name: m['名前'] || m.name, email: m['メール'] || m.email }))).filter((p) => p && p.name);
   who.appendChild(el('option', { value: '', text: '（未選択）' }));
   people.forEach((p) => who.appendChild(el('option', { value: p.name, text: p.name })));
-  const curWho = e.ID ? payerOf(e) : (S.me ? S.me.name : '');
+  const meName = (() => { const em = String((S.me && S.me.email) || AUTH.email || '').toLowerCase(); const p = people.find((x) => String(x.email || '').toLowerCase() === em); return p ? p.name : ((S.me && S.me.name) || AUTH.name || ''); })();
+  const curWho = e.ID ? payerOf(e) : meName;     // a new expense: the signed-in person
   if (curWho && !people.some((p) => p.name === curWho)) who.appendChild(el('option', { value: curWho, text: curWho + '（メンバー外）' }));
   who.value = curWho;
   const date = el('input', { type: 'date', 'aria-label': '日付', value: isoOfSlash(e['日付']) || isoOfSlash(ymdSlash(new Date())) });
@@ -3247,12 +3248,12 @@ function showExpForm(e) {
   box.appendChild(el('div', { class: 'expform' },
     el('h3', { text: e.ID ? '経費を編集' : '経費を追加' }),
     el('div', { class: 'field' }, el('span', { text: '区分' }), kinds),
-    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('支払者', who)),
-    el('div', { class: 'exprow' }, f('内容', what, 'grow'), f('支払先', payee)),
-    el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
+    el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('内容', what, 'grow')),
+    el('div', { class: 'exprow' }, f('支払先', payee), f('金額（税込）', money, 'amt'), f('支払者', who)),
+    el('div', { class: 'exprow' }, el('div', { class: 'field grow' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
     file, acts));
   box.scrollIntoView({ block: 'nearest' });
-  setTimeout(() => money.querySelector('input').focus(), 0);
+  setTimeout(() => what.focus(), 0);
 }
 
 /* ---- members ---- */
