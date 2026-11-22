@@ -445,6 +445,9 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
 .sorth:hover, .sorth.on { color: var(--fg); }
 .sorth:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .sortmark { font-size: 9px; opacity: .55; } .sorth.on .sortmark { opacity: 1; color: var(--accent); }
+.figlinks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
+.figlinks a { text-decoration: none; }
+.figlinks .ext { opacity: .6; }
 </style>
 </head>
 <body>
@@ -708,6 +711,7 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
         <label class="field inline"><span>提供元・撮影者</span><select id="figSource"></select></label>
         <button class="btn primary can-figure" id="btnFigAdd">図版を追加</button>
       </div>
+      <div class="figlinks" id="figLinks" hidden></div>
       <div id="figFormBox"></div>
       <div class="tablewrap"><table class="grid" id="figTable"></table></div>
     </section>
@@ -2896,7 +2900,24 @@ function figureSection(label) {
 /* sort of the figure list: a column header toggles 昇順 → 降順; ties fall back to page order */
 let figSort = { key: 'ページ', dir: 1 };
 const FIG_SORTABLE = { 'ページ': 'ページ', '番号': '図版番号', '種別': '種別', '手配状況': '手配状況', '提供元・撮影者': '提供元・撮影者', 'クレジット': 'クレジット', '更新': '更新日時' };
+/** links shown at the top of the 図版 tab, from the 設定 row 「図版タブのリンク」: one per line, 「ラベル URL」 */
+function figTabLinks() {
+  const row = (S.settingsRows || []).find((r) => r && /^図版(タブの)?リンク$/.test(String(r[0] || '').trim()));
+  if (!row) return [];
+  return String(row[1] || '').split(/\r?\n/).map((line) => {
+    const m = line.match(/https?:\/\/[^\s　]+/);
+    if (!m) return null;
+    const label = line.replace(m[0], '').replace(/[|｜:：]\s*$/, '').trim();
+    return { url: m[0], label: label || m[0] };
+  }).filter(Boolean);
+}
+function renderFigLinks() {
+  const box = $('figLinks'), links = figTabLinks();
+  box.textContent = ''; box.hidden = !links.length;
+  links.forEach((l) => box.appendChild(el('a', { class: 'btn sm', href: l.url, target: '_blank', rel: 'noopener' }, l.label, el('span', { class: 'ext', 'aria-hidden': 'true', text: ' ↗' }))));
+}
 function renderFigures() {
+  renderFigLinks();
   const fsel = $('figFilter');
   if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
   const want = fsel.value;

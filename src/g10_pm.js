@@ -346,7 +346,24 @@ function figureSection(label) {
 /* sort of the figure list: a column header toggles 昇順 → 降順; ties fall back to page order */
 let figSort = { key: 'ページ', dir: 1 };
 const FIG_SORTABLE = { 'ページ': 'ページ', '番号': '図版番号', '種別': '種別', '手配状況': '手配状況', '提供元・撮影者': '提供元・撮影者', 'クレジット': 'クレジット', '更新': '更新日時' };
+/** links shown at the top of the 図版 tab, from the 設定 row 「図版タブのリンク」: one per line, 「ラベル URL」 */
+function figTabLinks() {
+  const row = (S.settingsRows || []).find((r) => r && /^図版(タブの)?リンク$/.test(String(r[0] || '').trim()));
+  if (!row) return [];
+  return String(row[1] || '').split(/\r?\n/).map((line) => {
+    const m = line.match(/https?:\/\/[^\s　]+/);
+    if (!m) return null;
+    const label = line.replace(m[0], '').replace(/[|｜:：]\s*$/, '').trim();
+    return { url: m[0], label: label || m[0] };
+  }).filter(Boolean);
+}
+function renderFigLinks() {
+  const box = $('figLinks'), links = figTabLinks();
+  box.textContent = ''; box.hidden = !links.length;
+  links.forEach((l) => box.appendChild(el('a', { class: 'btn sm', href: l.url, target: '_blank', rel: 'noopener' }, l.label, el('span', { class: 'ext', 'aria-hidden': 'true', text: ' ↗' }))));
+}
 function renderFigures() {
+  renderFigLinks();
   const fsel = $('figFilter');
   if (!fsel.options.length) { fsel.appendChild(el('option', { value: '', text: 'すべて' })); FIG_STATES.forEach((s) => fsel.appendChild(el('option', { value: s, text: s }))); }
   const want = fsel.value;
