@@ -137,7 +137,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   ok(await p.inputValue('#expFormBox input[aria-label="金額（税込）"]') === '55,000', 'full-width amount becomes half-width with commas: ' + await p.inputValue('#expFormBox input[aria-label="金額（税込）"]'));
   await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
   const er = ss.getSheetByName('経費').cells[1];
-  ok(er[5] === 55000 && er[2] === '宿泊費' && er[6] === '制作 太郎' && er[8] === '未精算' && /^\d{4}\/\d{2}\/\d{2}$/.test(await p.locator('#expTable tbody td').first().textContent()) && /¥55,000/.test(await p.textContent('#expSummary')), 'expense saved and totalled: ' + JSON.stringify(er.slice(1, 9)));
+  ok(er[5] === 55000 && er[2] === '宿泊費' && er[6] === '制作 太郎' && er[8] === '未精算' && /^\d{4}\/\d{2}\/\d{2}$/.test(await p.locator('#expTable tbody td').first().textContent()) && /制作 太郎/.test(await p.textContent('#expSummary .owename')) && /¥55,000/.test(await p.textContent('#expSummary .oweamt')), 'expense saved and totalled: ' + JSON.stringify(er.slice(1, 9)));
   // no amount is fine; the list says so. The summary sits under the list
   await p.click('#btnExpAdd'); await p.locator('#expFormBox input[aria-label="内容"]').fill('レンタル見積り中');
   await p.locator('#expFormBox textarea[aria-label="備考"]').fill('金額は後日');
@@ -146,9 +146,10 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
   ok(ss.getSheetByName('経費').cells.length === 3 && /金額未入力/.test(await p.textContent('#expTable')), 'expense without an amount is saved and marked 金額未入力');
   ok(/金額は後日/.test(await p.textContent('#expTable')), '備考 shown under 内容');
-  ok(/未精算/.test(await p.textContent('#expSummary')) && /支払者別の未精算/.test(await p.textContent('#expSummary')), 'summary shows 未精算 and per-payer');
-  await p.locator('#expTable button.chipbtn').first().click(); await p.waitForTimeout(700);
+  ok(await p.locator('#expSummary .owelist li').count() === 2 && /金額未入力/.test(await p.textContent('#expSummary .owelist')) && await p.locator('#expSummary .kpi, #expSummary .bars').count() === 0, 'per-payer 未精算 card lists each item; no KPIs or bars');
+  await p.locator('#expTable button.pillbtn').first().click(); await p.waitForTimeout(700);
   ok(ss.getSheetByName('経費').cells.slice(1).some((r) => r[8] === '精算済'), 'one click in the list marks 精算済');
+  await p.locator('#view-expenses').screenshot({ path: path.join(__dirname, 'out', 'pm_expview.png') });
   ok(await p.evaluate(() => { const a = document.getElementById('expTable').getBoundingClientRect().top, b = document.getElementById('expSummary').getBoundingClientRect().top; return b > a; }), 'summary is below the list');
   await p.screenshot({ path: path.join(__dirname, 'out', 'pm_expenses.png') });
   // progress view
@@ -174,7 +175,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   W.G.flushAll_(Date.now() + 2 * 86400e3);
   ok(W.mails.length === 1 && W.mails[0].to === 'owner@example.com' && /page=P2/.test(W.mails[0].body), 'at the next 18:00 社内 gets a mail with a link to P2');
   await p.click('#dClose'); await p.click('#vt-expenses'); await p.waitForTimeout(300);
-  ok(!(await vis(p, '#btnExpAdd')) && /¥55,000/.test(await p.textContent('#expSummary')), 'client reads expenses, cannot add');
+  ok(!(await vis(p, '#btnExpAdd')) && /¥55,000/.test(await p.textContent('#expTable')), 'client reads expenses, cannot add');
 
   /* ---------- external ---------- */
   const cExt = await mkctx('T_EXT');

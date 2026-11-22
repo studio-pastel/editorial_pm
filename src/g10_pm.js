@@ -463,33 +463,35 @@ const toHalfDigits = (v) => String(v || '').replace(/[０-９]/g, (c) => String.
 const amount = (e) => { const n = Number(toHalfDigits(e['金額（税込）'])); return isFinite(n) ? n : 0; };
 const ymdSlash = (d) => d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
 /* 支払者 and 精算 (a sheet made before may still say 担当／承認 until the relay renames them) */
+const hasAmount = (e) => String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '';
 const payerOf = (e) => String(e['支払者'] != null ? e['支払者'] : (e['担当'] || ''));
 const settledOf = (e) => (e['精算'] != null ? e['精算'] : e['承認']) === '精算済';
 const isoOfSlash = (v) => { const m = String(v || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : ''; };
 function renderExpenses() {
   const list = (S.expenses || []).slice();
   const sum = $('expSummary'); sum.textContent = '';
-  const total = list.reduce((a, e) => a + amount(e), 0);
-  const ym = ymdSlash(new Date()).slice(0, 7);
-  const month = list.filter((e) => isoOfSlash(e['日付']).slice(0, 7).replace('-', '/') === ym).reduce((a, e) => a + amount(e), 0);
-  sum.appendChild(el('div', { class: 'kpis' },
-    el('div', { class: 'kpi' }, el('span', { text: '合計' }), el('b', { text: yen(total) })),
-    el('div', { class: 'kpi' }, el('span', { text: '今月' }), el('b', { text: yen(month) })),
-    el('div', { class: 'kpi warn' }, el('span', { text: '未精算' }), el('b', { text: yen(list.filter((e) => !settledOf(e)).reduce((a, e) => a + amount(e), 0)) })),
-    el('div', { class: 'kpi' }, el('span', { text: '件数' }), el('b', { text: list.length + '件' }))));
-  const byKind = {}; list.forEach((e) => { const k = e['区分'] || '未分類'; byKind[k] = (byKind[k] || 0) + amount(e); });
-  const max = Math.max(1, ...Object.values(byKind));
-  sum.appendChild(el('div', { class: 'bars' }, Object.keys(byKind).sort((a, b) => byKind[b] - byKind[a]).map((k) => el('div', { class: 'brow' }, el('span', { text: k }), el('div', { class: 'btrack' }, el('i', { style: 'width:' + (byKind[k] / max * 100).toFixed(1) + '%' })), el('b', { text: yen(byKind[k]) })))));
-  const owe = {}; list.filter((e) => !settledOf(e)).forEach((e) => { const k = payerOf(e) || '（支払者なし）'; owe[k] = (owe[k] || 0) + amount(e); });
-  if (Object.keys(owe).length) {
-    sum.appendChild(el('h3', { class: 'subh', text: '支払者別の未精算' }));
-    sum.appendChild(el('div', { class: 'owe' }, Object.keys(owe).sort((a, b) => owe[b] - owe[a]).map((k) => el('div', { class: 'owerow' }, el('span', { text: k }), el('b', { text: yen(owe[k]) })))));
-  }
+  // 未精算 per payer: the total first, then each item (date, what, amount)
+  const owe = {};
+  list.filter((e) => !settledOf(e)).forEach((e) => { const k = payerOf(e) || '（支払者なし）'; (owe[k] = owe[k] || []).push(e); });
+  const tot = (xs) => xs.reduce((a, e) => a + amount(e), 0);
+  const names = Object.keys(owe).sort((a, b) => tot(owe[b]) - tot(owe[a]));
+  if (!names.length) sum.appendChild(el('p', { class: 'muted', text: '未精算の経費はありません' }));
+  else sum.appendChild(el('div', { class: 'owecards' }, names.map((k) => {
+    const items = owe[k].slice().sort((a, b) => (isoOfSlash(a['日付']) || '9999').localeCompare(isoOfSlash(b['日付']) || '9999'));
+    const blank = items.filter((e) => !hasAmount(e)).length;
+    return el('div', { class: 'owecard' },
+      el('div', { class: 'owehead' }, el('span', { class: 'owename', text: k }), el('span', { class: 'oweamt', text: yen(tot(items)) })),
+      el('div', { class: 'owesub', text: '未精算 ' + items.length + '件' + (blank ? '（うち金額未入力 ' + blank + '件）' : '') }),
+      el('ul', { class: 'owelist' }, items.map((e) => el('li', null,
+        el('span', { class: 'od', text: e['日付'] ? String(e['日付']).replace(/^\d{4}\//, '') : '日付未定' }),
+        el('span', { class: 'ow', text: e['内容'] || e['区分'] || '' }),
+        el('span', { class: 'oa' + (hasAmount(e) ? '' : ' blank'), text: hasAmount(e) ? yen(amount(e)) : '金額未入力' })))));
+  })));
   const t = $('expTable'); t.textContent = '';
   t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '精算', '領収書', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
   const tb = el('tbody');
   list.sort((a, b) => isoOfSlash(b['日付']).localeCompare(isoOfSlash(a['日付']))).forEach((e) => {
-    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap' }, e['内容'] || '', e['備考'] ? el('div', { class: 'note', text: e['備考'] }) : null), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: payerOf(e) }),
+    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap' }, el('div', { class: 'expwhat', text: e['内容'] || '' }), e['備考'] ? el('div', { class: 'note', text: e['備考'] }) : null), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, hasAmount(e) ? yen(amount(e)) : el('span', { class: 'pill ng', text: '金額未入力' })), el('td', { text: payerOf(e) }),
       el('td', null, settleChip(e)),
       el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
       el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
@@ -500,8 +502,8 @@ function renderExpenses() {
 /** 精算 in the list: 社内 switches it with one click */
 function settleChip(e) {
   const done = settledOf(e), label = done ? '精算済' : '未精算';
-  if (!isStaff()) return el('span', { class: 'chip ' + (done ? 'st-done' : 'st-todo'), text: label });
-  const b = el('button', { type: 'button', class: 'chip chipbtn ' + (done ? 'st-done' : 'st-todo'), title: done ? '押すと未精算に戻します' : '押すと精算済にします' }, label);
+  if (!isStaff()) return el('span', { class: 'pill ' + (done ? 'ok' : 'ng'), text: label });
+  const b = el('button', { type: 'button', class: 'pill pillbtn ' + (done ? 'ok' : 'ng'), title: done ? '押すと未精算に戻します' : '押すと精算済にします' }, label);
   b.addEventListener('click', async () => {
     const next = done ? '未精算' : '精算済';
     const r = await busy(b, () => relay('expenseSave', { id: e.ID, values: { '精算': next, '承認': next } }));
