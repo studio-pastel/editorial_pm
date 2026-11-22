@@ -1,7 +1,7 @@
 /* ===== project management: views, page detail, progress, comments, figures, expenses, members ===== */
 const H_COMMENT = ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'];
 const H_FIGURE = ['ID', 'ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ', '更新者', '更新日時'];
-const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', '登録者', '登録日時'];
+const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '領収書', '精算', '登録者', '登録日時'];   // 7th/9th were 担当/承認 before; same places
 const FIG_KINDS = ['写真', 'イラスト', '図', 'ロゴ', 'その他'];
 const FIG_STATES = ['未定', '依頼中', '入稿済', '確定'];
 const EXP_KINDS = ['交通費', '印刷費', '物品購入', '食費', '宿泊費', 'その他'];
@@ -462,6 +462,9 @@ const yen = (n) => '¥' + Math.round(n).toLocaleString('ja-JP');
 const toHalfDigits = (v) => String(v || '').replace(/[０-９]/g, (c) => String.fromCharCode(c.charCodeAt(0) - 0xFEE0)).replace(/[^\d]/g, '');
 const amount = (e) => { const n = Number(toHalfDigits(e['金額（税込）'])); return isFinite(n) ? n : 0; };
 const ymdSlash = (d) => d.getFullYear() + '/' + String(d.getMonth() + 1).padStart(2, '0') + '/' + String(d.getDate()).padStart(2, '0');
+/* 支払者 and 精算 (a sheet made before may still say 担当／承認 until the relay renames them) */
+const payerOf = (e) => String(e['支払者'] != null ? e['支払者'] : (e['担当'] || ''));
+const settledOf = (e) => (e['精算'] != null ? e['精算'] : e['承認']) === '精算済';
 const isoOfSlash = (v) => { const m = String(v || '').match(/(\d{4})\D(\d{1,2})\D(\d{1,2})/); return m ? m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0') : ''; };
 function renderExpenses() {
   const list = (S.expenses || []).slice();
@@ -472,20 +475,42 @@ function renderExpenses() {
   sum.appendChild(el('div', { class: 'kpis' },
     el('div', { class: 'kpi' }, el('span', { text: '合計' }), el('b', { text: yen(total) })),
     el('div', { class: 'kpi' }, el('span', { text: '今月' }), el('b', { text: yen(month) })),
+    el('div', { class: 'kpi warn' }, el('span', { text: '未精算' }), el('b', { text: yen(list.filter((e) => !settledOf(e)).reduce((a, e) => a + amount(e), 0)) })),
     el('div', { class: 'kpi' }, el('span', { text: '件数' }), el('b', { text: list.length + '件' }))));
   const byKind = {}; list.forEach((e) => { const k = e['区分'] || '未分類'; byKind[k] = (byKind[k] || 0) + amount(e); });
   const max = Math.max(1, ...Object.values(byKind));
   sum.appendChild(el('div', { class: 'bars' }, Object.keys(byKind).sort((a, b) => byKind[b] - byKind[a]).map((k) => el('div', { class: 'brow' }, el('span', { text: k }), el('div', { class: 'btrack' }, el('i', { style: 'width:' + (byKind[k] / max * 100).toFixed(1) + '%' })), el('b', { text: yen(byKind[k]) })))));
+  const owe = {}; list.filter((e) => !settledOf(e)).forEach((e) => { const k = payerOf(e) || '（支払者なし）'; owe[k] = (owe[k] || 0) + amount(e); });
+  if (Object.keys(owe).length) {
+    sum.appendChild(el('h3', { class: 'subh', text: '支払者別の未精算' }));
+    sum.appendChild(el('div', { class: 'owe' }, Object.keys(owe).sort((a, b) => owe[b] - owe[a]).map((k) => el('div', { class: 'owerow' }, el('span', { text: k }), el('b', { text: yen(owe[k]) })))));
+  }
   const t = $('expTable'); t.textContent = '';
-  t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
+  t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '精算', '領収書', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
   const tb = el('tbody');
   list.sort((a, b) => isoOfSlash(b['日付']).localeCompare(isoOfSlash(a['日付']))).forEach((e) => {
-    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: e['担当'] }),
+    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: payerOf(e) }),
+      el('td', null, settleChip(e)),
       el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
       el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
   });
-  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 8, class: 'muted', text: '経費は登録されていません' })));
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: 9, class: 'muted', text: '経費は登録されていません' })));
   t.appendChild(tb);
+}
+/** 精算 in the list: 社内 switches it with one click */
+function settleChip(e) {
+  const done = settledOf(e), label = done ? '精算済' : '未精算';
+  if (!isStaff()) return el('span', { class: 'chip ' + (done ? 'st-done' : 'st-todo'), text: label });
+  const b = el('button', { type: 'button', class: 'chip chipbtn ' + (done ? 'st-done' : 'st-todo'), title: done ? '押すと未精算に戻します' : '押すと精算済にします' }, label);
+  b.addEventListener('click', async () => {
+    const next = done ? '未精算' : '精算済';
+    const r = await busy(b, () => relay('expenseSave', { id: e.ID, values: { '精算': next, '承認': next } }));
+    if (!r) return;
+    const obj = rowObj(H_EXPENSE, r.row), i = S.expenses.findIndex((x) => x.ID === obj.ID);
+    if (i >= 0) S.expenses[i] = obj;
+    toast(next + 'にしました'); renderExpenses();
+  });
+  return b;
 }
 async function openReceipt(url, btn) {
   const id = extractDriveId(url);
@@ -518,12 +543,12 @@ function showExpForm(e) {
   const kindList = EXP_KINDS.indexOf(kind) >= 0 ? EXP_KINDS : EXP_KINDS.concat([kind]);   // an old 区分 stays choosable
   const drawKinds = () => { kinds.textContent = ''; kindList.forEach((k) => kinds.appendChild(el('button', { type: 'button', class: 'segb' + (k === kind ? ' on' : ''), role: 'radio', 'aria-checked': String(k === kind), onclick: () => { kind = k; drawKinds(); } }, k))); };
   drawKinds();
-  // 担当: members
-  const who = el('select', { 'aria-label': '担当' });
+  // 支払者: members
+  const who = el('select', { 'aria-label': '支払者' });
   const people = (S.people && S.people.length ? S.people : (S.members || []).map((m) => ({ name: m['名前'] || m.name, email: m['メール'] || m.email }))).filter((p) => p && p.name);
   who.appendChild(el('option', { value: '', text: '（未選択）' }));
   people.forEach((p) => who.appendChild(el('option', { value: p.name, text: p.name })));
-  const curWho = e.ID ? (e['担当'] || '') : (S.me ? S.me.name : '');
+  const curWho = e.ID ? payerOf(e) : (S.me ? S.me.name : '');
   if (curWho && !people.some((p) => p.name === curWho)) who.appendChild(el('option', { value: curWho, text: curWho + '（メンバー外）' }));
   who.value = curWho;
   const date = el('input', { type: 'date', 'aria-label': '日付', value: isoOfSlash(e['日付']) || isoOfSlash(ymdSlash(new Date())) });
@@ -562,11 +587,17 @@ function showExpForm(e) {
     }
   };
   drawRec();
+  // 精算: 未精算 / 精算済
+  let settled = e.ID ? settledOf(e) : false;
+  const settle = el('div', { class: 'seg', role: 'radiogroup', 'aria-label': '精算' });
+  const drawSettle = () => { settle.textContent = ''; [['未精算', false], ['精算済', true]].forEach(([k, v]) => settle.appendChild(el('button', { type: 'button', class: 'segb' + (v === settled ? ' on' : ''), role: 'radio', 'aria-checked': String(v === settled), onclick: () => { settled = v; drawSettle(); } }, k))); };
+  drawSettle();
   const save = el('button', { class: 'btn primary' }, e.ID ? '保存' : '追加');
   save.addEventListener('click', async () => {
     const n = toHalfDigits(money.querySelector('input').value);
     const iso = date.value;
-    const values = { '日付': iso ? iso.replace(/-/g, '/') : '', '区分': kind, '内容': what.value.trim(), '支払先': payee.value.trim(), '金額（税込）': n, '担当': who.value, '領収書': receipt };
+    const values = { '日付': iso ? iso.replace(/-/g, '/') : '', '区分': kind, '内容': what.value.trim(), '支払先': payee.value.trim(), '金額（税込）': n, '支払者': who.value, '担当': who.value, '領収書': receipt, '精算': settled ? '精算済' : '未精算' };
+    values['承認'] = values['精算'];        // a relay older than 2026-11-23 knows only the old names
     const r = await busy(save, () => relay('expenseSave', { id: e.ID || '', values }));
     if (!r) return;
     const obj = rowObj(H_EXPENSE, r.row);
@@ -584,9 +615,10 @@ function showExpForm(e) {
   box.appendChild(el('div', { class: 'expform' },
     el('h3', { text: e.ID ? '経費を編集' : '経費を追加' }),
     el('div', { class: 'field' }, el('span', { text: '区分' }), kinds),
-    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('担当', who)),
+    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('支払者', who)),
     el('div', { class: 'exprow' }, f('内容', what, 'grow'), f('支払先', payee)),
-    el('div', { class: 'field' }, el('span', { text: '領収書' }), recBox), file, acts));
+    el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
+    file, acts));
   box.scrollIntoView({ block: 'nearest' });
   setTimeout(() => money.querySelector('input').focus(), 0);
 }

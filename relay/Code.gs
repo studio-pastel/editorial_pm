@@ -17,7 +17,7 @@
  * 通知メールは「通知」タブに溜め、毎日18時に、その日の分を案件ごとに1通にまとめて送ります（18時以降の出来事は翌日18時）。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-06b';
+const VERSION = '2026-11-23';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -29,7 +29,7 @@ const HEAD = {
   member: ['メール', '名前', '役割', 'メモ'],
   comment: ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'],
   figure: ['ID', 'ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ', '更新者', '更新日時'],
-  expense: ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認', '登録者', '登録日時'],
+  expense: ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '領収書', '精算', '登録者', '登録日時'],
   design: ['ファイル', 'ファイル名', 'PDFページ開始', 'PDFページ終了', '割当開始', '登録日時'],
   setting: ['項目', '値'],
   minute: ['ID', '日付', 'タイトル', '出席者', 'タグ', 'ファイル', '文字数', '作成者', '作成者メール', '作成日時', '更新者', '更新日時'],
@@ -232,6 +232,22 @@ function ensureTab_(ss, kind) {
   sh.setFrozenRows(1);
   return sh;
 }
+/** 経費 made before 2026-11-23 had 担当／承認: renamed in place to 支払者／精算 (old 承認 values cleared) */
+function renameExpenseHead_(ss) {
+  const sh = ss.getSheetByName(TAB.expense);
+  if (!sh || sh.getLastColumn() < 1) return;
+  const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+  const i = head.indexOf('担当'), j = head.indexOf('承認');
+  if (i >= 0 && head.indexOf('支払者') < 0) sh.getRange(1, i + 1).setValue('支払者');
+  if (j >= 0 && head.indexOf('精算') < 0) {
+    sh.getRange(1, j + 1).setValue('精算');
+    const n = sh.getLastRow() - 1;
+    if (n > 0) {
+      const col = sh.getRange(2, j + 1, n, 1), vals = col.getValues();
+      col.setValues(vals.map((r) => [/^(未精算|精算済)$/.test(String(r[0])) ? r[0] : '']));
+    }
+  }
+}
 function readTab_(ss, name) { const sh = ss.getSheetByName(name); return sh ? sh.getDataRange().getDisplayValues() : []; }
 function withLock_(fn) {
   const lock = LockService.getScriptLock();
@@ -287,7 +303,7 @@ function load_(ss, me, req) {
     statusOptions: sh ? statusOptions_(sh, daiwari) : {},
     folder: folderListing_(driveId_(set['デザインフォルダ']))
   };
-  if (CAN.expenseRead.indexOf(me.key) >= 0) res.expenses = readTab_(ss, TAB.expense);
+  if (CAN.expenseRead.indexOf(me.key) >= 0) { if (me.key === 'staff') renameExpenseHead_(ss); res.expenses = readTab_(ss, TAB.expense); }
   if (me.key === 'staff') res.members = readTab_(ss, TAB.member);
   res.people = memberList_(ss);
   registerProject_(ss.getId());
@@ -464,7 +480,7 @@ function commentDelete_(ss, me, req) {
 /* ================= 図版 / 経費 (records with an ID column) ================= */
 const FIELDS = {
   figure: ['ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ'],
-  expense: ['日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', '承認'],
+  expense: ['日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '領収書', '精算', '担当', '承認'],   // 担当・承認: the earlier names of 支払者・精算
   minute: ['日付', 'タイトル', '出席者', 'タグ', 'ファイル', '文字数'],
   task: ['タスク', '担当', '担当メール', '期限', '状態', 'メモ']
 };

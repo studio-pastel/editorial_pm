@@ -116,24 +116,27 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   // expenses
   await p.click('#dClose'); await p.click('#vt-expenses'); await p.click('#btnExpAdd');
   await p.locator('#expFormBox input[aria-label="内容"]').fill('キャンパス撮影'); await p.locator('#expFormBox input[aria-label="支払先"]').fill('写真家A');
-  const kinds = await p.locator('#expFormBox .segb').allTextContents();
+  const kinds = await p.locator('#expFormBox [aria-label="区分"] .segb').allTextContents();
   ok(kinds.join() === '交通費,印刷費,物品購入,食費,宿泊費,その他', '区分 choices: ' + kinds.join());
   ok(await p.locator('#expFormBox select[aria-label="承認"]').count() === 0 && await p.locator('#expFormBox .yen-mark').textContent() === '¥', 'no 承認; amount box has ¥');
-  const whoOpts = await p.locator('#expFormBox select[aria-label="担当"] option').allTextContents();
-  ok(whoOpts.length >= 2 && whoOpts[0] === '（未選択）' && await p.inputValue('#expFormBox select[aria-label="担当"]') !== '', '担当 picks a member (defaults to me): ' + whoOpts.join('/'));
+  const whoOpts = await p.locator('#expFormBox select[aria-label="支払者"] option').allTextContents();
+  ok(whoOpts.length >= 2 && whoOpts[0] === '（未選択）' && await p.inputValue('#expFormBox select[aria-label="支払者"]') !== '', '支払者 picks a member (defaults to me): ' + whoOpts.join('/'));
   await p.click('#expFormBox .segb:has-text("宿泊費")');
   await p.locator('#expFormBox input[aria-label="内容"]').scrollIntoViewIfNeeded(); await p.locator('#expFormBox').screenshot({ path: path.join(__dirname, 'out', 'pm_expform.png') });
   await p.locator('#expFormBox input[aria-label="金額（税込）"]').fill('５５０００円');
   ok(await p.inputValue('#expFormBox input[aria-label="金額（税込）"]') === '55,000', 'full-width amount becomes half-width with commas: ' + await p.inputValue('#expFormBox input[aria-label="金額（税込）"]'));
   await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
   const er = ss.getSheetByName('経費').cells[1];
-  ok(er[5] === 55000 && er[2] === '宿泊費' && er[6] === '制作 太郎' && /^\d{4}\/\d{2}\/\d{2}$/.test(await p.locator('#expTable tbody td').first().textContent()) && /¥55,000/.test(await p.textContent('#expSummary')), 'expense saved and totalled: ' + JSON.stringify(er.slice(1, 9)));
+  ok(er[5] === 55000 && er[2] === '宿泊費' && er[6] === '制作 太郎' && er[8] === '未精算' && /^\d{4}\/\d{2}\/\d{2}$/.test(await p.locator('#expTable tbody td').first().textContent()) && /¥55,000/.test(await p.textContent('#expSummary')), 'expense saved and totalled: ' + JSON.stringify(er.slice(1, 9)));
   // no amount is fine; the list says so. The summary sits under the list
   await p.click('#btnExpAdd'); await p.locator('#expFormBox input[aria-label="内容"]').fill('レンタル見積り中');
   await p.click('#expFormBox .quick button:has-text("昨日")');
   ok(await p.locator('#expFormBox .calbtn').count() === 1, 'date field has a calendar button');
   await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
   ok(ss.getSheetByName('経費').cells.length === 3 && /金額未入力/.test(await p.textContent('#expTable')), 'expense without an amount is saved and marked 金額未入力');
+  ok(/未精算/.test(await p.textContent('#expSummary')) && /支払者別の未精算/.test(await p.textContent('#expSummary')), 'summary shows 未精算 and per-payer');
+  await p.locator('#expTable button.chipbtn').first().click(); await p.waitForTimeout(700);
+  ok(ss.getSheetByName('経費').cells.slice(1).some((r) => r[8] === '精算済'), 'one click in the list marks 精算済');
   ok(await p.evaluate(() => { const a = document.getElementById('expTable').getBoundingClientRect().top, b = document.getElementById('expSummary').getBoundingClientRect().top; return b > a; }), 'summary is below the list');
   await p.screenshot({ path: path.join(__dirname, 'out', 'pm_expenses.png') });
   // progress view
