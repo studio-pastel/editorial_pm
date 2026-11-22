@@ -245,10 +245,10 @@ function commentItem(c, withPage) {
   const k = keyOfLabel(c['ページ']);
   li.appendChild(el('div', { class: 'cmeta' },
     withPage ? el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, c['ページ'] + (k !== null && pageTitle(k) ? ' ' + pageTitle(k) : '')) : null,
-    el('b', { text: c['名前'] || c['投稿者'] }), el('span', { class: 'muted', text: c['日時'] }),
+    el('b', { text: nameOf(c['投稿者'], c['名前'] || c['投稿者']) }), el('span', { class: 'muted', text: c['日時'] }),
     done ? el('span', { class: 'chip st-done', text: '対応済' }) : el('span', { class: 'chip st-doing', text: '未対応' })));
   li.appendChild(el('p', { class: 'ctext', text: c['本文'] }));
-  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: rp['名前'] || rp['投稿者'] }), el('span', { class: 'muted', text: rp['日時'] }),
+  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: nameOf(rp['投稿者'], rp['名前'] || rp['投稿者']) }), el('span', { class: 'muted', text: rp['日時'] }),
     mineOrStaff(rp) ? armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(rp)) : null), el('p', { class: 'ctext', text: rp['本文'] }))));
   const acts = el('div', { class: 'cacts' });
   const replyBox = el('div', { class: 'replybox', hidden: true });
@@ -639,7 +639,14 @@ function renderMembers() {
     const save = el('button', { class: 'btn xs' }, '保存');
     save.addEventListener('click', async () => {
       const r = await busy(save, () => relay('memberSave', { orig: m['メール'], email: m['メール'], name: name.value, role: roleSel.value, memo: memo.value }));
-      if (r) { m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value; toast('保存しました'); }
+      if (!r) return;
+      const old = m['名前'], em = String(m['メール']).toLowerCase();
+      m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value;
+      const p = (S.people || []).find((x) => x.email === em);
+      if (p) { p.name = name.value || em; p.role = roleSel.value; } else (S.people = S.people || []).push({ email: em, name: name.value || em, role: roleSel.value });
+      if (S.me && S.me.email === em) { S.me.name = name.value || em; applyRole(); }
+      toast(old && old !== name.value && r.renamed ? '保存しました（これまでの記録の「' + old + '」も「' + name.value + '」に直しました：' + r.renamed + '件）' : '保存しました');
+      if (old && old !== name.value) loadProject();   // records written with the old name are read again
     });
     const del = armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', async () => {
       const r = await busy(del, () => relay('memberDelete', { email: m['メール'] }));

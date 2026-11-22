@@ -10,6 +10,12 @@ function nextKeyAfter(start, count) {
   const i = order.findIndex((k) => kstr(k) === kstr(start));
   return i < 0 ? null : (order[i + count] === undefined ? null : order[i + count]);
 }
+/** the current name of a member (by mail), or the name written in the record */
+function nameOf(email, fallback) {
+  const em = String(email || '').trim().toLowerCase();
+  const p = em && (S.people || []).find((x) => x.email === em);
+  return p ? p.name : String(fallback || '').trim();
+}
 function tableObjects(rows) {
   if (!rows || rows.length < 2) return [];
   const h = rows[0].map((x) => String(x).trim());

@@ -2174,6 +2174,12 @@ function nextKeyAfter(start, count) {
   const i = order.findIndex((k) => kstr(k) === kstr(start));
   return i < 0 ? null : (order[i + count] === undefined ? null : order[i + count]);
 }
+/** the current name of a member (by mail), or the name written in the record */
+function nameOf(email, fallback) {
+  const em = String(email || '').trim().toLowerCase();
+  const p = em && (S.people || []).find((x) => x.email === em);
+  return p ? p.name : String(fallback || '').trim();
+}
 function tableObjects(rows) {
   if (!rows || rows.length < 2) return [];
   const h = rows[0].map((x) => String(x).trim());
@@ -2881,10 +2887,10 @@ function commentItem(c, withPage) {
   const k = keyOfLabel(c['ページ']);
   li.appendChild(el('div', { class: 'cmeta' },
     withPage ? el('button', { class: 'pagelink', onclick: () => { setView('board'); selectPage(k); } }, c['ページ'] + (k !== null && pageTitle(k) ? ' ' + pageTitle(k) : '')) : null,
-    el('b', { text: c['名前'] || c['投稿者'] }), el('span', { class: 'muted', text: c['日時'] }),
+    el('b', { text: nameOf(c['投稿者'], c['名前'] || c['投稿者']) }), el('span', { class: 'muted', text: c['日時'] }),
     done ? el('span', { class: 'chip st-done', text: '対応済' }) : el('span', { class: 'chip st-doing', text: '未対応' })));
   li.appendChild(el('p', { class: 'ctext', text: c['本文'] }));
-  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: rp['名前'] || rp['投稿者'] }), el('span', { class: 'muted', text: rp['日時'] }),
+  replies.forEach((rp) => li.appendChild(el('div', { class: 'reply' }, el('div', { class: 'cmeta' }, el('b', { text: nameOf(rp['投稿者'], rp['名前'] || rp['投稿者']) }), el('span', { class: 'muted', text: rp['日時'] }),
     mineOrStaff(rp) ? armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', () => deleteComment(rp)) : null), el('p', { class: 'ctext', text: rp['本文'] }))));
   const acts = el('div', { class: 'cacts' });
   const replyBox = el('div', { class: 'replybox', hidden: true });
@@ -3275,7 +3281,14 @@ function renderMembers() {
     const save = el('button', { class: 'btn xs' }, '保存');
     save.addEventListener('click', async () => {
       const r = await busy(save, () => relay('memberSave', { orig: m['メール'], email: m['メール'], name: name.value, role: roleSel.value, memo: memo.value }));
-      if (r) { m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value; toast('保存しました'); }
+      if (!r) return;
+      const old = m['名前'], em = String(m['メール']).toLowerCase();
+      m['名前'] = name.value; m['役割'] = roleSel.value; m['メモ'] = memo.value;
+      const p = (S.people || []).find((x) => x.email === em);
+      if (p) { p.name = name.value || em; p.role = roleSel.value; } else (S.people = S.people || []).push({ email: em, name: name.value || em, role: roleSel.value });
+      if (S.me && S.me.email === em) { S.me.name = name.value || em; applyRole(); }
+      toast(old && old !== name.value && r.renamed ? '保存しました（これまでの記録の「' + old + '」も「' + name.value + '」に直しました：' + r.renamed + '件）' : '保存しました');
+      if (old && old !== name.value) loadProject();   // records written with the old name are read again
     });
     const del = armButton(el('button', { class: 'btn xs' }), '削除', 'もう一度押すと削除', async () => {
       const r = await busy(del, () => relay('memberDelete', { email: m['メール'] }));
@@ -3457,7 +3470,7 @@ function schEditForm(it) {
 /* ================= tasks ================= */
 let taskEditing = null;   // task ID, or 'new'
 let taskFormEl = null;     // the open form, reused while it stays open
-const taskWho = (t) => String(t['担当'] || '').trim();
+const taskWho = (t) => nameOf(t['担当メール'], t['担当']);
 const isMyTask = (t) => !!S.me && ((t['担当メール'] && String(t['担当メール']).toLowerCase() === meEmail()) || (!t['担当メール'] && taskWho(t) && taskWho(t) === S.me.name));
 const taskOverdue = (t) => { const d = isoOf(t['期限']); return !!d && t['状態'] !== '完了' && d < todayIso(); };
 /** assignee straight from the list: members, plus a non-member name already set */
@@ -3750,7 +3763,7 @@ async function drawMinDoc() {
       el('h2', { class: 'mdoc-title', text: m['タイトル'] }),
       m['出席者'] ? el('p', { class: 'small' }, el('span', { class: 'muted', text: '出席者　' }), m['出席者']) : null,
       minTags(m).length ? el('p', { class: 'mtags' }, minTags(m).map((t) => el('span', { class: 'chip tag', text: '#' + t }))) : null,
-      el('p', { class: 'muted small', text: '作成 ' + [m['作成者'], m['作成日時']].filter(Boolean).join(' ') + (m['更新日時'] && m['更新日時'] !== m['作成日時'] ? '　更新 ' + [m['更新者'], m['更新日時']].filter(Boolean).join(' ') : '') }),
+      el('p', { class: 'muted small', text: '作成 ' + [nameOf(m['作成者メール'], m['作成者']), m['作成日時']].filter(Boolean).join(' ') + (m['更新日時'] && m['更新日時'] !== m['作成日時'] ? '　更新 ' + [m['更新者'], m['更新日時']].filter(Boolean).join(' ') : '') }),
       acts),
     bodyBox);
   try {

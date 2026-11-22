@@ -125,7 +125,7 @@ function schEditForm(it) {
 /* ================= tasks ================= */
 let taskEditing = null;   // task ID, or 'new'
 let taskFormEl = null;     // the open form, reused while it stays open
-const taskWho = (t) => String(t['担当'] || '').trim();
+const taskWho = (t) => nameOf(t['担当メール'], t['担当']);
 const isMyTask = (t) => !!S.me && ((t['担当メール'] && String(t['担当メール']).toLowerCase() === meEmail()) || (!t['担当メール'] && taskWho(t) && taskWho(t) === S.me.name));
 const taskOverdue = (t) => { const d = isoOf(t['期限']); return !!d && t['状態'] !== '完了' && d < todayIso(); };
 /** assignee straight from the list: members, plus a non-member name already set */
@@ -418,7 +418,7 @@ async function drawMinDoc() {
       el('h2', { class: 'mdoc-title', text: m['タイトル'] }),
       m['出席者'] ? el('p', { class: 'small' }, el('span', { class: 'muted', text: '出席者　' }), m['出席者']) : null,
       minTags(m).length ? el('p', { class: 'mtags' }, minTags(m).map((t) => el('span', { class: 'chip tag', text: '#' + t }))) : null,
-      el('p', { class: 'muted small', text: '作成 ' + [m['作成者'], m['作成日時']].filter(Boolean).join(' ') + (m['更新日時'] && m['更新日時'] !== m['作成日時'] ? '　更新 ' + [m['更新者'], m['更新日時']].filter(Boolean).join(' ') : '') }),
+      el('p', { class: 'muted small', text: '作成 ' + [nameOf(m['作成者メール'], m['作成者']), m['作成日時']].filter(Boolean).join(' ') + (m['更新日時'] && m['更新日時'] !== m['作成日時'] ? '　更新 ' + [m['更新者'], m['更新日時']].filter(Boolean).join(' ') : '') }),
       acts),
     bodyBox);
   try {

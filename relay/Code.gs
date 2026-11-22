@@ -17,7 +17,7 @@
  * 通知メールは「通知」タブに溜め、毎日18時に、その日の分を案件ごとに1通にまとめて送ります（18時以降の出来事は翌日18時）。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-23b';
+const VERSION = '2026-11-23c';
 const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
@@ -531,10 +531,30 @@ function memberSave_(ss, me, req) {
   for (let i = 1; i < rows.length; i++) if (String(rows[i][0]).trim().toLowerCase() === orig) { r = i + 1; break; }
   for (let i = 1; i < rows.length; i++) if (String(rows[i][0]).trim().toLowerCase() === email && i + 1 !== r) fail_('bad_request', 'このメールアドレスはすでに登録されています');
   if (orig === me.email && key !== 'staff') fail_('bad_request', '自分の役割は社内から変更できません');
+  const oldName = r > 0 ? String(rows[r - 1][1] || '').trim() : '', newName = String(req.name || '').trim();
   writeRow_(sh, r > 0 ? r : sh.getLastRow() + 1, [email, String(req.name || ''), ROLE_LABEL[key], String(req.memo || '')]);
-  if (!req.invite) return { ok: true, invited: false };
+  const renamed = oldName && newName && oldName !== newName ? renameEverywhere_(ss, oldName, newName) : 0;
+  if (!req.invite) return { ok: true, invited: false, renamed };
   try { invite_(ss, me, { email, name: String(req.name || '').trim(), key }, req.origin); return { ok: true, invited: true }; }
   catch (e) { return { ok: true, invited: false, inviteError: e && e.message ? e.message : String(e) }; }
+}
+/** a member renamed: the name written into records (支払者, 担当, 作成者, 更新者, 登録者, 名前) follows */
+const NAME_COLS_ = ['支払者', '担当', '名前', '作成者', '更新者', '登録者'];
+function renameEverywhere_(ss, oldName, newName) {
+  let n = 0;
+  ['expense', 'figure', 'task', 'minute', 'comment'].forEach((kind) => {
+    const sh = ss.getSheetByName(TAB[kind]);
+    if (!sh || sh.getLastRow() < 2) return;
+    const head = sh.getRange(1, 1, 1, sh.getLastColumn()).getDisplayValues()[0];
+    head.forEach((h, c) => {
+      if (NAME_COLS_.indexOf(String(h).trim()) < 0) return;
+      const rg = sh.getRange(2, c + 1, sh.getLastRow() - 1, 1), vals = rg.getValues();
+      let hit = 0;
+      const out = vals.map((v) => { if (String(v[0]).trim() === oldName) { hit++; return [newName]; } return [v[0]]; });
+      if (hit) { rg.setValues(out); n += hit; }
+    });
+  });
+  return n;
 }
 function memberDelete_(ss, me, req) {
   const email = String(req.email || '').trim().toLowerCase();

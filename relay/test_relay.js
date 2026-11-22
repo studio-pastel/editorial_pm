@@ -405,6 +405,17 @@ ok(W.mails.length && W.mails[0].name === 'エディトリアルPM' && /エディ
   ok(toD.length === 1 && /日次テストA/.test(toD[0].body) && /日次テストB/.test(toD[0].body), 'designer: both tasks in one mail at 18:00');
   ok(toO.length === 1 && /日次テストA/.test(toO[0].body) && /コメント一件/.test(toO[0].body), 'owner: tasks and the comment together in one mail');
 }
+{
+  // renaming a member rewrites the name in records
+  const ex = ss.getSheetByName('経費'), mem = ss.getSheetByName('メンバー');
+  const row = mem.cells.findIndex((x) => String(x[0]).toLowerCase() === 'designer@example.com');
+  const oldName = mem.cells[row][1];
+  W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, orig: 'designer@example.com', email: 'designer@example.com', name: '旧名', role: 'チームメンバー', memo: '' });
+  ex.cells[1][6] = '旧名';
+  r = W.call({ action: 'memberSave', session: S_OWNER, sheet: SID, orig: 'designer@example.com', email: 'designer@example.com', name: '新しい名前', role: 'チームメンバー', memo: '' });
+  ok(r.ok && r.renamed >= 1 && ex.cells[1][6] === '新しい名前' && mem.cells[row][1] === '新しい名前', 'rename follows into records (' + r.renamed + ')');
+  mem.cells[row][1] = oldName;
+}
 r = W.call({ action: 'memberDelete', session: S_OWNER, sheet: SID, email: 'designer@example.com' }); ok(r.ok, 'remove external member');
 r = W.call({ action: 'load', session: S_EXT, sheet: SID }); ok(!r.ok && r.code === 'not_member', 'removed member loses access immediately');
 ok(!W.formulas.length, 'no value was ever written as a formula');

@@ -62,6 +62,16 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
     await p.uncheck('#mInvite'); await p.fill('#mEmail', e); await p.fill('#mName', n); await p.selectOption('#mRole', r); await p.click('#btnMemAdd'); await p.waitForTimeout(400);
   }
   ok(ss.getSheetByName('メンバー').cells.length === 4, 'two members added to メンバー tab (header + owner + 2)');
+  {
+    // renaming yourself shows at once (header, pickers) without reloading
+    const row = p.locator('#memTable tbody tr', { hasText: '（あなた）' });
+    const nm = row.locator('input[aria-label="名前"]'), was = await nm.inputValue();
+    await nm.fill('制作 太郎（改）'); await row.locator('button:has-text("保存")').click(); await p.waitForTimeout(1500);
+    const chip = await p.textContent('#userChip'), ppl = await p.evaluate(() => S.people.map((x) => x.name));
+    ok(/制作 太郎（改）/.test(chip) && ppl.includes('制作 太郎（改）'), 'renamed member shows at once: ' + chip);
+    const row2 = p.locator('#memTable tbody tr', { hasText: '（あなた）' });
+    await row2.locator('input[aria-label="名前"]').fill(was); await row2.locator('button:has-text("保存")').click(); await p.waitForTimeout(1500);
+  }
   // page detail: progress + comment + figure
   await p.click('#vt-board'); await p.click('.tile[data-k="2"]'); await p.waitForTimeout(500);
   ok(await vis(p, '#detail') && /P2/.test(await p.textContent('#dTitle')), 'clicking a page opens its detail: ' + await p.textContent('#dTitle'));
