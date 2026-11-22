@@ -107,6 +107,7 @@ function applyLoad(r) {
   S.statusOptions = r.statusOptions || {};
   S.comments = tableObjects(r.comments); S.figures = tableObjects(r.figures);
   S.expenses = r.expenses ? tableObjects(r.expenses) : null;
+  S.expenseHead = r.expenses && r.expenses[0] && r.expenses[0].length ? r.expenses[0].map(String) : null;
   S.members = r.members ? tableObjects(r.members) : [];
   S.people = r.people || S.members.map((m) => ({ email: String(m['メール'] || '').toLowerCase(), name: m['名前'] || m['メール'], role: m['役割'] }));
   S.minutes = tableObjects(r.minutes);

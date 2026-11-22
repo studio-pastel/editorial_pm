@@ -92,15 +92,17 @@ r = W.call({ action: 'expenseSave', session: S_CLIENT, sheet: SID, values: { '�
 r = W.call({ action: 'load', session: S_CLIENT, sheet: SID }); ok(r.expenses.length === 2, 'client reads expenses');
 {
   const sh = ss.getSheetByName('経費');
-  ok(sh.cells[0][6] === '支払者' && sh.cells[0][8] === '精算', 'new 経費 tab has 支払者 and 精算');
+  ok(sh.cells[0][6] === '支払者' && sh.cells[0][8] === '精算' && sh.cells[0][11] === '備考', 'new 経費 tab has 支払者, 精算 and 備考');
+  r = W.call({ action: 'expenseSave', session: S_OWNER, sheet: SID, id: sh.cells[1][0], values: { '備考': '片道57km' } });
+  ok(r.ok && sh.cells[1][11] === '片道57km', '備考 saved');
   r = W.call({ action: 'expenseSave', session: S_OWNER, sheet: SID, id: sh.cells[1][0], values: { '支払者': '制作 太郎', '精算': '精算済' } });
   ok(r.ok && sh.cells[1][6] === '制作 太郎' && sh.cells[1][8] === '精算済' && sh.cells[1][5] === 55000, '支払者／精算 saved, amount kept');
   // a tab from before: 担当／承認 → renamed on the next load by 社内, old 承認 values cleared
-  sh.cells[0][6] = '担当'; sh.cells[0][8] = '承認'; sh.cells[1][8] = '承認済';
+  sh.cells[0][6] = '担当'; sh.cells[0][8] = '承認'; sh.cells[1][8] = '承認済'; sh.cells.forEach((row) => { row.length = 11; });
   r = W.call({ action: 'expenseSave', session: S_OWNER, sheet: SID, id: sh.cells[1][0], values: { '担当': '旧名', '承認': '未精算' } });
   ok(r.ok && sh.cells[1][6] === '旧名', 'old header names still accepted');
   r = W.call({ action: 'load', session: S_OWNER, sheet: SID });
-  ok(sh.cells[0][6] === '支払者' && sh.cells[0][8] === '精算' && sh.cells[1][8] === '未精算' && r.expenses[0][6] === '支払者', 'old 経費 headers renamed on load');
+  ok(sh.cells[0][6] === '支払者' && sh.cells[0][8] === '精算' && sh.cells[0][11] === '備考' && sh.cells[1][8] === '未精算' && r.expenses[0][6] === '支払者', 'old 経費 headers renamed on load, 備考 added');
   sh.cells[0][8] = '承認'; sh.cells[1][8] = '承認済'; W.call({ action: 'load', session: S_OWNER, sheet: SID });
   ok(sh.cells[1][8] === '', 'old 承認 values that are not 精算 states are cleared');
 }

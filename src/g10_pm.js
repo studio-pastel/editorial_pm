@@ -1,7 +1,7 @@
 /* ===== project management: views, page detail, progress, comments, figures, expenses, members ===== */
 const H_COMMENT = ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'];
 const H_FIGURE = ['ID', 'ページ', '図版番号', '種別', '内容', '手配状況', '提供元・撮影者', 'クレジット', 'ファイル', 'メモ', '更新者', '更新日時'];
-const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '領収書', '精算', '登録者', '登録日時'];   // 7th/9th were 担当/承認 before; same places
+const H_EXPENSE = ['ID', '日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '領収書', '精算', '登録者', '登録日時', '備考'];   // 7th/9th were 担当/承認 before; same places
 const FIG_KINDS = ['写真', 'イラスト', '図', 'ロゴ', 'その他'];
 const FIG_STATES = ['未定', '依頼中', '入稿済', '確定'];
 const EXP_KINDS = ['交通費', '印刷費', '物品購入', '食費', '宿泊費', 'その他'];
@@ -489,7 +489,7 @@ function renderExpenses() {
   t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '支払者', '精算', '領収書', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
   const tb = el('tbody');
   list.sort((a, b) => isoOfSlash(b['日付']).localeCompare(isoOfSlash(a['日付']))).forEach((e) => {
-    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: payerOf(e) }),
+    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap' }, e['内容'] || '', e['備考'] ? el('div', { class: 'note', text: e['備考'] }) : null), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: payerOf(e) }),
       el('td', null, settleChip(e)),
       el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
       el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
@@ -506,7 +506,7 @@ function settleChip(e) {
     const next = done ? '未精算' : '精算済';
     const r = await busy(b, () => relay('expenseSave', { id: e.ID, values: { '精算': next, '承認': next } }));
     if (!r) return;
-    const obj = rowObj(H_EXPENSE, r.row), i = S.expenses.findIndex((x) => x.ID === obj.ID);
+    const obj = rowObj(S.expenseHead || H_EXPENSE, r.row), i = S.expenses.findIndex((x) => x.ID === obj.ID);
     if (i >= 0) S.expenses[i] = obj;
     toast(next + 'にしました'); renderExpenses();
   });
@@ -562,6 +562,8 @@ function showExpForm(e) {
     el('div', { class: 'quick' }, el('button', { type: 'button', class: 'linklike', onclick: () => { date.value = dayShift(0); } }, '今日'), el('button', { type: 'button', class: 'linklike', onclick: () => { date.value = dayShift(1); } }, '昨日')));
   const what = el('input', { type: 'text', 'aria-label': '内容', value: e['内容'] || '', placeholder: '例：撮影機材の運搬（タクシー）' });
   const payee = el('input', { type: 'text', 'aria-label': '支払先', value: e['支払先'] || '', placeholder: '例：〇〇交通' });
+  const memo = el('textarea', { 'aria-label': '備考', rows: 2, placeholder: '算出方法や予約番号など' });
+  memo.value = e['備考'] || '';
   const money = yenInput(e['金額（税込）'] !== undefined && e['金額（税込）'] !== '' ? amount(e) : '');
   // 領収書: upload (or a link), shown as a state rather than a raw URL
   let receipt = e['領収書'] || '';
@@ -597,11 +599,11 @@ function showExpForm(e) {
   save.addEventListener('click', async () => {
     const n = toHalfDigits(money.querySelector('input').value);
     const iso = date.value;
-    const values = { '日付': iso ? iso.replace(/-/g, '/') : '', '区分': kind, '内容': what.value.trim(), '支払先': payee.value.trim(), '金額（税込）': n, '支払者': who.value, '担当': who.value, '領収書': receipt, '精算': settled ? '精算済' : '未精算' };
+    const values = { '日付': iso ? iso.replace(/-/g, '/') : '', '区分': kind, '内容': what.value.trim(), '支払先': payee.value.trim(), '金額（税込）': n, '支払者': who.value, '担当': who.value, '領収書': receipt, '精算': settled ? '精算済' : '未精算', '備考': memo.value.trim() };
     values['承認'] = values['精算'];        // a relay older than 2026-11-23 knows only the old names
     const r = await busy(save, () => relay('expenseSave', { id: e.ID || '', values }));
     if (!r) return;
-    const obj = rowObj(H_EXPENSE, r.row);
+    const obj = rowObj(S.expenseHead || H_EXPENSE, r.row);
     const i = S.expenses.findIndex((x) => x.ID === obj.ID);
     if (i >= 0) S.expenses[i] = obj; else S.expenses.push(obj);
     box.textContent = ''; toast(e.ID ? '経費を更新しました' : '経費を追加しました'); renderExpenses();
@@ -619,6 +621,7 @@ function showExpForm(e) {
     el('div', { class: 'exprow' }, el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('内容', what, 'grow')),
     el('div', { class: 'exprow' }, f('支払先', payee), f('金額（税込）', money, 'amt'), f('支払者', who)),
     el('div', { class: 'exprow' }, el('div', { class: 'field grow' }, el('span', { text: '領収書' }), recBox), el('div', { class: 'field' }, el('span', { text: '精算' }), settle)),
+    el('div', { class: 'exprow' }, f('備考', memo, 'full')),
     file, acts));
   box.scrollIntoView({ block: 'nearest' });
   setTimeout(() => what.focus(), 0);
