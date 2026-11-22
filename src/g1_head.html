@@ -445,9 +445,12 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
 .sorth:hover, .sorth.on { color: var(--fg); }
 .sorth:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 3px; }
 .sortmark { font-size: 9px; opacity: .55; } .sorth.on .sortmark { opacity: 1; color: var(--accent); }
-.figlinks { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 12px; }
-.figlinks a { text-decoration: none; }
-.figlinks .ext { opacity: .6; }
+.figlinks { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 14px; padding: 12px 14px; border-radius: 10px; background: color-mix(in srgb, #e8742c 12%, var(--panel)); border: 1px solid color-mix(in srgb, #e8742c 45%, transparent); }
+.figlinks a { display: inline-flex; align-items: center; gap: 8px; text-decoration: none; font-weight: 700; font-size: 14px; padding: 9px 16px; border-radius: 8px; background: #d9621f; color: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+.figlinks a:hover { filter: brightness(1.08); }
+.figlinks a:focus-visible { outline: 3px solid color-mix(in srgb, #d9621f 45%, transparent); outline-offset: 2px; }
+.figlinks .ico { font-size: 15px; line-height: 1; }
+.figlinks .ext { opacity: .8; font-weight: 400; }
 </style>
 </head>
 <body>

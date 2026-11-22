@@ -360,7 +360,7 @@ function figTabLinks() {
 function renderFigLinks() {
   const box = $('figLinks'), links = figTabLinks();
   box.textContent = ''; box.hidden = !links.length;
-  links.forEach((l) => box.appendChild(el('a', { class: 'btn sm', href: l.url, target: '_blank', rel: 'noopener' }, l.label, el('span', { class: 'ext', 'aria-hidden': 'true', text: ' ↗' }))));
+  links.forEach((l) => box.appendChild(el('a', { href: l.url, target: '_blank', rel: 'noopener' }, el('span', { class: 'ico', 'aria-hidden': 'true', text: '📅' }), l.label, el('span', { class: 'ext', 'aria-hidden': 'true', text: ' ↗' }))));
 }
 function renderFigures() {
   renderFigLinks();
