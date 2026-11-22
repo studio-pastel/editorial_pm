@@ -123,20 +123,31 @@ function wire() {
 }
 function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
 
+/** three.js loads after the project data request has gone out; the book is built once it arrives */
+function loadThree() {
+  return loadScript(THREE_URL).catch(() => null).then(() => {
+    initThree(); syncControls();
+    if (V.ok && S.loaded) { buildBook(); renderStats(); syncControls(); }
+  });
+}
 async function start() {
-  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); initThree(); syncControls(); applyRole();
-  await idb.open();
+  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); syncControls(); applyRole();
+  const later = () => { loadThree(); setTimeout(() => pdfReady().catch(() => {}), 0); };
+  const dbOpen = idb.open();          // the local store is only waited for where it is used (project data / PDFs)
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
   S.sheetId = id || '';
   loadSession();                 // the entry page has a sign-in of its own (S.sheetId is empty there)
-  if (!id) {
+  if (!id) {                     // the entry page needs neither the 3D nor the PDF library
     if (!signedIn()) { showLogin(); return; }
     await showDirectory(); return;
   }
   if (!signedIn()) await sessionFromDirectory(id);
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
-  if (!signedIn()) { showLogin(); return; }
-  if (await loadProject()) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
+  if (!signedIn()) { later(); showLogin(); return; }
+  await dbOpen;
+  const loading = loadProject();     // the request goes out first …
+  later();                           // … then the libraries
+  if (await loading) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
 }
 start();

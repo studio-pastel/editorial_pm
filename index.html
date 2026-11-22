@@ -5,7 +5,14 @@
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="robots" content="noindex">
 <title>エディトリアルPM</title>
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600;800&display=swap">
+<!-- nothing outside blocks the first paint: web fonts load on the side (system fonts until then), libraries load after the screen is up -->
+<link rel="preconnect" href="https://script.google.com">
+<link rel="preconnect" href="https://script.googleusercontent.com" crossorigin>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preconnect" href="https://cdnjs.cloudflare.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600;800&display=swap" media="print" onload="this.media='all'">
+<noscript><link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Zen+Kaku+Gothic+New:wght@400;500;700&family=Shippori+Mincho:wght@600;800&display=swap"></noscript>
 <style>
 /* Layout: left = 台割 spreads board (scrolls), right = sticky 3D book stage; panels fold open above the board. */
 :root {
@@ -451,6 +458,8 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
 .figlinks a:focus-visible { outline: 3px solid color-mix(in srgb, #d9621f 45%, transparent); outline-offset: 2px; }
 .figlinks .ico { font-size: 15px; line-height: 1; }
 .figlinks .ext { opacity: .8; font-weight: 400; }
+.syncing { display: none; align-items: center; font-size: 12px; color: var(--mute); white-space: nowrap; }
+body.is-stale .syncing { display: inline-flex; }
 </style>
 </head>
 <body>
@@ -469,6 +478,7 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
       </div>
     </div>
     <a class="btn" id="btnProjects" href="./?list=1" hidden title="所属している案件の一覧に戻ります">案件一覧</a>
+    <span class="syncing" id="syncMark" role="status" title="前回の内容を表示しています。最新の内容を読み込み中です"><span class="spin" aria-hidden="true"></span>最新に更新中…</span>
     <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
     <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
   </header>
@@ -597,7 +607,7 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
         <div class="board" id="board"></div>
       </section>
       <aside class="stage">
-        <div class="view3d" id="view3d"><div class="ph" id="stagePh">台割を読み込むと、ここに立体の書籍が表示されます。</div></div>
+        <div class="view3d" id="view3d"><div class="ph" id="stagePh">立体の書籍を準備しています…</div></div>
         <div class="ctrl">
           <button class="btn sm" id="btnPrev" aria-label="前の見開き">◀</button>
           <input type="range" id="spreadSlider" min="0" max="1" value="0" aria-label="見開き位置">
@@ -762,8 +772,6 @@ select.is-busy { animation: busypulse 1s ease-in-out infinite; cursor: progress;
 </aside>
 <footer class="foot"><a href="privacy.html">プライバシーポリシー</a></footer>
 <div class="toast" id="toast" hidden role="status"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script>
 /* ===== core: constants, parsing, spread logic (pure, no DOM) ===== */
 const MAX_PAGES = 250;
@@ -1177,6 +1185,7 @@ async function onCredential(resp) {
 }
 function signOut() {
   clearSession();
+  try { if (idb.db) idb.db.close(); indexedDB.deleteDatabase('dandori-pages'); } catch (e) { /* ignore */ }   // saved PDFs and project data
   try { Object.keys(localStorage).filter((k) => k.indexOf('dandori.session.') === 0).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
   try { google.accounts.id.disableAutoSelect(); } catch (e) { /* not loaded */ }
   location.reload();
@@ -1262,6 +1271,7 @@ const idb = {
   db: null,
   open() {
     return new Promise((res) => {
+      setTimeout(() => res(false), 1500);   // never hold up the screen (e.g. right after a logout cleared the store)
       try {
         const rq = indexedDB.open('dandori-pages', 1);
         rq.onupgradeneeded = () => { rq.result.createObjectStore('pdf', { keyPath: 'k' }); };
@@ -1288,7 +1298,7 @@ const idb = {
   del(k) { return idb.tx('readwrite', (os) => os.delete(k)); }
 };
 async function cachePrune(keep) {
-  const all = await idb.all();
+  const all = (await idb.all() || []).filter((r) => String(r.k).indexOf('load:') !== 0);   // the saved project data is not a PDF
   if (!Array.isArray(all) || all.length <= keep) return;
   all.sort((a, b) => (a.t || 0) - (b.t || 0));
   for (const r of all.slice(0, all.length - keep)) await idb.del(r.k);
@@ -1320,7 +1330,20 @@ async function pdfPage(src, n) {
   if (!src.pdfFF) src.pdfFF = pdfOpen(new Uint8Array(await (src.blob || (await loadBlob(src))).arrayBuffer()), true);
   return (await src.pdfFF).getPage(n);
 }
-if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* the big libraries are not in the page: they load after the screen and the project data are on their way */
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+let pdfLibP = null;
+function pdfReady() {
+  if (!pdfLibP) {
+    pdfLibP = (window.pdfjsLib ? Promise.resolve() : loadScript(PDFJS_URL)).then(() => {
+      if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    });
+    pdfLibP.catch(() => { pdfLibP = null; });
+  }
+  return pdfLibP;
+}
 
 function srcFor(id, name) {
   let s = S.sources.get(id);
@@ -1379,7 +1402,7 @@ function getPdf(src) {
   if (src.err) return Promise.reject(new Error(src.err));
   if (pdfLoads.has(src.id)) return pdfLoads.get(src.id);
   const p = (async () => {
-    if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+    try { await pdfReady(); } catch (e) { throw new Error('PDFライブラリを読み込めませんでした'); }
     const blob = await loadBlob(src);
     if (src.pdf) return src.pdf;
     let pdf;
@@ -2152,17 +2175,38 @@ async function loadProject(opts) {
   opts = opts || {};
   if (!S.sheetId) return false;
   if (!signedIn()) { showLogin(); return false; }
-  const first = !S.loaded;
+  let first = !S.loaded;
+  // the last data this browser saw for this project is shown at once, then replaced by the fresh one
+  const ck = 'load:' + S.sheetId + ':' + (AUTH.email || '');
+  const req = relay('load', { tab: opts.tab || '' });          // the request goes out before anything is drawn
+  if (first && !opts.tab) {
+    const hit = await idb.get(ck);
+    if (hit && hit.v && Date.now() - (hit.t || 0) < LOAD_CACHE_MS) {
+      try { S.stale = true; renderStale(); await showLoad(hit.v, true, true); first = false; } catch (e) { S.loaded = false; S.stale = false; renderStale(); }
+    }
+  }
   if (first) { S.loading = true; renderBoard(); }
   setTop('');
   let r;
-  try { r = await relay('load', { tab: opts.tab || '' }); }
+  try { r = await req; }
   catch (e) {
-    S.loading = false; renderBoard();
+    S.loading = false; S.stale = false; renderStale(); renderBoard();
+    if (e.code === 'not_member' || e.code === 'auth') idb.del(ck);
     if (e.code === 'not_member') showNotMember(e.message);
     else if (e.code !== 'auth') setTop(e.message, 'err');
     return false;
   }
+  const wasStale = S.stale; S.stale = false; renderStale();
+  idb.put({ k: ck, v: r, t: Date.now() });
+  if (wasStale && S.lastLoadJson === JSON.stringify(r)) { S.loadedAt = Date.now(); return true; }   // nothing changed since last time
+  return showLoad(r, first, false, opts);
+}
+const LOAD_CACHE_MS = 14 * 24 * 3600 * 1000;
+/** while the shown data is the saved copy, the header says so */
+function renderStale() { document.body.classList.toggle('is-stale', !!S.stale); }
+async function showLoad(r, first, fromCache, opts) {
+  opts = opts || {};
+  S.lastLoadJson = JSON.stringify(r);
   S.loading = false; S.loaded = true;
   const sig = () => JSON.stringify([S.tabName, S.settingsRows, S.designs.map((d) => [d.id, d.from, d.to, d.startText]), (S.folderFiles || []).map((f) => f.id + ':' + f.v), NS()]);
   const before = sig();
@@ -2173,9 +2217,9 @@ async function loadProject(opts) {
   if (heavy) S.thumbs.clear();
   texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
   renderViews(); renderBell();
-  if (heavy) await refreshAssignments(); else renderDesignList();
+  if (heavy) { if (fromCache) refreshAssignments(); else await refreshAssignments(); } else renderDesignList();
   if (first) openPageFromUrl();
-  S.loadedAt = Date.now();
+  if (!fromCache) S.loadedAt = Date.now();
   return true;
 }
 function applyLoad(r) {
@@ -3849,21 +3893,32 @@ function wire() {
 }
 function selectText(el) { try { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } catch (e) { /* ignore */ } }
 
+/** three.js loads after the project data request has gone out; the book is built once it arrives */
+function loadThree() {
+  return loadScript(THREE_URL).catch(() => null).then(() => {
+    initThree(); syncControls();
+    if (V.ok && S.loaded) { buildBook(); renderStats(); syncControls(); }
+  });
+}
 async function start() {
-  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); initThree(); syncControls(); applyRole();
-  await idb.open();
+  initSettingsUI(); wire(); wirePM(); wireWork(); wireBell(); syncControls(); applyRole();
+  const later = () => { loadThree(); setTimeout(() => pdfReady().catch(() => {}), 0); };
+  const dbOpen = idb.open();          // the local store is only waited for where it is used (project data / PDFs)
   if (CONFIG.relayUrl.startsWith('__')) { setTop('中継スクリプトのURLが設定されていません。', 'err'); return; }
   const id = extractSheetId(new URLSearchParams(location.search).get('sheet') || '');
   S.sheetId = id || '';
   loadSession();                 // the entry page has a sign-in of its own (S.sheetId is empty there)
-  if (!id) {
+  if (!id) {                     // the entry page needs neither the 3D nor the PDF library
     if (!signedIn()) { showLogin(); return; }
     await showDirectory(); return;
   }
   if (!signedIn()) await sessionFromDirectory(id);
   let v = 'board'; try { v = sessionStorage.getItem('dandori.view') || 'board'; } catch (e) { /* ignore */ }
-  if (!signedIn()) { showLogin(); return; }
-  if (await loadProject()) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
+  if (!signedIn()) { later(); showLogin(); return; }
+  await dbOpen;
+  const loading = loadProject();     // the request goes out first …
+  later();                           // … then the libraries
+  if (await loading) { const q = new URLSearchParams(location.search); if (!q.get('page') && !q.get('view')) setView(v); }
 }
 start();
 

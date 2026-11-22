@@ -22,6 +22,7 @@ const idb = {
   db: null,
   open() {
     return new Promise((res) => {
+      setTimeout(() => res(false), 1500);   // never hold up the screen (e.g. right after a logout cleared the store)
       try {
         const rq = indexedDB.open('dandori-pages', 1);
         rq.onupgradeneeded = () => { rq.result.createObjectStore('pdf', { keyPath: 'k' }); };
@@ -48,7 +49,7 @@ const idb = {
   del(k) { return idb.tx('readwrite', (os) => os.delete(k)); }
 };
 async function cachePrune(keep) {
-  const all = await idb.all();
+  const all = (await idb.all() || []).filter((r) => String(r.k).indexOf('load:') !== 0);   // the saved project data is not a PDF
   if (!Array.isArray(all) || all.length <= keep) return;
   all.sort((a, b) => (a.t || 0) - (b.t || 0));
   for (const r of all.slice(0, all.length - keep)) await idb.del(r.k);
@@ -80,7 +81,20 @@ async function pdfPage(src, n) {
   if (!src.pdfFF) src.pdfFF = pdfOpen(new Uint8Array(await (src.blob || (await loadBlob(src))).arrayBuffer()), true);
   return (await src.pdfFF).getPage(n);
 }
-if (window.pdfjsLib) pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+/* the big libraries are not in the page: they load after the screen and the project data are on their way */
+const THREE_URL = 'https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js';
+const PDFJS_URL = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js';
+let pdfLibP = null;
+function pdfReady() {
+  if (!pdfLibP) {
+    pdfLibP = (window.pdfjsLib ? Promise.resolve() : loadScript(PDFJS_URL)).then(() => {
+      if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+      pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+    });
+    pdfLibP.catch(() => { pdfLibP = null; });
+  }
+  return pdfLibP;
+}
 
 function srcFor(id, name) {
   let s = S.sources.get(id);
@@ -139,7 +153,7 @@ function getPdf(src) {
   if (src.err) return Promise.reject(new Error(src.err));
   if (pdfLoads.has(src.id)) return pdfLoads.get(src.id);
   const p = (async () => {
-    if (!window.pdfjsLib) throw new Error('PDFライブラリを読み込めませんでした');
+    try { await pdfReady(); } catch (e) { throw new Error('PDFライブラリを読み込めませんでした'); }
     const blob = await loadBlob(src);
     if (src.pdf) return src.pdf;
     let pdf;

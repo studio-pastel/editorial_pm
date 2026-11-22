@@ -25,6 +25,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
 (async () => {
   const browser = await chromium.launch({ executablePath: process.env.CHROME_PATH || undefined, args: ['--use-gl=angle', '--use-angle=swiftshader', '--enable-unsafe-swiftshader'] });
   const errs = [];
+  let DELAY = 0;
   const mkctx = async (token) => {
     const ctx = await browser.newContext({ viewport: { width: 1440, height: 950 } });
     await ctx.addInitScript((t) => { window.__TOKEN = t; }, token);
@@ -34,6 +35,7 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
       for (const k in LIBS) if (u.includes(k)) return route.fulfill({ contentType: 'application/javascript', body: fs.readFileSync(LIBS[k]) });
       if (u.startsWith('https://accounts.google.com/gsi/client')) return route.fulfill({ contentType: 'application/javascript', body: GIS });
       if (u.startsWith('https://relay.test/exec')) {
+        if (DELAY && /"action":"load"/.test(req.postData() || '')) await new Promise((r) => setTimeout(r, DELAY));
         const out = W.G.doPost({ postData: { contents: req.postData() } }).content;
         return route.fulfill({ status: 200, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' }, body: out });
       }
@@ -61,6 +63,17 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.evaluate(() => showLogin('ログインの期限が切れました'));
   const body2 = await p.evaluate(() => [...document.querySelectorAll('body *')].filter((e) => e.offsetParent !== null && e.children.length === 0).map((e) => e.textContent).join(' ') + document.title);
   ok(!/サンプル冊子|2028/.test(body2), 'expired-session sign-in screen hides the name: ' + body2.slice(0, 120));
+  // a returning visit draws the screen at once from the saved copy, then swaps in the fresh data
+  await login(p); await p.waitForTimeout(500);
+  ss.getSheetByName('設定').cells.forEach((r) => { if (r[0] === '案件名') r[1] = 'サンプル冊子2029'; });
+  DELAY = 3000; await p.reload(); await p.waitForTimeout(1200);
+  const during = { title: await p.title(), stale: await p.evaluate(() => document.body.classList.contains('is-stale')), mark: await vis(p, '#syncMark'), tiles: await p.locator('#board .tile').count() };
+  await p.waitForTimeout(3500);
+  const after = { title: await p.title(), stale: await p.evaluate(() => document.body.classList.contains('is-stale')), mark: await vis(p, '#syncMark') };
+  DELAY = 0;
+  ok(during.title === 'サンプル冊子2028' && during.stale && during.mark && during.tiles > 0 && after.title === 'サンプル冊子2029' && !after.stale && !after.mark, 'saved copy first, fresh data after: ' + JSON.stringify({ during, after }));
+  const headFirst = { blockingCss: /<link rel="stylesheet" href="https:\/\/fonts[^>]*>/.test(HTML.split('<noscript>')[0].replace(/<link rel="stylesheet"[^>]*media="print"[^>]*>/g, '')), syncLibs: /<script src="https:\/\/cdnjs/.test(HTML) };
+  ok(!headFirst.blockingCss && !headFirst.syncLibs, 'no render-blocking font CSS or library scripts in the page: ' + JSON.stringify(headFirst));
   console.log('ERRORS:', errs.length ? errs.slice(0, 8).join('\n') : 'none');
   console.log(fails ? fails + ' FAILED' : 'ALL PASSED');
   await browser.close();

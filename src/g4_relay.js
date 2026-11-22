@@ -80,6 +80,7 @@ async function onCredential(resp) {
 }
 function signOut() {
   clearSession();
+  try { if (idb.db) idb.db.close(); indexedDB.deleteDatabase('dandori-pages'); } catch (e) { /* ignore */ }   // saved PDFs and project data
   try { Object.keys(localStorage).filter((k) => k.indexOf('dandori.session.') === 0).forEach((k) => localStorage.removeItem(k)); } catch (e) { /* ignore */ }
   try { google.accounts.id.disableAutoSelect(); } catch (e) { /* not loaded */ }
   location.reload();

@@ -45,17 +45,38 @@ async function loadProject(opts) {
   opts = opts || {};
   if (!S.sheetId) return false;
   if (!signedIn()) { showLogin(); return false; }
-  const first = !S.loaded;
+  let first = !S.loaded;
+  // the last data this browser saw for this project is shown at once, then replaced by the fresh one
+  const ck = 'load:' + S.sheetId + ':' + (AUTH.email || '');
+  const req = relay('load', { tab: opts.tab || '' });          // the request goes out before anything is drawn
+  if (first && !opts.tab) {
+    const hit = await idb.get(ck);
+    if (hit && hit.v && Date.now() - (hit.t || 0) < LOAD_CACHE_MS) {
+      try { S.stale = true; renderStale(); await showLoad(hit.v, true, true); first = false; } catch (e) { S.loaded = false; S.stale = false; renderStale(); }
+    }
+  }
   if (first) { S.loading = true; renderBoard(); }
   setTop('');
   let r;
-  try { r = await relay('load', { tab: opts.tab || '' }); }
+  try { r = await req; }
   catch (e) {
-    S.loading = false; renderBoard();
+    S.loading = false; S.stale = false; renderStale(); renderBoard();
+    if (e.code === 'not_member' || e.code === 'auth') idb.del(ck);
     if (e.code === 'not_member') showNotMember(e.message);
     else if (e.code !== 'auth') setTop(e.message, 'err');
     return false;
   }
+  const wasStale = S.stale; S.stale = false; renderStale();
+  idb.put({ k: ck, v: r, t: Date.now() });
+  if (wasStale && S.lastLoadJson === JSON.stringify(r)) { S.loadedAt = Date.now(); return true; }   // nothing changed since last time
+  return showLoad(r, first, false, opts);
+}
+const LOAD_CACHE_MS = 14 * 24 * 3600 * 1000;
+/** while the shown data is the saved copy, the header says so */
+function renderStale() { document.body.classList.toggle('is-stale', !!S.stale); }
+async function showLoad(r, first, fromCache, opts) {
+  opts = opts || {};
+  S.lastLoadJson = JSON.stringify(r);
   S.loading = false; S.loaded = true;
   const sig = () => JSON.stringify([S.tabName, S.settingsRows, S.designs.map((d) => [d.id, d.from, d.to, d.startText]), (S.folderFiles || []).map((f) => f.id + ':' + f.v), NS()]);
   const before = sig();
@@ -66,9 +87,9 @@ async function loadProject(opts) {
   if (heavy) S.thumbs.clear();
   texClearAll(); renderBoard(); buildBook(); renderStats(); syncControls();
   renderViews(); renderBell();
-  if (heavy) await refreshAssignments(); else renderDesignList();
+  if (heavy) { if (fromCache) refreshAssignments(); else await refreshAssignments(); } else renderDesignList();
   if (first) openPageFromUrl();
-  S.loadedAt = Date.now();
+  if (!fromCache) S.loadedAt = Date.now();
   return true;
 }
 function applyLoad(r) {

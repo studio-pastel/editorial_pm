@@ -13,6 +13,7 @@
       </div>
     </div>
     <a class="btn" id="btnProjects" href="./?list=1" hidden title="所属している案件の一覧に戻ります">案件一覧</a>
+    <span class="syncing" id="syncMark" role="status" title="前回の内容を表示しています。最新の内容を読み込み中です"><span class="spin" aria-hidden="true"></span>最新に更新中…</span>
     <button class="btn" id="btnReload" title="スプレッドシートの最新の内容を読み直します">再読み込み</button>
     <button class="btn user" id="userChip" hidden title="押すとログアウトします"></button>
   </header>
@@ -141,7 +142,7 @@
         <div class="board" id="board"></div>
       </section>
       <aside class="stage">
-        <div class="view3d" id="view3d"><div class="ph" id="stagePh">台割を読み込むと、ここに立体の書籍が表示されます。</div></div>
+        <div class="view3d" id="view3d"><div class="ph" id="stagePh">立体の書籍を準備しています…</div></div>
         <div class="ctrl">
           <button class="btn sm" id="btnPrev" aria-label="前の見開き">◀</button>
           <input type="range" id="spreadSlider" min="0" max="1" value="0" aria-label="見開き位置">
@@ -306,5 +307,3 @@
 </aside>
 <footer class="foot"><a href="privacy.html">プライバシーポリシー</a></footer>
 <div class="toast" id="toast" hidden role="status"></div>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
