@@ -476,6 +476,14 @@ body.is-stale .syncing { display: inline-flex; }
 .yen input { border: 0 !important; box-shadow: none !important; outline: none; flex: 1; min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 18px; font-variant-numeric: tabular-nums; padding: 6px 10px; background: transparent; color: var(--fg); }
 .rec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 td.nowrap { white-space: nowrap; }
+.datebox { display: grid; gap: 4px; }
+.datein { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); overflow: hidden; }
+.datein:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }
+.datein input { border: 0 !important; box-shadow: none !important; outline: none; flex: 1; min-width: 0; background: transparent; color: var(--fg); cursor: pointer; }
+.datein input::-webkit-calendar-picker-indicator { display: none; }
+.calbtn { border: 0; border-left: 1px solid var(--line); background: color-mix(in srgb, var(--line) 35%, transparent); padding: 0 12px; cursor: pointer; font-size: 16px; }
+.calbtn:hover { background: color-mix(in srgb, var(--accent) 15%, transparent); }
+.datebox .quick { display: flex; gap: 12px; font-size: 12px; }
 </style>
 </head>
 <body>

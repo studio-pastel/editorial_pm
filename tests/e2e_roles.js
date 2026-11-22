@@ -128,6 +128,13 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
   const er = ss.getSheetByName('経費').cells[1];
   ok(er[5] === 55000 && er[2] === '宿泊費' && er[6] === '制作 太郎' && /^\d{4}\/\d{2}\/\d{2}$/.test(await p.locator('#expTable tbody td').first().textContent()) && /¥55,000/.test(await p.textContent('#expSummary')), 'expense saved and totalled: ' + JSON.stringify(er.slice(1, 9)));
+  // no amount is fine; the list says so. The summary sits under the list
+  await p.click('#btnExpAdd'); await p.locator('#expFormBox input[aria-label="内容"]').fill('レンタル見積り中');
+  await p.click('#expFormBox .quick button:has-text("昨日")');
+  ok(await p.locator('#expFormBox .calbtn').count() === 1, 'date field has a calendar button');
+  await p.click('#expFormBox button:has-text("追加")'); await p.waitForTimeout(800);
+  ok(ss.getSheetByName('経費').cells.length === 3 && /金額未入力/.test(await p.textContent('#expTable')), 'expense without an amount is saved and marked 金額未入力');
+  ok(await p.evaluate(() => { const a = document.getElementById('expTable').getBoundingClientRect().top, b = document.getElementById('expSummary').getBoundingClientRect().top; return b > a; }), 'summary is below the list');
   await p.screenshot({ path: path.join(__dirname, 'out', 'pm_expenses.png') });
   // progress view
   await p.click('#vt-progress'); await p.waitForTimeout(400);

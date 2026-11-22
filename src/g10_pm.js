@@ -480,7 +480,7 @@ function renderExpenses() {
   t.appendChild(el('thead', null, el('tr', null, ['日付', '区分', '内容', '支払先', '金額（税込）', '担当', '領収書', ''].map((h) => el('th', { text: h, class: h === '金額（税込）' ? 'num' : '' })))));
   const tb = el('tbody');
   list.sort((a, b) => isoOfSlash(b['日付']).localeCompare(isoOfSlash(a['日付']))).forEach((e) => {
-    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num', text: e['金額（税込）'] !== '' && e['金額（税込）'] != null ? yen(amount(e)) : '' }), el('td', { text: e['担当'] }),
+    tb.appendChild(el('tr', null, el('td', { class: 'nowrap', text: e['日付'] }), el('td', null, e['区分'] ? el('span', { class: 'chip', text: e['区分'] }) : ''), el('td', { class: 'wrap', text: e['内容'] }), el('td', { text: e['支払先'] }), el('td', { class: 'num' }, String(e['金額（税込）'] == null ? '' : e['金額（税込）']).trim() !== '' ? yen(amount(e)) : el('span', { class: 'chip st-todo', text: '金額未入力' })), el('td', { text: e['担当'] }),
       el('td', null, e['領収書'] ? el('button', { class: 'btn xs', onclick: (ev) => openReceipt(e['領収書'], ev.target) }, '表示') : ''),
       el('td', null, isStaff() ? el('button', { class: 'btn xs', onclick: () => showExpForm(e) }, '編集') : null)));
   });
@@ -527,6 +527,13 @@ function showExpForm(e) {
   if (curWho && !people.some((p) => p.name === curWho)) who.appendChild(el('option', { value: curWho, text: curWho + '（メンバー外）' }));
   who.value = curWho;
   const date = el('input', { type: 'date', 'aria-label': '日付', value: isoOfSlash(e['日付']) || isoOfSlash(ymdSlash(new Date())) });
+  // the calendar opens from the field itself, the button, or a quick 今日／昨日
+  const openPicker = () => { try { if (date.showPicker) date.showPicker(); else date.focus(); } catch (err) { date.focus(); } };
+  date.addEventListener('click', openPicker);
+  const dayShift = (n) => { const d = new Date(); d.setDate(d.getDate() - n); return isoOfSlash(ymdSlash(d)); };
+  const dateBox = el('div', { class: 'datebox' },
+    el('div', { class: 'datein' }, date, el('button', { type: 'button', class: 'calbtn', title: 'カレンダーから選ぶ', 'aria-label': 'カレンダーから選ぶ', onclick: openPicker }, '📅')),
+    el('div', { class: 'quick' }, el('button', { type: 'button', class: 'linklike', onclick: () => { date.value = dayShift(0); } }, '今日'), el('button', { type: 'button', class: 'linklike', onclick: () => { date.value = dayShift(1); } }, '昨日')));
   const what = el('input', { type: 'text', 'aria-label': '内容', value: e['内容'] || '', placeholder: '例：撮影機材の運搬（タクシー）' });
   const payee = el('input', { type: 'text', 'aria-label': '支払先', value: e['支払先'] || '', placeholder: '例：〇〇交通' });
   const money = yenInput(e['金額（税込）'] !== undefined && e['金額（税込）'] !== '' ? amount(e) : '');
@@ -560,7 +567,6 @@ function showExpForm(e) {
     const n = toHalfDigits(money.querySelector('input').value);
     const iso = date.value;
     const values = { '日付': iso ? iso.replace(/-/g, '/') : '', '区分': kind, '内容': what.value.trim(), '支払先': payee.value.trim(), '金額（税込）': n, '担当': who.value, '領収書': receipt };
-    if (!values['内容'] && !n) { toast('内容か金額を入力してください', 'err'); return; }
     const r = await busy(save, () => relay('expenseSave', { id: e.ID || '', values }));
     if (!r) return;
     const obj = rowObj(H_EXPENSE, r.row);
@@ -578,7 +584,7 @@ function showExpForm(e) {
   box.appendChild(el('div', { class: 'expform' },
     el('h3', { text: e.ID ? '経費を編集' : '経費を追加' }),
     el('div', { class: 'field' }, el('span', { text: '区分' }), kinds),
-    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), f('日付', date), f('担当', who)),
+    el('div', { class: 'exprow' }, f('金額（税込）', money, 'amt'), el('div', { class: 'field' }, el('span', { text: '日付' }), dateBox), f('担当', who)),
     el('div', { class: 'exprow' }, f('内容', what, 'grow'), f('支払先', payee)),
     el('div', { class: 'field' }, el('span', { text: '領収書' }), recBox), file, acts));
   box.scrollIntoView({ block: 'nearest' });
