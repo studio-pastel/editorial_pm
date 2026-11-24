@@ -560,3 +560,70 @@ function wireBell() {
   document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && !$('bellPanel').hidden) { $('bellPanel').hidden = true; $('btnBell').focus(); } });
   setInterval(() => { if (!document.hidden) refreshNotices(); }, 180000);
 }
+
+/* ---- 人選 (read-only view of the 人選リスト tab; edited in the spreadsheet) ---- */
+const castCol = (re) => (S.castHead || []).find((h) => re.test(h)) || '';
+const castPageCol = () => castCol(/掲載|ページ|頁/);
+/** "P24–25、P33" -> [{ label: 'P24-25', key: 24 }, { label: 'P33', key: 33 }] */
+function castPages(v) {
+  return z2h(v).split(',').map((x) => x.trim()).filter(Boolean).map((seg) => ({ label: seg, key: parsePageSpec(seg)[0] }));
+}
+function castPageCell(v) {
+  const segs = castPages(v);
+  if (!segs.length) return String(v || '');
+  return segs.map((s, i) => [i ? '、' : '', s.key === undefined ? s.label : el('button', { class: 'pagelink', type: 'button', onclick: () => { setView('board'); selectPage(s.key); } }, s.label)]).flat().filter((x) => x !== '');
+}
+function castFill(sel, values, keep) {
+  const pick = keep !== undefined ? keep : sel.value;
+  sel.textContent = '';
+  sel.appendChild(el('option', { value: '', text: 'すべて' }));
+  values.forEach(([v, n]) => sel.appendChild(el('option', { value: v, text: v + '（' + n + '）' })));
+  sel.value = values.some(([v]) => v === pick) ? pick : '';
+}
+function castCounts(list, col) {
+  const m = new Map();
+  if (col) list.forEach((p) => { const v = String(p[col] || '').trim(); if (v) m.set(v, (m.get(v) || 0) + 1); });
+  return [...m.entries()];
+}
+function renderCast() {
+  const t = $('castTable'), hint = $('castHint'); t.textContent = ''; hint.textContent = '';
+  if (!hasFeature('cast')) { hint.textContent = RELAY_OLD; return; }
+  const head = S.castHead || [], all = S.cast || [];
+  if (!head.length) { hint.textContent = 'スプレッドシートに「人選リスト」タブを作ると、ここに表示されます（1行目が見出し）。'; return; }
+  const kCol = castCol(/^区分$/), dCol = castCol(/^学科$/), nameCol = castCol(/^氏名$|^名前$/), kanaCol = castCol(/^カナ|ふりがな|フリガナ/), pCol = castPageCol();
+  castFill($('castKind'), castCounts(all, kCol)); $('castKind').closest('label').hidden = !kCol;
+  castFill($('castDept'), castCounts(all, dCol)); $('castDept').closest('label').hidden = !dCol;
+  const kind = $('castKind').value, dept = $('castDept').value;
+  const q = z2h($('castQ').value).toLowerCase();
+  const list = all.filter((p) => (!kind || p[kCol] === kind) && (!dept || p[dCol] === dept) &&
+    (!q || z2h(head.map((h) => p[h] || '').join(' ')).toLowerCase().indexOf(q) >= 0));
+  hint.append(list.length === all.length ? all.length + '件' : all.length + '件中 ' + list.length + '件を表示', '。編集はスプレッドシートの「人選リスト」タブで行います（読み込み直すと反映）。');
+  const cols = head.filter((h) => h && !(h === kanaCol && nameCol));
+  t.appendChild(el('thead', null, el('tr', null, cols.map((h) => el('th', { text: h })))));
+  const tb = el('tbody');
+  list.forEach((p) => {
+    tb.appendChild(el('tr', null, cols.map((h) => {
+      const v = p[h] || '';
+      if (h === nameCol) return el('td', { class: 'castname' }, el('b', { text: v }), kanaCol && p[kanaCol] ? el('small', { class: 'muted', text: p[kanaCol] }) : null);
+      if (h === pCol) return el('td', { class: 'nowrap' }, castPageCell(v));
+      return el('td', { class: v.length > 24 ? 'wrap' : '', text: v });
+    })));
+  });
+  if (!list.length) tb.appendChild(el('tr', null, el('td', { colspan: cols.length, class: 'muted', text: all.length ? '条件に合う人はいません' : '人選リストは空です' })));
+  t.appendChild(tb);
+}
+/** detail panel: who appears on this page */
+function castSection(k) {
+  if (!hasFeature('cast') || !(S.cast || []).length) return null;
+  const pCol = castPageCol(); if (!pCol) return null;
+  const want = kstr(k);
+  const list = S.cast.filter((p) => parsePageSpec(p[pCol] || '').some((x) => kstr(x) === want));
+  if (!list.length) return null;
+  const kCol = castCol(/^区分$/), nameCol = castCol(/^氏名$|^名前$/), orgCol = castCol(/所属|勤務先/), cCol = castCol(/^コース$/);
+  const ul = el('ul', { class: 'castlist' });
+  list.forEach((p) => ul.appendChild(el('li', null,
+    el('b', { text: p[nameCol] || '' }),
+    el('span', { class: 'muted', text: [p[kCol], p[cCol], p[orgCol]].filter(Boolean).join('／') }))));
+  return el('section', { class: 'dsec' }, el('h3', { text: '人選（' + list.length + '）' }), ul,
+    el('button', { class: 'btn xs', type: 'button', onclick: () => setView('cast') }, '人選リストを開く'));
+}

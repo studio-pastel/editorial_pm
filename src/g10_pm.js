@@ -60,7 +60,7 @@ async function busy(btn, fn) {
 }
 
 /* ---- views ---- */
-const VIEWS = ['board', 'progress', 'schedule', 'tasks', 'minutes', 'comments', 'figures', 'expenses', 'members'];
+const VIEWS = ['board', 'progress', 'schedule', 'tasks', 'minutes', 'comments', 'figures', 'cast', 'expenses', 'members'];
 let curView = 'board';
 function setView(v) {
   if (VIEWS.indexOf(v) < 0 || $('vt-' + v).hidden) v = 'board';
@@ -76,6 +76,7 @@ function renderView(v) {
   if (v === 'progress') renderProgress();
   else if (v === 'comments') renderComments();
   else if (v === 'figures') renderFigures();
+  else if (v === 'cast') renderCast();
   else if (v === 'expenses') renderExpenses();
   else if (v === 'members') renderMembers();
   else if (v === 'schedule') renderSchedule();
@@ -208,6 +209,8 @@ function renderDetail() {
   const src = a && S.sources.get(a.src);
   body.appendChild(el('section', { class: 'dsec' }, el('h3', { text: 'デザイン' }),
     a ? el('p', null, (src && src.name ? src.name : 'PDF') + ' の ' + a.page + 'ページ目', ' ', el('button', { class: 'btn sm', onclick: () => { setView('board'); goToKey(k); } }, '3Dで見る')) : el('p', { class: 'muted', text: 'まだPDFが貼られていません' })));
+  // 人選
+  const cs = castSection(k); if (cs) body.appendChild(cs);
   // コメント
   body.appendChild(commentSection(label));
   // 図版
@@ -692,6 +695,8 @@ function wirePM() {
   $('cSearch').addEventListener('input', renderComments);
   $('figFilter').addEventListener('change', renderFigures);
   $('figSource').addEventListener('change', renderFigures);
+  ['castKind', 'castDept'].forEach((id) => $(id).addEventListener('change', renderCast));
+  $('castQ').addEventListener('input', renderCast);
   $('btnFigAdd').addEventListener('click', () => showFigForm(null));
   $('progSection').addEventListener('change', renderProgress);
   $('progOpen').addEventListener('change', renderProgress);

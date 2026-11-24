@@ -476,6 +476,15 @@ body.is-stale .syncing { display: inline-flex; }
 .yen input { border: 0 !important; box-shadow: none !important; outline: none; flex: 1; min-width: 0; text-align: right; font-family: var(--font-mono); font-size: 15px; line-height: 1.6; font-variant-numeric: tabular-nums; padding: 6px 10px; background: transparent; color: var(--fg); }
 .rec { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
 td.nowrap { white-space: nowrap; }
+/* 人選 */
+td.castname b { display: block; white-space: nowrap; }
+td.castname small { display: block; font-size: 11px; white-space: nowrap; }
+#castQ { min-width: 12em; }
+.castlist { list-style: none; margin: 0 0 8px; padding: 0; }
+.castlist li { padding: 3px 0; border-bottom: 1px dashed var(--line); }
+.castlist li:last-child { border-bottom: 0; }
+.castlist li b { margin-right: .6em; }
+.castlist li span { font-size: 12px; }
 .datebox { display: grid; gap: 4px; }
 .datein { display: flex; align-items: stretch; border: 1px solid var(--line); border-radius: 6px; background: var(--panel); overflow: hidden; }
 .datein:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 25%, transparent); }

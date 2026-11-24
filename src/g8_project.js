@@ -118,6 +118,8 @@ function applyLoad(r) {
   S.people = r.people || S.members.map((m) => ({ email: String(m['メール'] || '').toLowerCase(), name: m['名前'] || m['メール'], role: m['役割'] }));
   S.minutes = tableObjects(r.minutes);
   S.tasks = tableObjects(r.tasks);
+  S.castHead = r.cast && r.cast[0] ? r.cast[0].map((x) => String(x).trim()) : [];
+  S.cast = tableObjects(r.cast);
   S.schedule = r.schedule;
   S.notices = r.notices || [];
 }
@@ -234,7 +236,7 @@ function renderProjectUI() {
   const a = $('sheetLink'); a.href = 'https://docs.google.com/spreadsheets/d/' + S.sheetId + '/edit'; a.textContent = S.sheetName || S.sheetId;
   $('shareUrl').textContent = projectUrl(S.sheetId);
   const sel = $('tabSelect'); sel.textContent = '';
-  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク', '通知'];
+  const special = ['デザイン', '設定', 'メンバー', 'コメント', '図版', '経費', '議事録', 'タスク', '通知', '人選リスト'];
   S.tabs.filter((t) => special.indexOf(t.title) < 0).forEach((t) => { const o = document.createElement('option'); o.value = t.title; o.textContent = t.title; sel.appendChild(o); });
   sel.value = S.tabName; sel.disabled = !isStaff();
   renderColMap();

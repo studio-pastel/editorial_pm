@@ -25,6 +25,7 @@
     <button class="vtab" id="vt-minutes" data-view="minutes">議事録</button>
     <button class="vtab" id="vt-comments" data-view="comments">コメント<b class="badge" id="badgeComments" hidden></b></button>
     <button class="vtab" id="vt-figures" data-view="figures">図版</button>
+    <button class="vtab" id="vt-cast" data-view="cast">人選</button>
     <button class="vtab" id="vt-expenses" data-view="expenses" hidden>経費</button>
     <button class="vtab" id="vt-members" data-view="members" hidden>メンバー</button>
   </nav>
@@ -262,6 +263,20 @@
       <div class="figlinks" id="figLinks" hidden></div>
       <div id="figFormBox"></div>
       <div class="tablewrap"><table class="grid" id="figTable"></table></div>
+    </section>
+  </div>
+
+  <!-- ============ 人選 ============ -->
+  <div class="view" id="view-cast" hidden>
+    <section class="panel">
+      <div class="vhead">
+        <h2>人選リスト</h2>
+        <label class="field inline"><span>区分</span><select id="castKind"></select></label>
+        <label class="field inline"><span>学科</span><select id="castDept"></select></label>
+        <label class="field inline"><span>検索</span><input type="search" id="castQ" placeholder="氏名・所属など"></label>
+      </div>
+      <p class="hint" id="castHint"></p>
+      <div class="tablewrap"><table class="grid" id="castTable"></table></div>
     </section>
   </div>
 

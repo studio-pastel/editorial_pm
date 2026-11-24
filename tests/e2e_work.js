@@ -187,7 +187,24 @@ let fails = 0; const ok = (c, m) => { console.log((c ? 'PASS ' : 'FAIL ') + m); 
   await p.selectOption('#tAssignee', 'me'); await p.waitForTimeout(200);
   ok(await p.locator('#taskTable .trow').count() === 1 && /撮影リスト/.test(await p.textContent('#taskTable')), '「自分」filter shows the task assigned to the client');
 
-  /* ---------- external ---------- */
+  /* ---------- 人選 ---------- */
+  ss.sheets.push(new (ss.sheets[0].constructor)(ss, '人選リスト', [['区分', '学科', 'コース', '氏名', 'カナ', '所属・勤務先', '掲載ページ', '備考'],
+    ['在学生（学科代表）', 'AE', '架空コース', '架空 一郎', 'カクウ イチロウ', '', 'P12', ''], ['卒業生（学科代表）', 'VD', '', '架空 花子', 'カクウ ハナコ', '架空デザイン株式会社', 'P4–5', ''], ['教員', 'AE', '', '架空 先生', '', '', 'P12、P14', '']]));
+  p = await open(cClient); await p.waitForTimeout(1500);
+  await p.click('#vt-cast'); await p.waitForTimeout(300);
+  ok(await p.locator('#castTable tbody tr').count() === 3 && /カクウ イチロウ/.test(await p.textContent('#castTable')) && !(await p.locator('#castTable th', { hasText: 'カナ' }).count()), '人選 tab lists everyone (カナ shown under the name)');
+  await p.screenshot({ path: path.join(__dirname, 'out', 'w_cast.png'), fullPage: false });
+  await p.selectOption('#castKind', '教員'); await p.waitForTimeout(150);
+  ok(await p.locator('#castTable tbody tr').count() === 1 && await p.locator('#castTable tbody .pagelink').count() === 2, '区分 filter; 「P12、P14」 becomes two page links');
+  await p.selectOption('#castKind', ''); await p.fill('#castQ', '架空デザイン'); await p.waitForTimeout(150);
+  ok(await p.locator('#castTable tbody tr').count() === 1 && /1件を表示/.test(await p.textContent('#castHint')), 'search matches 所属');
+  await p.click('#castTable .pagelink'); await p.waitForTimeout(800);
+  ok(await vis(p, '#view-board') && /架空 花子/.test(await p.textContent('#dBody')), 'page link (P4–5) opens the page; its detail lists the person');
+  await p.evaluate(() => selectPage(12)); await p.waitForTimeout(400);
+  ok(/人選（2）/.test(await p.textContent('#dBody')), 'detail panel of P12 shows 人選（2）');
+  await p.locator('#dBody .castlist').screenshot({ path: path.join(__dirname, 'out', 'w_cast_detail.png') });
+  ok(!(await p.evaluate(() => [...document.querySelectorAll('#tabSelect option')].some((o) => o.value === '人選リスト'))), '人選リスト is not offered as a 台割 tab');
+
   const cExt = await mkctx('T_EXT');
   p = await open(cExt); await login(p);
   ok(!(await vis(p, '#vt-schedule')) && await vis(p, '#vt-tasks') && await vis(p, '#vt-minutes'), 'external: no スケジュール tab; タスク and 議事録 visible');

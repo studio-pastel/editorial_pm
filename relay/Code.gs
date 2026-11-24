@@ -17,14 +17,14 @@
  * 通知メールは「通知」タブに溜め、毎日18時に、その日の分を案件ごとに1通にまとめて送ります（18時以降の出来事は翌日18時）。
  * そのために、関数 setupNotifications を一度だけ実行してください（5分おきに送信を確かめる設定を作ります）。
  */
-const VERSION = '2026-11-23c';
-const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash'];
+const VERSION = '2026-11-24a';
+const FEATURES = ['projectName', 'schedule', 'minutes', 'tasks', 'directory', 'invite', 'notices', 'designTrash', 'cast'];
 const CLIENT_ID = '89787741926-q2oegplkho4ulh38cpj9p8grkg718til.apps.googleusercontent.com';
 const ALLOWED_ORIGINS = ['https://studio-pastel.github.io'];
 const SESSION_DAYS = 30;
 const CHUNK = 4 * 1024 * 1024;                 // multiple of 256 KiB (Drive resumable upload unit)
 
-const TAB = { member: 'メンバー', comment: 'コメント', figure: '図版', expense: '経費', design: 'デザイン', setting: '設定', minute: '議事録', task: 'タスク', notice: '通知' };
+const TAB = { member: 'メンバー', comment: 'コメント', figure: '図版', expense: '経費', design: 'デザイン', setting: '設定', minute: '議事録', task: 'タスク', notice: '通知', cast: '人選リスト' };
 const HEAD = {
   member: ['メール', '名前', '役割', 'メモ'],
   comment: ['ID', 'ページ', '投稿者', '名前', '日時', '本文', '返信先', '状態'],
@@ -310,6 +310,7 @@ function load_(ss, me, req) {
   registerProject_(ss.getId());
   res.minutes = readTab_(ss, TAB.minute);
   res.tasks = readTab_(ss, TAB.task);
+  res.cast = readTab_(ss, TAB.cast);              // 人選リスト: read-only here (edited in the spreadsheet); empty when the tab does not exist
   res.notices = noticesFor_(ss, me);
   if (CAN.schedule.indexOf(me.key) >= 0) {
     try { res.schedule = scheduleRead_(ss, set); } catch (e) { res.schedule = { error: 'スケジュールを読み込めませんでした：' + (e && e.message ? e.message : String(e)) }; }
